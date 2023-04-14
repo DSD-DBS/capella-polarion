@@ -1,0 +1,12 @@
+[
+    {
+        "uuid": "_6Td1kOQ8Ee2tXvmHzHzXCA",
+        "name": "[CC] Capability",
+        "success": true
+    },
+    {
+        "uuid": "_Eiw7IOQ9Ee2tXvmHzHzXCA",
+        "name": "[CDB] Class tests",
+        "success": false
+    }
+]

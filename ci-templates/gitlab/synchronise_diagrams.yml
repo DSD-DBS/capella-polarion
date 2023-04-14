@@ -1,0 +1,20 @@
+# Copyright DB Netz AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+variables:
+  CAPELLA2POLARION_DEBUG: "1"
+
+capella2polarion_synchronise_diagrams:
+  needs:
+    - job: update_capella_diagram_cache
+      artifacts: true
+
+  script:
+    - pip install git+https://git.tech.rz.db.de/se-toolchain/capella-tools/rm-bridge/capella2polarion.git@$CAPELLA2POLARION_REVISION
+    - >
+      python \
+        -m capella2polarion \
+        $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
+        --project-id=${CAPELLA2POLARION_PROJECT_ID} \
+        diagrams \
+        ./diagram_cache
