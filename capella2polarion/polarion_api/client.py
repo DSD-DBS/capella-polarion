@@ -4,16 +4,16 @@
 import json
 import logging
 
-from polarion_rest_api_client import client as oa_client
-from polarion_rest_api_client import models as api_models
-from polarion_rest_api_client import types as oa_types
-from polarion_rest_api_client.api.linked_work_items import (
+from polarion_rest_api_client.open_api_client import client as oa_client
+from polarion_rest_api_client.open_api_client import models as api_models
+from polarion_rest_api_client.open_api_client import types as oa_types
+from polarion_rest_api_client.open_api_client.api.linked_work_items import (
     delete_linked_work_items,
     get_linked_work_items,
     post_linked_work_items,
 )
-from polarion_rest_api_client.api.projects import get_project
-from polarion_rest_api_client.api.work_items import (
+from polarion_rest_api_client.open_api_client.api.projects import get_project
+from polarion_rest_api_client.open_api_client.api.work_items import (
     delete_work_items,
     get_work_items,
     patch_work_item,
@@ -21,6 +21,7 @@ from polarion_rest_api_client.api.work_items import (
 )
 
 from capella2polarion.polarion_api import (
+    DEFAULT_ENTITY_SIZE,
     AbstractPolarionProjectApi,
     PolarionApiException,
     PolarionApiUnexpectedException,
@@ -61,7 +62,7 @@ class OpenAPIPolarionProjectClient(AbstractPolarionProjectApi):
         delete_polarion_work_items: bool,
         polarion_api_endpoint: str,
         polarion_access_token: str,
-        batch_size: int = 5,
+        batch_size: int = DEFAULT_ENTITY_SIZE,
         page_size: int = 100,
     ):
         """Initialize the client for project and endpoint using a token."""
@@ -293,7 +294,7 @@ class OpenAPIPolarionProjectClient(AbstractPolarionProjectApi):
             assert len(info) == 5
             role_id, target_project_id, linked_work_item_id = info[2:]
             suspect = link.attributes.suspect
-            if isinstance(suspect, oa_types.Unset):
+            if isinstance(suspect, (oa_types.Unset, type(None))):
                 suspect = False
 
             work_item_links.append(

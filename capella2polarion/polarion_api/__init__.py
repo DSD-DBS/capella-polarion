@@ -2,8 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Polarion API module with data classes and an abstract API client."""
 import abc
+import collections.abc as cabc
 import dataclasses
+import json
+import sys
 import typing as t
+
+DEFAULT_ENTITY_SIZE = 2 * 1024 * 1024
 
 
 @dataclasses.dataclass
@@ -59,7 +64,7 @@ class AbstractPolarionProjectApi(abc.ABC):
     project_id: str
     delete_status: str = "deleted"
     _page_size: int = 100
-    _batch_size: int = 5
+    _batch_size: int = DEFAULT_ENTITY_SIZE
 
     @abc.abstractmethod
     def project_exists(self) -> bool:
@@ -78,7 +83,7 @@ class AbstractPolarionProjectApi(abc.ABC):
         _type = " ".join(work_item_types)
         for work_item in self.get_all_work_items(
             f"type:({_type})",
-            {"work_items": f"id,{self.capella_uuid_attribute}"},
+            {"workitems": f"id,{self.capella_uuid_attribute}"},
         ):
             if work_item.id is not None and work_item.uuid_capella is not None:
                 work_item_mapping[work_item.uuid_capella] = work_item.id
@@ -133,16 +138,39 @@ class AbstractPolarionProjectApi(abc.ABC):
 
     def create_work_items(self, work_items: list[WorkItem]):
         """Create the given list of work items."""
-        for i in range(0, len(work_items), self._batch_size):
-            self._create_work_items(work_items[i : i + self._batch_size])
+        for batch in self._batch_work_items(work_items):
+            self._create_work_items(batch)
 
     @abc.abstractmethod
     def _create_work_items(self, work_items: list[WorkItem]):
         """Create the given list of work items.
 
-        A maximum of 5 items is allowed only at once.
+        The combined size of the bodies of the work items is limited to
+        2MB.
         """
         raise NotImplementedError
+
+    def _batch_work_items(
+        self, work_items: list[WorkItem]
+    ) -> cabc.Iterator[list[WorkItem]]:
+        batch: list[WorkItem] = []
+        batch_size = 0
+        for item in work_items:
+            item_size = _get_json_size(item)
+            if item_size > self._batch_size:
+                raise PolarionApiException(
+                    413,
+                    "A WorkItem is too large (size: "
+                    f"{item_size!r}, limit: {self._batch_size!r}). {item!r}",
+                )
+            if batch_size + item_size > self._batch_size:
+                if batch:
+                    yield batch
+                batch, batch_size = [], 0
+            batch.append(item)
+            batch_size += item_size
+        if batch:
+            yield batch
 
     def delete_work_item(self, work_item_id: str):
         """Delete or mark the defined work item as deleted."""
@@ -215,10 +243,7 @@ class AbstractPolarionProjectApi(abc.ABC):
         for split_work_item_links in self._group_links(
             work_item_links
         ).values():
-            for i in range(0, len(split_work_item_links), self._batch_size):
-                self._create_work_item_links(
-                    split_work_item_links[i : i + self._batch_size]
-                )
+            self._create_work_item_links(split_work_item_links)
 
     @abc.abstractmethod
     def _create_work_item_links(self, work_item_links: list[WorkItemLink]):
@@ -277,4 +302,8 @@ class AbstractPolarionProjectApi(abc.ABC):
         self._delete_work_item_links([work_item_link])
 
 
-from client import *
+def _get_json_size(item: WorkItem) -> int:
+    return sys.getsizeof(json.dumps(dataclasses.asdict(item)))
+
+
+from .client import *
