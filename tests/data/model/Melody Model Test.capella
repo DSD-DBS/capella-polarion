@@ -1194,7 +1194,17 @@ The predator is far away</bodies>
         <ownedCapabilities xsi:type="org.polarsys.capella.core.data.ctx:Capability"
             id="9390b7d5-598a-42db-bef8-23677e45ba06" name="Capability">
           <ownedScenarios xsi:type="org.polarsys.capella.core.data.interaction:Scenario"
-              id="afdaa095-e2cd-4230-b5d3-6cb771a90f51" name="Scenario" kind="FUNCTIONAL">
+              id="afdaa095-e2cd-4230-b5d3-6cb771a90f51" name="Scenario" kind="FUNCTIONAL"
+              preCondition="#faddd77a-93cc-423b-8b83-032ba416a7ea">
+            <ownedConstraints xsi:type="org.polarsys.capella.core.data.capellacore:Constraint"
+                id="faddd77a-93cc-423b-8b83-032ba416a7ea" name="">
+              <ownedSpecification xsi:type="org.polarsys.capella.core.data.information.datavalue:OpaqueExpression"
+                  id="f959e257-625d-4e38-8177-5895a988a919">
+                <bodies>hehe
+</bodies>
+                <languages>capella:linkedText</languages>
+              </ownedSpecification>
+            </ownedConstraints>
             <ownedInstanceRoles xsi:type="org.polarsys.capella.core.data.interaction:InstanceRole"
                 id="cde1edc9-ff81-4ee0-bf69-a0e6c99010bc" name="Root System Function"
                 representedInstance="#1eee3b81-41ef-4b56-8018-b8e421a5a2bc"/>

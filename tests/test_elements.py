@@ -34,6 +34,8 @@ TEST_WE_DESCR = (
 TEST_ACTOR_UUID = "08e02248-504d-4ed8-a295-c7682a614f66"
 TEST_PHYS_COMP = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
 TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
+TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
+TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_POL_ID_MAP = {TEST_E_UUID: "TEST"}
 TEST_POL_TYPE_MAP = {
     TEST_ELEMENT_UUID: "LogicalComponent",
@@ -381,6 +383,34 @@ class TestSerializers:
                     "uuid_capella": TEST_PHYS_NODE,
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
+                },
+            ),
+            (
+                TEST_SCENARIO,
+                {
+                    "type": "scenario",
+                    "title": "Scenario",
+                    "uuid_capella": TEST_SCENARIO,
+                    "description_type": "text/html",
+                    "description": markupsafe.Markup(""),
+                    "additional_attributes": {
+                        "preCondition": {"type": "text/html", "value": "hehe"},
+                        "postCondition": {"type": "text/html", "value": ""},
+                    },
+                },
+            ),
+            (
+                TEST_CAP_REAL,
+                {
+                    "type": "capabilityRealization",
+                    "title": "Capability Realization",
+                    "uuid_capella": TEST_CAP_REAL,
+                    "description_type": "text/html",
+                    "description": markupsafe.Markup(""),
+                    "additional_attributes": {
+                        "preCondition": {"type": "text/html", "value": ""},
+                        "postCondition": {"type": "text/html", "value": ""},
+                    },
                 },
             ),
         ],

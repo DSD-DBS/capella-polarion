@@ -13,7 +13,7 @@ import typing as t
 import markupsafe
 from capellambse import helpers as chelpers
 from capellambse.model import common
-from capellambse.model.crosslayer import cs
+from capellambse.model.crosslayer import cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
@@ -26,6 +26,9 @@ RE_DESCR_DELETED_PATTERN = re.compile(
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 DIAGRAM_STYLES = {"max-width": "100%"}
 
+PrePostConditionElement = t.Union[
+    oa.OperationalCapability, interaction.Scenario
+]
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,7 @@ def _generic_attributes(
         "uuid_capella": obj.uuid,
         "description_type": "text/html",
         "description": value,
+        "status": "open",
     }
 
 
@@ -156,13 +160,12 @@ def replace_markup(
         return non_matcher(match.group(0))
 
 
-def operational_capability(
-    obj: oa.OperationalCapability, ctx: dict[str, t.Any]
+def include_pre_and_post_condition(
+    obj: PrePostConditionElement, ctx: dict[str, t.Any]
 ) -> dict[str, t.Any]:
-    """Return attributes for an ``OperatioanlCapability``."""
-    assert isinstance(obj, oa.OperationalCapability)
+    """Return generic attributes and pre- plus post-condition."""
 
-    def get_condition(cap: oa.OperationalCapability, name: str) -> str:
+    def get_condition(cap: PrePostConditionElement, name: str) -> str:
         if not (condition := getattr(cap, name)):
             return ""
         return condition.specification["capella:linkedText"].striptags()
@@ -214,8 +217,10 @@ def physical_component(
 
 
 SERIALIZERS = {
-    "OperationalCapability": operational_capability,
+    "CapabilityRealization": include_pre_and_post_condition,
     "LogicalComponent": component_or_actor,
-    "SystemComponent": component_or_actor,
+    "OperationalCapability": include_pre_and_post_condition,
     "PhysicalComponent": physical_component,
+    "SystemComponent": component_or_actor,
+    "Scenario": include_pre_and_post_condition,
 }

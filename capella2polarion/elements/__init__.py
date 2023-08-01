@@ -39,6 +39,7 @@ POL2CAPELLA_TYPES = (
     {
         "OperationalEntity": "Entity",
         "OperationalInteraction": "FunctionalExchange",
+        "SystemCapability": "Capability",
     }
     | ACTOR_TYPES
     | PHYSICAL_COMPONENT_TYPES
