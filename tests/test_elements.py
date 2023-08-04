@@ -8,9 +8,10 @@ from unittest import mock
 
 import capellambse
 import markupsafe
+import polarion_rest_api_client as polarion_api
 import pytest
 
-from capella2polarion import elements, polarion_api
+from capella2polarion import elements
 from capella2polarion.elements import diagram, element, helpers, serialize
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
@@ -47,9 +48,8 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "title": "[CDB] Class tests",
     "description_type": "text/html",
     "type": "diagram",
-    "uuid_capella": "_Eiw7IOQ9Ee2tXvmHzHzXCA",
-    "status": None,
-    "additional_attributes": {},
+    "status": "open",
+    "additional_attributes": {"uuid_capella": "_Eiw7IOQ9Ee2tXvmHzHzXCA"},
 }
 TEST_DIAG_DESCR = (
     '<html><p><img style="max-width=100%" src="data:image/svg+xml;base64,'
@@ -86,7 +86,6 @@ class TestDiagramElements:
             "description_type": work_item.description_type,
             "title": work_item.title,
             "type": work_item.type,
-            "uuid_capella": work_item.uuid_capella,
             "additional_attributes": work_item.additional_attributes,
         } == TEST_SER_DIAGRAM
         assert isinstance(work_item.description, str)
@@ -190,32 +189,32 @@ class TestModelElements:
     ):
         monkeypatch.setattr(
             serialize,
-            "generic_attributes",
-            mock_generic_attributes := mock.MagicMock(),
+            "generic_work_item",
+            mock_generic_work_item := mock.MagicMock(),
         )
-        mock_generic_attributes.side_effect = [
-            wi_ := {
-                "uuid_capella": "uuid1",
-                "title": "Fake 1",
-                "type": "fakeModelObject",
-                "description_type": "text/html",
-                "description": markupsafe.Markup(""),
-            },
-            wi_1 := {
-                "uuid_capella": "uuid2",
-                "title": "Fake 2",
-                "type": "fakeModelObject",
-                "description_type": "text/html",
-                "description": markupsafe.Markup(""),
-            },
+        mock_generic_work_item.side_effect = [
+            wi_ := serialize.CapellaWorkItem(
+                uuid_capella="uuid1",
+                title="Fake 1",
+                type="fakeModelObject",
+                description_type="text/html",
+                description=markupsafe.Markup(""),
+            ),
+            wi_1 := serialize.CapellaWorkItem(
+                uuid_capella="uuid2",
+                title="Fake 2",
+                type="fakeModelObject",
+                description_type="text/html",
+                description=markupsafe.Markup(""),
+            ),
         ]
 
         element.create_work_items(context)
 
         wi, wi1 = context["API"].create_work_items.call_args[0][0]
         assert context["API"].create_work_items.call_count == 1
-        assert wi == polarion_api.WorkItem(**wi_)  # type: ignore[arg-type]
-        assert wi1 == polarion_api.WorkItem(**wi_1)  # type: ignore[arg-type]
+        assert wi == wi_  # type: ignore[arg-type]
+        assert wi1 == wi_1  # type: ignore[arg-type]
 
     @staticmethod
     def test_update_work_items(
@@ -223,16 +222,16 @@ class TestModelElements:
     ):
         monkeypatch.setattr(
             serialize,
-            "generic_attributes",
-            mock_generic_attributes := mock.MagicMock(),
+            "generic_work_item",
+            mock_generic_work_item := mock.MagicMock(),
         )
-        mock_generic_attributes.return_value = {
-            "type": "type",
-            "uuid_capella": "uuid1",
-            "title": "Something",
-            "description_type": "text/html",
-            "description": (expected_markup := markupsafe.Markup("Test")),
-        }
+        mock_generic_work_item.return_value = serialize.CapellaWorkItem(
+            type="type",
+            uuid_capella="uuid1",
+            title="Something",
+            description_type="text/html",
+            description=(expected_markup := markupsafe.Markup("Test")),
+        )
 
         element.update_work_items(context)
 
@@ -297,14 +296,15 @@ class TestSerializers:
         serialized_diagram = serialize.diagram(
             diag, {"DIAGRAM_CACHE": TEST_DIAGRAM_CACHE}
         )
-        del serialized_diagram["description"]
+        serialized_diagram.description = None
 
-        assert serialized_diagram == {
-            "type": "diagram",
-            "uuid_capella": TEST_DIAG_UUID,
-            "title": "test_diagram",
-            "description_type": "text/html",
-        }
+        assert serialized_diagram == serialize.CapellaWorkItem(
+            type="diagram",
+            uuid_capella=TEST_DIAG_UUID,
+            title="test_diagram",
+            description_type="text/html",
+            status="open",
+        )
 
     @staticmethod
     def test__decode_diagram():
@@ -415,12 +415,12 @@ class TestSerializers:
             ),
         ],
     )
-    def test_generic_attributes(
+    def test_generic_work_item(
         model: capellambse.MelodyModel, uuid: str, expected: dict[str, t.Any]
     ):
         obj = model.by_uuid(uuid)
 
-        attributes = serialize.generic_attributes(
+        work_item = serialize.generic_work_item(
             obj,
             {
                 "POLARION_ID_MAP": TEST_POL_ID_MAP,
@@ -428,4 +428,6 @@ class TestSerializers:
             },
         )
 
-        assert attributes == expected
+        work_item.status = None  # TODO generic_work_item sets status to open - does this make sense?
+
+        assert work_item == serialize.CapellaWorkItem(**expected)

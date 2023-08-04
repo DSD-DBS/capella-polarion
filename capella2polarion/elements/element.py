@@ -8,10 +8,9 @@ import logging
 import typing as t
 from itertools import chain
 
+import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion import polarion_api
-from capella2polarion.elements import *
 from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
@@ -24,14 +23,11 @@ def create_work_items(ctx: dict[str, t.Any]) -> None:
 
     def serialize_for_create(
         obj: common.GenericElement,
-    ) -> polarion_api.WorkItem | None:
+    ) -> serialize.CapellaWorkItem | None:
         logger.debug(
             "Create work item for model element %r...", obj._short_repr_()
         )
-        attributes = serialize.element(obj, ctx, serialize.generic_attributes)
-        if attributes is None:
-            return None
-        return polarion_api.WorkItem(**attributes)
+        return serialize.element(obj, ctx, serialize.generic_work_item)
 
     objects = chain.from_iterable(ctx["ELEMENTS"].values())
     work_items = [
@@ -58,17 +54,17 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
             wid := ctx["POLARION_ID_MAP"][obj.uuid],
             obj._short_repr_(),
         )
-        attributes = serialize.element(obj, ctx, serialize.generic_attributes)
-        if attributes is None:
+        work_item = serialize.element(obj, ctx, serialize.generic_work_item)
+        if work_item is None:
             continue
 
-        del attributes["type"]
-        del attributes["uuid_capella"]
-        attributes["status"] = "open"
+        work_item.id = wid
+        work_item.type = None
+        work_item.additional_attributes = None  # TODO check
+        work_item.status = "open"
+
         try:
-            ctx["API"].update_work_item(
-                polarion_api.WorkItem(id=wid, **attributes)
-            )
+            ctx["API"].update_work_item(work_item)
         except polarion_api.PolarionApiException as error:
             wi = f"{wid}({obj._short_repr_()})"
             logger.error("Updating work item %r failed. %s", wi, error.args[0])

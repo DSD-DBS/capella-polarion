@@ -1,6 +1,7 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Main entry point into capella2polarion."""
+from __future__ import annotations
 
 import json
 import logging
@@ -12,10 +13,12 @@ from itertools import chain
 
 import capellambse
 import click
+import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse import cli_helpers
 
-from capella2polarion import elements, polarion_api
+from capella2polarion import elements
+from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +112,17 @@ def get_polarion_id_map(
 ) -> dict[str, str]:
     """Map workitem IDs to Capella UUID or empty string if not set."""
     types_ = map(elements.helpers.resolve_element_type, ctx.get("TYPES", []))
-    types = [type_] if type_ else list(types_)
-    return ctx["API"].get_work_item_element_mapping(types)
+    work_item_types = [type_] if type_ else list(types_)
+    work_item_mapping: dict[str, str] = {}
+    _type = " ".join(work_item_types)
+    for work_item in ctx["API"].get_all_work_items(
+        f"type:({_type})",
+        {"workitems": "id,uuid_capella"},
+    ):
+        if work_item.id is not None and work_item.uuid_capella is not None:
+            work_item_mapping[work_item.uuid_capella] = work_item.id
+
+    return work_item_mapping
 
 
 @click.group()
@@ -131,10 +143,10 @@ def cli(
     ctx.obj["PROJECT_ID"] = project_id
     ctx.obj["API"] = polarion_api.OpenAPIPolarionProjectClient(
         project_id,
-        capella_uuid_attribute=elements.UUID_ATTR_NAME,
-        delete_polarion_work_items=delete,
+        False,
         polarion_api_endpoint=f"{ctx.obj['POLARION_HOST']}/rest/v1",
         polarion_access_token=os.environ["POLARION_PAT"],
+        custom_work_item=serialize.CapellaWorkItem,
     )
     if not ctx.obj["API"].project_exists():
         sys.exit(1)

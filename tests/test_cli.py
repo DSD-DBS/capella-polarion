@@ -9,11 +9,12 @@ import pathlib
 import typing as t
 from unittest import mock
 
+import polarion_rest_api_client as polarion_api
 import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion import elements, polarion_api
+from capella2polarion import elements
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
