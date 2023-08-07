@@ -60,7 +60,7 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
 
         work_item.id = wid
         work_item.type = None
-        work_item.additional_attributes = None  # TODO check
+        work_item.additional_attributes = {}
         work_item.status = "open"
 
         try:
