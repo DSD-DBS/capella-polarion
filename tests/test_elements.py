@@ -52,7 +52,7 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "additional_attributes": {"uuid_capella": "_Eiw7IOQ9Ee2tXvmHzHzXCA"},
 }
 TEST_DIAG_DESCR = (
-    '<html><p><img style="max-width=100%" src="data:image/svg+xml;base64,'
+    '<html><p><img style="max-width: 100%" src="data:image/svg+xml;base64,'
 )
 
 

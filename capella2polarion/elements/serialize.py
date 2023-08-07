@@ -72,7 +72,7 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
     diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag['uuid']}.svg"
     src = _decode_diagram(diagram_path)
     style = "; ".join(
-        (f"{key}={value}" for key, value in DIAGRAM_STYLES.items())
+        (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
     )
     description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
     return CapellaWorkItem(
