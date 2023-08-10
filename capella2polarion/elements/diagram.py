@@ -8,7 +8,7 @@ import typing as t
 
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion.elements import serialize
+from capella2polarion.elements import api_helper, serialize
 
 logger = logging.getLogger(__name__)
 
@@ -39,20 +39,6 @@ def update_diagrams(ctx: dict[str, t.Any]) -> None:
     for uuid in uuids:
         wid = ctx["POLARION_ID_MAP"][uuid]
         diagram = diagrams[uuid]
-        logger.debug(
-            "Update work item %r for diagram %r...", wid, diagram["name"]
+        api_helper.patch_work_item(
+            ctx, wid, diagram, serialize.diagram, diagram["name"], "diagram"
         )
-        work_item = serialize.element(diagram, ctx, serialize.diagram)
-        if work_item is None:
-            continue
-
-        work_item.id = wid
-        work_item.type = None
-        work_item.additional_attributes = {}
-        work_item.status = "open"
-
-        try:
-            ctx["API"].update_work_item(work_item)
-        except polarion_api.PolarionApiException as error:
-            diag = f"{wid}({diagram['name']})"
-            logger.error("Updating diagram %r failed. %s", diag, error.args[0])

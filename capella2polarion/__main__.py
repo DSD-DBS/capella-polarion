@@ -143,7 +143,7 @@ def cli(
     ctx.obj["PROJECT_ID"] = project_id
     ctx.obj["API"] = polarion_api.OpenAPIPolarionProjectClient(
         project_id,
-        False,
+        delete,
         polarion_api_endpoint=f"{ctx.obj['POLARION_HOST']}/rest/v1",
         polarion_access_token=os.environ["POLARION_PAT"],
         custom_work_item=serialize.CapellaWorkItem,

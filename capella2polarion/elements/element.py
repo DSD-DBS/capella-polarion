@@ -11,7 +11,7 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import serialize
+from capella2polarion.elements import api_helper, serialize
 
 logger = logging.getLogger(__name__)
 
@@ -49,25 +49,14 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
         if obj.uuid not in ctx["POLARION_ID_MAP"]:
             continue
 
-        logger.debug(
-            "Update work item %r for model element %r...",
-            wid := ctx["POLARION_ID_MAP"][obj.uuid],
+        api_helper.patch_work_item(
+            ctx,
+            ctx["POLARION_ID_MAP"][obj.uuid],
+            obj,
+            serialize.generic_work_item,
             obj._short_repr_(),
+            "element",
         )
-        work_item = serialize.element(obj, ctx, serialize.generic_work_item)
-        if work_item is None:
-            continue
-
-        work_item.id = wid
-        work_item.type = None
-        work_item.additional_attributes = {}
-        work_item.status = "open"
-
-        try:
-            ctx["API"].update_work_item(work_item)
-        except polarion_api.PolarionApiException as error:
-            wi = f"{wid}({obj._short_repr_()})"
-            logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
 class LinkBuilder(t.NamedTuple):
