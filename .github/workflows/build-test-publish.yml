@@ -24,6 +24,10 @@ jobs:
           - os: windows-latest
             python_version: "3.11"
     steps:
+      - uses: extractions/netrc@v1
+        with:
+          machine: github.com
+          username: ${{ secrets.PAT_GITHUB }}
       - uses: actions/checkout@v3
       - name: Set up Python ${{matrix.python_version}}
         uses: actions/setup-python@v3
