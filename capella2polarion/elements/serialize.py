@@ -223,7 +223,9 @@ def component_or_actor(
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        work_item.type = helpers.resolve_element_type(xtype)
+        work_item.type = helpers.resolve_element_type(
+            xtype
+        )  # pylint: disable=attribute-defined-outside-init
     return work_item
 
 
@@ -234,7 +236,9 @@ def physical_component(
     work_item = component_or_actor(obj, ctx)
     xtype = work_item.type
     if obj.nature is not None:
+        # pylint: disable=attribute-defined-outside-init
         work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
+        # pylint: enable=attribute-defined-outside-init
     return work_item
 
 
