@@ -116,7 +116,7 @@ def get_polarion_id_map(
     work_item_mapping: dict[str, str] = {}
     _type = " ".join(work_item_types)
     for work_item in ctx["API"].get_all_work_items(
-        f"type:({_type})",
+        f"type:({_type}) AND status:(NOT deleted)",
         {"workitems": "id,uuid_capella"},
     ):
         if work_item.id is not None and work_item.uuid_capella is not None:
