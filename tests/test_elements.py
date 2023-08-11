@@ -63,11 +63,13 @@ class TestDiagramElements:
         diagram_cache_index: list[dict[str, t.Any]]
     ) -> dict[str, t.Any]:
         api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
+        uuid = diagram_cache_index[0]["uuid"]
         return {
             "API": api,
             "PROJECT_ID": "project_id",
             "CAPELLA_UUIDS": [d["uuid"] for d in diagram_cache_index],
-            "POLARION_ID_MAP": {diagram_cache_index[0]["uuid"]: "Diag-1"},
+            "POLARION_WI_MAP": {uuid: polarion_api.WorkItem("Diag-1")},
+            "POLARION_ID_MAP": {uuid: "Diag-1"},
             "DIAGRAM_IDX": diagram_cache_index,
             "DIAGRAM_CACHE": TEST_DIAGRAM_CACHE,
             "REST_API_URL": TEST_HOST,

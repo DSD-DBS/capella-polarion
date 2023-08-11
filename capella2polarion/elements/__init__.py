@@ -64,7 +64,12 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
         )
         return workitem_id
 
-    uuids: set[str] = set(ctx["POLARION_ID_MAP"]) - set(ctx["CAPELLA_UUIDS"])
+    existing_work_items = {
+        uuid
+        for uuid, work_item in ctx["POLARION_WI_MAP"].items()
+        if work_item.status != "deleted"
+    }
+    uuids: set[str] = existing_work_items - set(ctx["CAPELLA_UUIDS"])
     work_items = [serialize_for_delete(uuid) for uuid in uuids]
     if work_items:
         try:
