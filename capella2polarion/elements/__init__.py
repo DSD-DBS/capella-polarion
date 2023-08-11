@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Objects for synchronization of capella objects to polarion workitems."""
 
+from __future__ import annotations
+
 __all__ = [
     "delete_work_items",
     "get_types",
     "get_elements_and_type_map",
     "make_model_elements_index",
     "STATUS_DELETE",
-    "UUID_ATTR_NAME",
 ]
 
 import logging
@@ -16,14 +17,12 @@ import pathlib
 import typing as t
 from itertools import chain
 
+import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse.model import common
 
-from capella2polarion import polarion_api
-
 logger = logging.getLogger(__name__)
 
-UUID_ATTR_NAME = "uuid_capella"
 STATUS_DELETE = "deleted"
 ELEMENTS_IDX_PATH = pathlib.Path("elements_index.yaml")
 ACTOR_TYPES = {
@@ -39,6 +38,7 @@ POL2CAPELLA_TYPES = (
     {
         "OperationalEntity": "Entity",
         "OperationalInteraction": "FunctionalExchange",
+        "SystemCapability": "Capability",
     }
     | ACTOR_TYPES
     | PHYSICAL_COMPONENT_TYPES
@@ -64,7 +64,12 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
         )
         return workitem_id
 
-    uuids: set[str] = set(ctx["POLARION_ID_MAP"]) - set(ctx["CAPELLA_UUIDS"])
+    existing_work_items = {
+        uuid
+        for uuid, work_item in ctx["POLARION_WI_MAP"].items()
+        if work_item.status != "deleted"
+    }
+    uuids: set[str] = existing_work_items - set(ctx["CAPELLA_UUIDS"])
     work_items = [serialize_for_delete(uuid) for uuid in uuids]
     if work_items:
         try:

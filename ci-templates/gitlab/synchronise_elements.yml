@@ -10,7 +10,7 @@ capella2polarion_synchronise_elements:
       optional: True
 
   script:
-    - pip install git+https://git.tech.rz.db.de/se-toolchain/capella-tools/rm-bridge/capella2polarion.git@$CAPELLA2POLARION_REVISION
+    - pip install git+https://github.com/DSD-DBS/capella-polarion.git@$CAPELLA2POLARION_REVISION
     - >
       python \
         -m capella2polarion \

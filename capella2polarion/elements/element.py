@@ -8,15 +8,17 @@ import logging
 import typing as t
 from itertools import chain
 
+import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion import polarion_api
-from capella2polarion.elements import *
-from capella2polarion.elements import serialize
+from capella2polarion.elements import POL2CAPELLA_TYPES, api_helper, serialize
 
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
+TYPES_POL2CAPELLA = {
+    ctype: ptype for ptype, ctype in POL2CAPELLA_TYPES.items()
+}
 
 
 def create_work_items(ctx: dict[str, t.Any]) -> None:
@@ -24,14 +26,11 @@ def create_work_items(ctx: dict[str, t.Any]) -> None:
 
     def serialize_for_create(
         obj: common.GenericElement,
-    ) -> polarion_api.WorkItem | None:
+    ) -> serialize.CapellaWorkItem | None:
         logger.debug(
             "Create work item for model element %r...", obj._short_repr_()
         )
-        attributes = serialize.element(obj, ctx, serialize.generic_attributes)
-        if attributes is None:
-            return None
-        return polarion_api.WorkItem(**attributes)
+        return serialize.element(obj, ctx, serialize.generic_work_item)
 
     objects = chain.from_iterable(ctx["ELEMENTS"].values())
     work_items = [
@@ -53,25 +52,14 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
         if obj.uuid not in ctx["POLARION_ID_MAP"]:
             continue
 
-        logger.debug(
-            "Update work item %r for model element %r...",
-            wid := ctx["POLARION_ID_MAP"][obj.uuid],
+        api_helper.patch_work_item(
+            ctx,
+            ctx["POLARION_ID_MAP"][obj.uuid],
+            obj,
+            serialize.generic_work_item,
             obj._short_repr_(),
+            "element",
         )
-        attributes = serialize.element(obj, ctx, serialize.generic_attributes)
-        if attributes is None:
-            continue
-
-        del attributes["type"]
-        del attributes["uuid_capella"]
-        attributes["status"] = "open"
-        try:
-            ctx["API"].update_work_item(
-                polarion_api.WorkItem(id=wid, **attributes)
-            )
-        except polarion_api.PolarionApiException as error:
-            wi = f"{wid}({obj._short_repr_()})"
-            logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
 class LinkBuilder(t.NamedTuple):
@@ -106,6 +94,7 @@ def update_links(
 ) -> None:
     """Create and update work item links in Polarion."""
     custom_link_resolvers = CUSTOM_LINKS
+    reverse_type_map = TYPES_POL2CAPELLA
     for elt in elements or chain.from_iterable(ctx["ELEMENTS"].values()):
         if elt.uuid not in ctx["POLARION_ID_MAP"]:
             continue
@@ -129,7 +118,8 @@ def update_links(
             continue
 
         link_builder = LinkBuilder(ctx, elt)
-        for role_id in ctx["ROLES"].get(type(elt).__name__, []):
+        ptype = reverse_type_map.get(type(elt).__name__, type(elt).__name__)
+        for role_id in ctx["ROLES"].get(ptype, []):
             id_link_map: dict[str, polarion_api.WorkItemLink] = {}
             for link in links:
                 if role_id != link.role:

@@ -1,6 +1,7 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Main entry point into capella2polarion."""
+from __future__ import annotations
 
 import json
 import logging
@@ -12,10 +13,12 @@ from itertools import chain
 
 import capellambse
 import click
+import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse import cli_helpers
 
-from capella2polarion import elements, polarion_api
+from capella2polarion import elements
+from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
@@ -104,13 +107,19 @@ def _sanitize_config(
     return new_config
 
 
-def get_polarion_id_map(
+def get_polarion_wi_map(
     ctx: dict[str, t.Any], type_: str = ""
-) -> dict[str, str]:
-    """Map workitem IDs to Capella UUID or empty string if not set."""
+) -> dict[str, t.Any]:
+    """Return a map from Capella UUIDs to Polarion work items."""
     types_ = map(elements.helpers.resolve_element_type, ctx.get("TYPES", []))
-    types = [type_] if type_ else list(types_)
-    return ctx["API"].get_work_item_element_mapping(types)
+    work_item_types = [type_] if type_ else list(types_)
+    _type = " ".join(work_item_types)
+    work_items = ctx["API"].get_all_work_items(
+        f"type:({_type})", {"workitems": "id,uuid_capella,status"}
+    )
+    return {
+        wi.uuid_capella: wi for wi in work_items if wi.id and wi.uuid_capella
+    }
 
 
 @click.group()
@@ -131,10 +140,10 @@ def cli(
     ctx.obj["PROJECT_ID"] = project_id
     ctx.obj["API"] = polarion_api.OpenAPIPolarionProjectClient(
         project_id,
-        capella_uuid_attribute=elements.UUID_ATTR_NAME,
-        delete_polarion_work_items=delete,
+        delete,
         polarion_api_endpoint=f"{ctx.obj['POLARION_HOST']}/rest/v1",
         polarion_access_token=os.environ["POLARION_PAT"],
+        custom_work_item=serialize.CapellaWorkItem,
     )
     if not ctx.obj["API"].project_exists():
         sys.exit(1)
@@ -170,7 +179,10 @@ def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
     ctx.obj["CAPELLA_UUIDS"] = [
         d["uuid"] for d in ctx.obj["DIAGRAM_IDX"] if d["success"]
     ]
-    ctx.obj["POLARION_ID_MAP"] = get_polarion_id_map(ctx.obj, "diagram")
+    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj, "diagram")
+    ctx.obj["POLARION_ID_MAP"] = {
+        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
+    }
 
     elements.delete_work_items(ctx.obj)
     elements.diagram.update_diagrams(ctx.obj)
@@ -196,16 +208,25 @@ def model_elements(
     ) = elements.get_elements_and_type_map(ctx.obj)
     ctx.obj["CAPELLA_UUIDS"] = set(ctx.obj["POLARION_TYPE_MAP"])
     ctx.obj["TYPES"] = elements.get_types(ctx.obj)
-    ctx.obj["POLARION_ID_MAP"] = get_polarion_id_map(ctx.obj)
+    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
+    ctx.obj["POLARION_ID_MAP"] = {
+        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
+    }
 
     elements.delete_work_items(ctx.obj)
     elements.element.update_work_items(ctx.obj)
     elements.element.create_work_items(ctx.obj)
 
-    ctx.obj["POLARION_ID_MAP"] = get_polarion_id_map(ctx.obj)
+    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
+    ctx.obj["POLARION_ID_MAP"] = {
+        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
+    }
     elements.element.update_links(ctx.obj)
 
-    ctx.obj["POLARION_ID_MAP"] |= get_polarion_id_map(ctx.obj, "diagram")
+    diagram_work = get_polarion_wi_map(ctx.obj, "diagram")
+    ctx.obj["POLARION_ID_MAP"] |= {
+        uuid: wi.id for uuid, wi in diagram_work.items()
+    }
     _diagrams = [
         diagram
         for diagram in model.diagrams

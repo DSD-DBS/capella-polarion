@@ -1,9 +1,0 @@
-{
-  "data": {
-    "type": "workitems",
-    "id": "PROJ/MyWorkItemId",
-    "attributes": {
-      "status": "open"
-    }
-  }
-}

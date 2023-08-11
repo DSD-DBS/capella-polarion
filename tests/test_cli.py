@@ -9,11 +9,12 @@ import pathlib
 import typing as t
 from unittest import mock
 
+import polarion_rest_api_client as polarion_api
 import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion import elements, polarion_api
+from capella2polarion import elements
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
@@ -33,22 +34,26 @@ def prepare_cli_test(
     os.environ["POLARION_PAT"] = "1234"
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
-    mock_get_polarion_id_map = mock.MagicMock()
-    monkeypatch.setattr(main, "get_polarion_id_map", mock_get_polarion_id_map)
+    mock_get_polarion_wi_map = mock.MagicMock()
+    monkeypatch.setattr(main, "get_polarion_wi_map", mock_get_polarion_wi_map)
     if isinstance(return_value, cabc.Iterable) and not isinstance(
-        return_value, str
+        return_value, (str, dict)
     ):
         id_map_attr = "side_effect"
     else:
         id_map_attr = "return_value"
 
-    setattr(mock_get_polarion_id_map, id_map_attr, return_value)
-    return mock_get_polarion_id_map
+    setattr(mock_get_polarion_wi_map, id_map_attr, return_value)
+    return mock_get_polarion_wi_map
 
 
 def test_migrate_diagrams(monkeypatch: pytest.MonkeyPatch):
-    mock_get_polarion_id_map = prepare_cli_test(
-        monkeypatch, {"uuid1": "project/W-1", "uuid2": "project/W-2"}
+    mock_get_polarion_wi_map = prepare_cli_test(
+        monkeypatch,
+        {
+            "uuid1": polarion_api.WorkItem("project/W-1"),
+            "uuid2": polarion_api.WorkItem("project/W-2"),
+        },
     )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
@@ -65,22 +70,27 @@ def test_migrate_diagrams(monkeypatch: pytest.MonkeyPatch):
     result = testing.CliRunner().invoke(main.cli, command)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_id_map.call_count == 1
+    assert mock_get_polarion_wi_map.call_count == 1
     assert mock_delete_work_items.call_count == 1
     assert mock_update_diagrams.call_count == 1
     assert mock_create_diagrams.call_count == 1
 
 
 def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
-    mock_get_polarion_id_map = prepare_cli_test(
+    mock_get_polarion_wi_map = prepare_cli_test(
         monkeypatch,
         (
             {
-                "5b1f761c-3fd3-4f26-bbc5-1b06a6f7b434": "project/W-0",
-                "uuid1": "project/W-1",
-                "uuid2": "project/W-2",
+                "5b1f761c-3fd3-4f26-bbc5-1b06a6f7b434": polarion_api.WorkItem(
+                    "project/W-0"
+                ),
+                "uuid1": polarion_api.WorkItem("project/W-1"),
+                "uuid2": polarion_api.WorkItem("project/W-2"),
             },
-            {"uuid2": "project/W-2", "uuid3": "project/W-3"},
+            {
+                "uuid2": polarion_api.WorkItem("project/W-2"),
+                "uuid3": polarion_api.WorkItem("project/W-3"),
+            },
             {},
         ),
     )
@@ -107,7 +117,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     result = testing.CliRunner().invoke(main.cli, command)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_id_map.call_count == 3
+    assert mock_get_polarion_wi_map.call_count == 3
     assert mock_delete_work_items.call_count == 1
     assert mock_update_work_items.call_count == 1
     assert mock_create_work_items.call_count == 1

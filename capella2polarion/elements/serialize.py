@@ -1,6 +1,7 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for serialization of capella objects to workitems."""
+from __future__ import annotations
 
 import base64
 import collections.abc as cabc
@@ -11,9 +12,10 @@ import re
 import typing as t
 
 import markupsafe
+import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
-from capellambse.model.crosslayer import cs
+from capellambse.model.crosslayer import cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
@@ -26,15 +28,37 @@ RE_DESCR_DELETED_PATTERN = re.compile(
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 DIAGRAM_STYLES = {"max-width": "100%"}
 
+PrePostConditionElement = t.Union[
+    oa.OperationalCapability, interaction.Scenario
+]
 
 logger = logging.getLogger(__name__)
+
+
+class CapellaWorkItem(polarion_api.WorkItem):
+    """A custom WorkItem class with additional capella related attributes."""
+
+    class Condition(t.TypedDict):
+        """A class to describe a pre or post condition."""
+
+        type: str
+        value: str
+
+    uuid_capella: str | None
+    preCondition: Condition | None
+    postCondition: Condition | None
+
+
+def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
+    _type = "text/html" if html else "text/plain"
+    return {"type": _type, "value": value}
 
 
 def element(
     obj: dict[str, t.Any] | common.GenericElement,
     ctx: dict[str, t.Any],
-    serializer: cabc.Callable[[t.Any, dict[str, t.Any]], dict[str, t.Any]],
-) -> dict[str, t.Any] | None:
+    serializer: cabc.Callable[[t.Any, dict[str, t.Any]], CapellaWorkItem],
+) -> CapellaWorkItem | None:
     """Seralize a Capella element for the PolarionRestAPI."""
     try:
         return serializer(obj, ctx)
@@ -43,21 +67,22 @@ def element(
         return None
 
 
-def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> dict[str, t.Any]:
+def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
     """Serialize a diagram for Polarion."""
     diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag['uuid']}.svg"
     src = _decode_diagram(diagram_path)
     style = "; ".join(
-        (f"{key}={value}" for key, value in DIAGRAM_STYLES.items())
+        (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
     )
     description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
-    return {
-        "type": "diagram",
-        "title": diag["name"],
-        "uuid_capella": diag["uuid"],
-        "description_type": "text/html",
-        "description": description,
-    }
+    return CapellaWorkItem(
+        type="diagram",
+        title=diag["name"],
+        description_type="text/html",
+        description=description,
+        status="open",
+        uuid_capella=diag["uuid"],
+    )
 
 
 def _decode_diagram(diagram_path: pathlib.Path) -> str:
@@ -76,29 +101,30 @@ def _decode_diagram(diagram_path: pathlib.Path) -> str:
     return src
 
 
-def generic_attributes(
+def generic_work_item(
     obj: common.GenericElement, ctx: dict[str, t.Any]
-) -> dict[str, t.Any]:
+) -> CapellaWorkItem:
     """Return an attributes dictionary for the given model element."""
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
-    serializer = SERIALIZERS.get(xtype, _generic_attributes)
+    serializer = SERIALIZERS.get(xtype, _generic_work_item)
     return serializer(obj, ctx)
 
 
-def _generic_attributes(
+def _generic_work_item(
     obj: common.GenericElement, ctx: dict[str, t.Any]
-) -> dict[str, t.Any]:
+) -> CapellaWorkItem:
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     raw_description = getattr(obj, "description", markupsafe.Markup(""))
     uuids, value = _sanitize_description(raw_description, ctx)
     ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
-    return {
-        "type": helpers.resolve_element_type(xtype),
-        "title": obj.name,
-        "uuid_capella": obj.uuid,
-        "description_type": "text/html",
-        "description": value,
-    }
+    return CapellaWorkItem(
+        type=helpers.resolve_element_type(xtype),
+        title=obj.name,
+        description_type="text/html",
+        description=value,
+        status="open",
+        uuid_capella=obj.uuid,
+    )
 
 
 def _sanitize_description(
@@ -156,13 +182,12 @@ def replace_markup(
         return non_matcher(match.group(0))
 
 
-def operational_capability(
-    obj: oa.OperationalCapability, ctx: dict[str, t.Any]
-) -> dict[str, t.Any]:
-    """Return attributes for an ``OperatioanlCapability``."""
-    assert isinstance(obj, oa.OperationalCapability)
+def include_pre_and_post_condition(
+    obj: PrePostConditionElement, ctx: dict[str, t.Any]
+) -> CapellaWorkItem:
+    """Return generic attributes and pre- plus post-condition."""
 
-    def get_condition(cap: oa.OperationalCapability, name: str) -> str:
+    def get_condition(cap: PrePostConditionElement, name: str) -> str:
         if not (condition := getattr(cap, name)):
             return ""
         return condition.specification["capella:linkedText"].striptags()
@@ -175,47 +200,53 @@ def operational_capability(
     def matcher(match: re.Match) -> str:
         return strike_through(replace_markup(match, ctx, []))
 
-    attributes = _generic_attributes(obj, ctx)
+    work_item = _generic_work_item(obj, ctx)
     pre_condition = RE_DESCR_DELETED_PATTERN.sub(
         matcher, get_condition(obj, "precondition")
     )
     post_condition = RE_DESCR_DELETED_PATTERN.sub(
         matcher, get_condition(obj, "postcondition")
     )
-    additional = {
-        "preCondition": {"type": "text/html", "value": pre_condition},
-        "postCondition": {"type": "text/html", "value": post_condition},
-    }
-    return attributes | {"additional_attributes": additional}
+
+    work_item.preCondition = _condition(True, pre_condition)
+    work_item.postCondition = _condition(True, post_condition)
+
+    return work_item
 
 
 def component_or_actor(
     obj: cs.Component, ctx: dict[str, t.Any]
-) -> dict[str, t.Any]:
+) -> CapellaWorkItem:
     """Return attributes for a ``Component``."""
-    attributes = _generic_attributes(obj, ctx)
+    work_item = _generic_work_item(obj, ctx)
     if obj.is_actor:
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        attributes["type"] = helpers.resolve_element_type(xtype)
-    return attributes
+        # pylint: disable=attribute-defined-outside-init
+        work_item.type = helpers.resolve_element_type(xtype)
+        # pylint: enable=attribute-defined-outside-init
+    return work_item
 
 
 def physical_component(
     obj: pa.PhysicalComponent, ctx: dict[str, t.Any]
-) -> dict[str, t.Any]:
+) -> CapellaWorkItem:
     """Return attributes for a ``PhysicalComponent``."""
-    attributes = component_or_actor(obj, ctx)
-    xtype = attributes["type"]
+    work_item = component_or_actor(obj, ctx)
+    xtype = work_item.type
     if obj.nature is not None:
-        attributes["type"] = f"{xtype}{obj.nature.name.capitalize()}"
-    return attributes
+        # pylint: disable=attribute-defined-outside-init
+        work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
+        # pylint: enable=attribute-defined-outside-init
+    return work_item
 
 
 SERIALIZERS = {
-    "OperationalCapability": operational_capability,
+    "CapabilityRealization": include_pre_and_post_condition,
     "LogicalComponent": component_or_actor,
-    "SystemComponent": component_or_actor,
+    "OperationalCapability": include_pre_and_post_condition,
     "PhysicalComponent": physical_component,
+    "SystemComponent": component_or_actor,
+    "Scenario": include_pre_and_post_condition,
 }
