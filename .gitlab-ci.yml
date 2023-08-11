@@ -59,8 +59,6 @@ artifactory:
       artifacts: true
     - job: coverage
     - job: pre-commit
-  before_script:
-    - *script-github_token
 
 include:
   - project: "se-toolchain/ci-templates-docker"
