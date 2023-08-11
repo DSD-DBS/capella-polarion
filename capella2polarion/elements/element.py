@@ -11,11 +11,14 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import api_helper, serialize
+from capella2polarion.elements import POL2CAPELLA_TYPES, api_helper, serialize
 
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
+TYPES_POL2CAPELLA = {
+    ctype: ptype for ptype, ctype in POL2CAPELLA_TYPES.items()
+}
 
 
 def create_work_items(ctx: dict[str, t.Any]) -> None:
@@ -91,6 +94,7 @@ def update_links(
 ) -> None:
     """Create and update work item links in Polarion."""
     custom_link_resolvers = CUSTOM_LINKS
+    reverse_type_map = TYPES_POL2CAPELLA
     for elt in elements or chain.from_iterable(ctx["ELEMENTS"].values()):
         if elt.uuid not in ctx["POLARION_ID_MAP"]:
             continue
@@ -114,7 +118,8 @@ def update_links(
             continue
 
         link_builder = LinkBuilder(ctx, elt)
-        for role_id in ctx["ROLES"].get(type(elt).__name__, []):
+        ptype = reverse_type_map.get(type(elt).__name__, type(elt).__name__)
+        for role_id in ctx["ROLES"].get(ptype, []):
             id_link_map: dict[str, polarion_api.WorkItemLink] = {}
             for link in links:
                 if role_id != link.role:
