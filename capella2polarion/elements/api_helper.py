@@ -27,28 +27,26 @@ def patch_work_item(
 
     Parameters
     ----------
-    ctx : dict[str, t.Any]
+    ctx
         The context to execute the patch for.
-    wid : str
+    wid
         The ID of the polarion WorkItem
-    capella_object : element.GenericElement
+    capella_object
         The capella object to update the WorkItem from
-    serializer : cabc.Callable
+    serializer
         The serializer, which should be used to create the WorkItem.
-    name : str
+    name
         The name of the object, which should be displayed in log messages.
-    _type : str
+    _type
         The type of element, which should be shown in log messages.
     """
     logger.debug(
-        "Update work item %r for model %r %r...",
+        "Update work item %r for model %s %r...",
         wid,
         _type,
         name,
     )
-    work_item = serialize.element(capella_object, ctx, serializer)
-
-    if work_item is not None:
+    if work_item := serialize.element(capella_object, ctx, serializer):
         if work_item.uuid_capella:
             del work_item.additional_attributes["uuid_capella"]
 
