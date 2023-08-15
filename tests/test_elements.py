@@ -442,6 +442,14 @@ class TestModelElements:
         assert context["API"].delete_work_item_links.call_count == 1
         assert context["API"].delete_work_item_links.call_args[0][0] == [link]
 
+    @staticmethod
+    def test_create_grouped_links_attributes(context: dict[str, t.Any]):
+        ...
+
+    @staticmethod
+    def create_reverse_grouped_links_attributes(context: dict[str, t.Any]):
+        ...
+
 
 class TestHelpers:
     @staticmethod

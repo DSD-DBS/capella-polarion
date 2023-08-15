@@ -29,6 +29,11 @@ RE_DESCR_DELETED_PATTERN = re.compile(
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 DIAGRAM_STYLES = {"max-width": "100%"}
+POLARION_WORK_ITEM_URL = (
+    '<span class="polarion-rte-link" data-type="workItem" '
+    'id="fake" data-item-id="{pid}" data-option-id="long">'
+    "</span>"
+)
 
 PrePostConditionElement = t.Union[
     oa.OperationalCapability, interaction.Scenario
@@ -213,11 +218,7 @@ def replace_markup(
     uuid = match.group(1)
     if pid := ctx["POLARION_ID_MAP"].get(uuid):
         referenced_uuids.append(uuid)
-        return (
-            '<span class="polarion-rte-link" data-type="workItem" '
-            f'id="fake" data-item-id="{pid}" data-option-id="long">'
-            "</span>"
-        )
+        return POLARION_WORK_ITEM_URL.format(pid=pid)
     return non_matcher(match.group(0))
 
 

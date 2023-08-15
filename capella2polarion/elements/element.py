@@ -7,6 +7,7 @@ import collections.abc as cabc
 import functools
 import logging
 import typing as t
+from collections import defaultdict
 from itertools import chain
 
 import polarion_rest_api_client as polarion_api
@@ -201,6 +202,98 @@ def _handle_exchanges(
         exs = _get_work_item_ids(context, wid, uuids, role_id)
         exchanges.extend(set(exs))
     return _create(context, wid, role_id, exchanges, links)
+
+
+def create_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
+    """Create list attributes for links of all work items.
+
+    The list is updated on all primary (source) work items.
+    """
+    ctx["LINKS"] = []
+    for work_item in ctx["POLARION_WI_MAP"].values():
+        wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+        logger.debug("Fetching links for work item %r...", wi)
+        links: list[polarion_api.WorkItemLink]
+        try:
+            links = ctx["API"].get_all_work_item_links(work_item.id)
+        except polarion_api.PolarionApiException as error:
+            logger.error(
+                "Fetching links for work item %r failed %s", wi, error.args[0]
+            )
+            continue
+
+        for role, links in _group_by("role", links).items():
+            if len(links) < 2:
+                continue
+
+            work_item.additional_attributes[role] = {
+                "type": "text/html",
+                "value": _make_url_list(links),
+            }
+            ctx["LINKS"].extend(links)
+
+        if work_item.uuid_capella:
+            del work_item.additional_attributes["uuid_capella"]
+        work_item.type = None
+        try:
+            ctx["API"].update_work_item(work_item)
+        except polarion_api.PolarionApiException as error:
+            logger.error("Updating work item %r failed. %s", wi, error.args[0])
+
+
+def create_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
+    """Create list attributes for links of all work items.
+
+    The list is updated on all secondary (target) work items.
+    """
+    wid_uuid_map = {v: k for k, v in ctx["POLARION_ID_MAP"].items()}
+    link_groups = _group_by("secondary_work_item_id", ctx["LINKS"])
+    for wid, links in link_groups.items():
+        uuid = wid_uuid_map.get(wid)
+        work_item = ctx["POLARION_WI_MAP"].get(uuid)
+        if work_item is None:
+            logger.debug("Unknown work item ID %r found", wid)
+            continue
+
+        for role, links in _group_by("role", links).items():
+            if len(links) < 2:
+                continue
+
+            work_item.additional_attributes[f"{role}_reverse"] = {
+                "type": "text/html",
+                "value": _make_url_list(links),
+            }
+
+        if work_item.uuid_capella:
+            del work_item.additional_attributes["uuid_capella"]
+        work_item.type = None
+        try:
+            ctx["API"].update_work_item(work_item)
+        except polarion_api.PolarionApiException as error:
+            wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+            logger.error("Updating work item %r failed. %s", wi, error.args[0])
+
+
+def _group_by(
+    attr: str,
+    links: cabc.Iterable[polarion_api.WorkItemLink],
+) -> dict[str, list[polarion_api.WorkItemLink]]:
+    group = defaultdict(list)
+    for link in links:
+        key = getattr(link, attr)
+        group[key].append(link)
+    return group
+
+
+def _make_url_list(links: cabc.Iterable[polarion_api.WorkItemLink]) -> str:
+    urls: list[str] = []
+    for link in links:
+        url = serialize.POLARION_WORK_ITEM_URL.format(
+            pid=link.secondary_work_item_id
+        )
+        urls.append(f"<li>{url}</li>")
+    url_list = "\n".join(urls)
+    return f"<ul>{url_list}</ul>"
 
 
 CustomLinkMaker = cabc.Callable[
