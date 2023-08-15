@@ -6,14 +6,14 @@ stages:
   - test
   - deploy
 
-.script-github_token: &script-github_token
-  - git config --global --add url."https://$PAT_GITHUB@github".insteadOf https://github
+.patch-pyproject-toml: &patch-pyproject-toml
+  - sed -i -e 's/\(^  "polarion-rest-api-client\).*",/\1",/' pyproject.toml
 
 wheel:
   stage: build
   extends: .wheel
   script:
-    - *script-github_token
+    - *patch-pyproject-toml
     - pip wheel . -w dist/
 
 pages:
@@ -22,18 +22,18 @@ pages:
   variables:
     OUTPUT_DIR: public
     SPHINX_DEPENDENCIES: ".[docs]"
-  only: [master]
+  only: [main]
   before_script:
-    - *script-github_token
+    - *patch-pyproject-toml
 
 pages:test:
   extends: pages
   variables:
     OUTPUT_DIR: pages-test
   only: []
-  except: [master]
+  except: [main]
   before_script:
-    - *script-github_token
+    - *patch-pyproject-toml
 
 coverage:
   stage: test
@@ -42,14 +42,14 @@ coverage:
     COVERAGE_SOURCE: capella2polarion
   needs: []
   before_script:
-    - *script-github_token
+    - *patch-pyproject-toml
 
 pre-commit:
   stage: test
   extends: .pre-commit
   needs: []
   before_script:
-    - *script-github_token
+    - *patch-pyproject-toml
 
 artifactory:
   stage: deploy
