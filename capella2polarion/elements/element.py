@@ -241,7 +241,7 @@ def create_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
-def create_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
+def maintain_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
     """Create list attributes for links of all work items.
 
     The list is updated on all secondary (target) work items.
@@ -259,10 +259,9 @@ def create_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
             if len(links) < 2:
                 continue
 
-            work_item.additional_attributes[f"{role}_reverse"] = {
-                "type": "text/html",
-                "value": _make_url_list(links),
-            }
+            work_item.additional_attributes[
+                f"{role}_reverse"
+            ] = _make_url_list(links, reverse=True)
 
         if work_item.uuid_capella:
             del work_item.additional_attributes["uuid_capella"]
@@ -270,8 +269,11 @@ def create_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
         try:
             ctx["API"].update_work_item(work_item)
         except polarion_api.PolarionApiException as error:
-            wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
-            logger.error("Updating work item %r failed. %s", wi, error.args[0])
+            logger.error(
+                "Updating work item [%r] failed. %s",
+                work_item.id,
+                error.args[0],
+            )
 
 
 def _group_by(
@@ -285,12 +287,17 @@ def _group_by(
     return group
 
 
-def _make_url_list(links: cabc.Iterable[polarion_api.WorkItemLink]) -> str:
+def _make_url_list(
+    links: cabc.Iterable[polarion_api.WorkItemLink], reverse: bool = False
+) -> str:
     urls: list[str] = []
     for link in links:
-        url = serialize.POLARION_WORK_ITEM_URL.format(
-            pid=link.secondary_work_item_id
-        )
+        if reverse:
+            pid = link.primary_work_item_id
+        else:
+            pid = link.secondary_work_item_id
+
+        url = serialize.POLARION_WORK_ITEM_URL.format(pid=pid)
         urls.append(f"<li>{url}</li>")
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"

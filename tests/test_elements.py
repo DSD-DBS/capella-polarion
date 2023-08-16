@@ -68,6 +68,28 @@ TEST_REQ_TEXT = (
     "This&nbsp;is a list</li>\n\t<li>an unordered one</li>\n</ul>\n\n<ol>\n\t"
     "<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n"
 )
+TEST_WORK_ITEM_LINKS = [
+    polarion_api.WorkItemLink(
+        "Obj-0", "Obj-1", "attribute", True, "project_id"
+    ),
+    polarion_api.WorkItemLink(
+        "Obj-0", "Obj-2", "attribute", True, "project_id"
+    ),
+    polarion_api.WorkItemLink(
+        "Obj-0", "Obj-1", "attribute1", True, "project_id"
+    ),
+]
+TEST_WORK_ITEM_MAP = {
+    f"uuid{i}": serialize.CapellaWorkItem(
+        id=f"Obj-{i}",
+        uuid_capella=f"uuid{i}",
+        title=f"Fake {i}",
+        type="fakeModelObject",
+        description_type="text/html",
+        description=markupsafe.Markup(""),
+    )
+    for i in range(3)
+}
 
 
 class TestDiagramElements:
@@ -444,11 +466,67 @@ class TestModelElements:
 
     @staticmethod
     def test_create_grouped_links_attributes(context: dict[str, t.Any]):
-        ...
+        context["POLARION_WI_MAP"] = TEST_WORK_ITEM_MAP
+        mock_get_all_work_item_links = mock.MagicMock(
+            side_effect=(TEST_WORK_ITEM_LINKS, [], [])
+        )
+        mock_update_work_item = mock.MagicMock()
+        context["API"].get_all_work_item_links = mock_get_all_work_item_links
+        context["API"].update_work_item = mock_update_work_item
+
+        element.maintain_grouped_links_attributes(context)
+
+        links = context["API"].get_all_work_item_links.call_args_list
+        assert context["API"].get_all_work_item_links.call_count == 3
+        assert [l[0][0] for l in links] == ["Obj-0", "Obj-1", "Obj-2"]
+        work_items = context["API"].update_work_item.call_args_list
+        assert context["API"].get_all_work_item_links.call_count == 3
+        assert work_items[0][0][0].additional_attributes["attribute"] == (
+            "<ul><li>"
+            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+            'data-item-id="Obj-1" data-option-id="long"></span>'
+            "</li>\n"
+            "<li>"
+            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+            'data-item-id="Obj-2" data-option-id="long"></span>'
+            "</li></ul>"
+        )
+        for work_item in work_items[1:]:
+            assert work_item[0][0].additional_attributes == {}
+
+        assert context["LINKS"] == TEST_WORK_ITEM_LINKS[:-1]
 
     @staticmethod
-    def create_reverse_grouped_links_attributes(context: dict[str, t.Any]):
-        ...
+    def test_create_reverse_grouped_links_attributes(
+        context: dict[str, t.Any]
+    ):
+        context["POLARION_WI_MAP"] = TEST_WORK_ITEM_MAP
+        context["POLARION_ID_MAP"] = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
+        context["LINKS"] = TEST_WORK_ITEM_LINKS[:-1] + [
+            polarion_api.WorkItemLink(
+                "Obj-1", "Obj-2", "attribute", True, "project_id"
+            ),
+        ]
+        mock_update_work_item = mock.MagicMock()
+        context["API"].update_work_item = mock_update_work_item
+
+        element.maintain_reverse_grouped_links_attributes(context)
+
+        work_items = context["API"].update_work_item.call_args_list
+        assert context["API"].update_work_item.call_count == 2
+        assert work_items[0][0][0].additional_attributes == {}
+        assert work_items[1][0][0].additional_attributes[
+            "attribute_reverse"
+        ] == (
+            "<ul><li>"
+            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+            'data-item-id="Obj-0" data-option-id="long"></span>'
+            "</li>\n"
+            "<li>"
+            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+            'data-item-id="Obj-1" data-option-id="long"></span>'
+            "</li></ul>"
+        )
 
 
 class TestHelpers:

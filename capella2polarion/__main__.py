@@ -250,15 +250,18 @@ def model_elements(
 def grouped_links_attributes(
     ctx: click.core.Context, types: list[str]
 ) -> None:
-    """Synchronise model elements."""
+    """Maintain grouped links custom fields on work items.
+
+    Work items are determined from the given types.
+    """
     ctx.obj["TYPES"] = types
     ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
 
-    elements.element.create_grouped_links_attributes(ctx.obj)
-    elements.element.create_reverse_grouped_links_attributes(ctx.obj)
+    elements.element.maintain_grouped_links_attributes(ctx.obj)
+    elements.element.maintain_reverse_grouped_links_attributes(ctx.obj)
 
 
 if __name__ == "__main__":
