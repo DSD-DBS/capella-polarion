@@ -12,9 +12,8 @@ stages:
 wheel:
   stage: build
   extends: .wheel
-  script:
+  before_script:
     - *patch-pyproject-toml
-    - pip wheel . -w dist/
 
 pages:
   stage: build
