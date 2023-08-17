@@ -90,3 +90,35 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     assert mock_patch_work_items.call_count == 1
     assert mock_post_work_items.call_count == 1
     assert ELEMENTS_IDX_PATH.exists()
+
+
+def test_grouped_links_attributes(monkeypatch: pytest.MonkeyPatch):
+    mock_get_polarion_wi_map = prepare_cli_test(
+        monkeypatch,
+        {"uuid{i}": polarion_api.WorkItem("project/W-{i}") for i in range(10)},
+    )
+    mock_maintain_grouped_links_attributes = mock.MagicMock()
+    monkeypatch.setattr(
+        elements.element,
+        "maintain_grouped_links_attributes",
+        mock_maintain_grouped_links_attributes,
+    )
+    mock_maintain_reverse_grouped_links_attributes = mock.MagicMock()
+    monkeypatch.setattr(
+        elements.element,
+        "maintain_reverse_grouped_links_attributes",
+        mock_maintain_reverse_grouped_links_attributes,
+    )
+
+    command = [
+        "--project-id=project_id",
+        "grouped-links-attributes",
+        "OperationalCapability SystemCapability",
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command)
+
+    assert result.exit_code == 0
+    assert mock_get_polarion_wi_map.call_count == 1
+    assert mock_maintain_grouped_links_attributes.call_count == 1
+    assert mock_maintain_reverse_grouped_links_attributes.call_count == 1

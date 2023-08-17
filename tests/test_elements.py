@@ -465,7 +465,7 @@ class TestModelElements:
         assert context["API"].delete_work_item_links.call_args[0][0] == [link]
 
     @staticmethod
-    def test_create_grouped_links_attributes(context: dict[str, t.Any]):
+    def test_maintain_grouped_links_attributes(context: dict[str, t.Any]):
         context["POLARION_WI_MAP"] = TEST_WORK_ITEM_MAP
         mock_get_all_work_item_links = mock.MagicMock(
             side_effect=(TEST_WORK_ITEM_LINKS, [], [])
@@ -497,7 +497,7 @@ class TestModelElements:
         assert context["LINKS"] == TEST_WORK_ITEM_LINKS[:-1]
 
     @staticmethod
-    def test_create_reverse_grouped_links_attributes(
+    def test_maintain_reverse_grouped_links_attributes(
         context: dict[str, t.Any]
     ):
         context["POLARION_WI_MAP"] = TEST_WORK_ITEM_MAP
