@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import base64
 import collections.abc as cabc
+import hashlib
+import json
 import logging
 import mimetypes
 import pathlib
@@ -47,6 +49,28 @@ class CapellaWorkItem(polarion_api.WorkItem):
     uuid_capella: str | None
     preCondition: Condition | None
     postCondition: Condition | None
+    checksum: str | None
+
+
+def _convert_work_item_to_dict(work_item: CapellaWorkItem) -> dict[str, t.Any]:
+    """Convert the instance to a dictionary."""
+    return {
+        "id": work_item.id,
+        "title": work_item.title,
+        "description_type": work_item.description_type,
+        "description": work_item.description,
+        "type": work_item.type,
+        "status": work_item.status,
+        "additional_attributes": work_item.additional_attributes,
+        "uuid_capella": work_item.uuid_capella,
+        "checksum": work_item.checksum,
+    }
+
+
+def _calculate_checksum(payload: dict[str, t.Any]) -> str:
+    """Return the ``checksum`` of this CapellaWorkItem."""
+    converted = json.dumps(payload).encode("utf8")
+    return hashlib.sha256(converted).hexdigest()
 
 
 def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
@@ -82,6 +106,7 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
         description=description,
         status="open",
         uuid_capella=diag["uuid"],
+        checksum=_calculate_checksum({"description": description}),
     )
 
 
@@ -104,10 +129,14 @@ def _decode_diagram(diagram_path: pathlib.Path) -> str:
 def generic_work_item(
     obj: common.GenericElement, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
-    """Return an attributes dictionary for the given model element."""
+    """Return a work item for the given model element."""
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     serializer = SERIALIZERS.get(xtype, _generic_work_item)
-    return serializer(obj, ctx)
+    work_item = serializer(obj, ctx)
+    wi_dict = _convert_work_item_to_dict(work_item)
+    del wi_dict["checksum"]
+    work_item.checksum = _calculate_checksum(wi_dict)
+    return work_item
 
 
 def _generic_work_item(

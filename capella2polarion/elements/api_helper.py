@@ -6,17 +6,25 @@ import logging
 import typing as t
 
 import polarion_rest_api_client as polarion_api
-from capellambse.model.common import element
+from capellambse.model import common
 
 from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
 
+class Diagram(t.TypedDict):
+    """A Diagram object from the Diagram Cache Index."""
+
+    uuid: str
+    name: str
+    success: bool
+
+
 def patch_work_item(
     ctx: dict[str, t.Any],
     wid: str,
-    capella_object: element.GenericElement,
+    obj: common.GenericElement | Diagram,
     serializer: cabc.Callable[
         [t.Any, dict[str, t.Any]], serialize.CapellaWorkItem
     ],
@@ -31,8 +39,8 @@ def patch_work_item(
         The context to execute the patch for.
     wid
         The ID of the polarion WorkItem
-    capella_object
-        The capella object to update the WorkItem from
+    obj
+        The Capella object to update the WorkItem from
     serializer
         The serializer, which should be used to create the WorkItem.
     name
@@ -46,16 +54,20 @@ def patch_work_item(
         _type,
         name,
     )
-    if work_item := serialize.element(capella_object, ctx, serializer):
-        if work_item.uuid_capella:
-            del work_item.additional_attributes["uuid_capella"]
+    if new := serialize.element(obj, ctx, serializer):
+        uuid = obj["uuid"] if isinstance(obj, dict) else obj.uuid
+        old: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
+        if new.checksum == old.checksum:
+            return
 
-        work_item.type = None
-        work_item.status = "open"
-        work_item.id = wid
+        if new.uuid_capella:
+            del new.additional_attributes["uuid_capella"]
 
+        new.type = None
+        new.status = "open"
+        new.id = wid
         try:
-            ctx["API"].update_work_item(work_item)
+            ctx["API"].update_work_item(new)
         except polarion_api.PolarionApiException as error:
             wi = f"{wid}({_type} {name})"
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
