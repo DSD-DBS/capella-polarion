@@ -62,7 +62,6 @@ def _convert_work_item_to_dict(work_item: CapellaWorkItem) -> dict[str, t.Any]:
         "type": work_item.type,
         "status": work_item.status,
         "additional_attributes": work_item.additional_attributes,
-        "uuid_capella": work_item.uuid_capella,
         "checksum": work_item.checksum,
     }
 

@@ -64,7 +64,7 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
     },
 }
 TEST_WI_CHECKSUM = (
-    "44f48650534f1405ae09a806d25762bf618884cff9fa71ab427358b71ac440a6"
+    "736923b9019ae8bc3550609fcf6f2fad255f0aa0e46f41f5662ca4a4f7e35e79"
 )
 
 
