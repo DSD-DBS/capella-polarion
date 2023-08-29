@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import base64
 import collections.abc as cabc
-import hashlib
-import json
 import logging
 import mimetypes
 import pathlib
@@ -52,31 +50,6 @@ class CapellaWorkItem(polarion_api.WorkItem):
     checksum: str | None
 
 
-def _convert_work_item_to_dict(work_item: CapellaWorkItem) -> dict[str, t.Any]:
-    """Convert the instance to a dictionary."""
-    return {
-        "id": work_item.id,
-        "title": work_item.title,
-        "description_type": work_item.description_type,
-        "description": work_item.description,
-        "type": work_item.type,
-        "status": work_item.status,
-        "additional_attributes": work_item.additional_attributes,
-        "checksum": work_item.checksum,
-    }
-
-
-def _calculate_checksum(payload: dict[str, t.Any]) -> str:
-    """Return the ``checksum`` of this CapellaWorkItem."""
-    converted = json.dumps(payload).encode("utf8")
-    return hashlib.sha256(converted).hexdigest()
-
-
-def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
-    _type = "text/html" if html else "text/plain"
-    return {"type": _type, "value": value}
-
-
 def element(
     obj: dict[str, t.Any] | common.GenericElement,
     ctx: dict[str, t.Any],
@@ -105,7 +78,7 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
         description=description,
         status="open",
         uuid_capella=diag["uuid"],
-        checksum=_calculate_checksum({"description": description}),
+        links=[],
     )
 
 
@@ -131,11 +104,7 @@ def generic_work_item(
     """Return a work item for the given model element."""
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     serializer = SERIALIZERS.get(xtype, _generic_work_item)
-    work_item = serializer(obj, ctx)
-    wi_dict = _convert_work_item_to_dict(work_item)
-    del wi_dict["checksum"]
-    work_item.checksum = _calculate_checksum(wi_dict)
-    return work_item
+    return serializer(obj, ctx)
 
 
 def _generic_work_item(
@@ -152,6 +121,7 @@ def _generic_work_item(
         description=value,
         status="open",
         uuid_capella=obj.uuid,
+        links=[],
     )
 
 
@@ -163,7 +133,6 @@ def _sanitize_description(
         lambda match: replace_markup(match, ctx, referenced_uuids), descr
     )
 
-    # XXX: Can be removed after fix in capellambse
     def repair_images(node: etree._Element) -> None:
         if node.tag != "img":
             return
@@ -242,6 +211,11 @@ def include_pre_and_post_condition(
     return work_item
 
 
+def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
+    _type = "text/html" if html else "text/plain"
+    return {"type": _type, "value": value}
+
+
 def component_or_actor(
     obj: cs.Component, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
@@ -251,9 +225,7 @@ def component_or_actor(
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        # pylint: disable=attribute-defined-outside-init
         work_item.type = helpers.resolve_element_type(xtype)
-        # pylint: enable=attribute-defined-outside-init
     return work_item
 
 
@@ -264,9 +236,7 @@ def physical_component(
     work_item = component_or_actor(obj, ctx)
     xtype = work_item.type
     if obj.nature is not None:
-        # pylint: disable=attribute-defined-outside-init
         work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
-        # pylint: enable=attribute-defined-outside-init
     return work_item
 
 

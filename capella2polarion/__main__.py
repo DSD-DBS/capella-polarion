@@ -79,6 +79,7 @@ def _get_roles_from_config(ctx: dict[str, t.Any]) -> dict[str, list[str]]:
                 roles[key] = list(role_ids)
         else:
             roles[typ] = []
+    roles["Diagram"] = ["diagram_elements"]
     return roles
 
 
@@ -105,21 +106,6 @@ def _sanitize_config(
         new_config[layer] = new_entries
 
     return new_config
-
-
-def get_polarion_wi_map(
-    ctx: dict[str, t.Any], type_: str = ""
-) -> dict[str, t.Any]:
-    """Return a map from Capella UUIDs to Polarion work items."""
-    types_ = map(elements.helpers.resolve_element_type, ctx.get("TYPES", []))
-    work_item_types = [type_] if type_ else list(types_)
-    _type = " ".join(work_item_types)
-    work_items = ctx["API"].get_all_work_items(
-        f"type:({_type})", {"workitems": "id,uuid_capella,status"}
-    )
-    return {
-        wi.uuid_capella: wi for wi in work_items if wi.id and wi.uuid_capella
-    }
 
 
 @click.group()
@@ -179,14 +165,16 @@ def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
     ctx.obj["CAPELLA_UUIDS"] = [
         d["uuid"] for d in ctx.obj["DIAGRAM_IDX"] if d["success"]
     ]
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj, "diagram")
+    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(
+        ctx.obj, "diagram"
+    )
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
 
     elements.delete_work_items(ctx.obj)
-    elements.diagram.update_diagrams(ctx.obj)
     elements.diagram.create_diagrams(ctx.obj)
+    elements.diagram.update_diagrams(ctx.obj)
 
 
 @cli.command()
@@ -199,6 +187,11 @@ def model_elements(
     config_file: t.TextIO,
 ) -> None:
     """Synchronise model elements."""
+    logger.debug(
+        "Synchronising model elements (%r) to Polarion project with id %r...",
+        str(elements.ELEMENTS_IDX_PATH),
+        ctx.obj["PROJECT_ID"],
+    )
     ctx.obj["MODEL"] = model
     ctx.obj["CONFIG"] = yaml.safe_load(config_file)
     ctx.obj["ROLES"] = _get_roles_from_config(ctx.obj)
@@ -208,39 +201,16 @@ def model_elements(
     ) = elements.get_elements_and_type_map(ctx.obj)
     ctx.obj["CAPELLA_UUIDS"] = set(ctx.obj["POLARION_TYPE_MAP"])
     ctx.obj["TYPES"] = elements.get_types(ctx.obj)
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
+    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(ctx.obj)
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
 
     elements.delete_work_items(ctx.obj)
-    elements.element.update_work_items(ctx.obj)
-    elements.element.create_work_items(ctx.obj)
+    elements.create_work_items(ctx.obj)
+    elements.update_work_items(ctx.obj)
 
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
-    ctx.obj["POLARION_ID_MAP"] = {
-        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
-    }
-    elements.element.update_links(ctx.obj)
-
-    diagram_work = get_polarion_wi_map(ctx.obj, "diagram")
-    ctx.obj["POLARION_ID_MAP"] |= {
-        uuid: wi.id for uuid, wi in diagram_work.items()
-    }
-    _diagrams = [
-        diagram
-        for diagram in model.diagrams
-        if diagram.uuid in ctx.obj["POLARION_ID_MAP"]
-    ]
-    ctx.obj["ROLES"]["Diagram"] = ["diagram_elements"]
-    elements.element.update_links(ctx.obj, _diagrams)
-
-    elements_index_file = elements.make_model_elements_index(ctx.obj)
-    logger.debug(
-        "Synchronising model objects (%r) to Polarion project with id %r...",
-        str(elements_index_file),
-        ctx.obj["PROJECT_ID"],
-    )
+    elements.make_model_elements_index(ctx.obj)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ __all__ = [
     "STATUS_DELETE",
 ]
 
+import functools
 import logging
 import pathlib
 import typing as t
@@ -43,6 +44,21 @@ POL2CAPELLA_TYPES = (
     | ACTOR_TYPES
     | PHYSICAL_COMPONENT_TYPES
 )
+
+
+def get_polarion_wi_map(
+    ctx: dict[str, t.Any], type_: str = ""
+) -> dict[str, t.Any]:
+    """Return a map from Capella UUIDs to Polarion work items."""
+    types_ = map(helpers.resolve_element_type, ctx.get("TYPES", []))
+    work_item_types = [type_] if type_ else list(types_)
+    _type = " ".join(work_item_types)
+    work_items = ctx["API"].get_all_work_items(
+        f"type:({_type})", {"workitems": "id,uuid_capella,checksum,status"}
+    )
+    return {
+        wi.uuid_capella: wi for wi in work_items if wi.id and wi.uuid_capella
+    }
 
 
 def delete_work_items(ctx: dict[str, t.Any]) -> None:
@@ -78,6 +94,57 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
             logger.error("Deleting work items failed. %s", error.args[0])
 
 
+def create_work_items(ctx: dict[str, t.Any]) -> None:
+    """Create work items for a Polarion project.
+
+    Parameters
+    ----------
+    ctx
+        The context for the workitem operation to be processed.
+    """
+    if work_items := element.create_work_items(ctx):
+        try:
+            ctx["API"].create_work_items(work_items)
+        except polarion_api.PolarionApiException as error:
+            logger.error("Creating work items failed. %s", error.args[0])
+
+
+def update_work_items(ctx: dict[str, t.Any]) -> None:
+    """Update work items in a Polarion project.
+
+    Parameters
+    ----------
+    ctx
+        The context for the workitem operation to be processed.
+    """
+
+    def prepare_for_update(
+        obj: common.GenericElement, ctx: dict[str, t.Any], **kwargs
+    ) -> serialize.CapellaWorkItem:
+        work_item = serialize.generic_work_item(obj, ctx)
+        for key, value in kwargs.items():
+            if getattr(work_item, key, None) is None:
+                continue
+
+            setattr(work_item, key, value)
+        return work_item
+
+    for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
+        if obj.uuid not in ctx["POLARION_ID_MAP"]:
+            continue
+
+        links = element.create_links(obj, ctx)
+
+        api_helper.patch_work_item(
+            ctx,
+            ctx["POLARION_ID_MAP"][obj.uuid],
+            obj,
+            functools.partial(prepare_for_update, links=links),
+            obj._short_repr_(),
+            "element",
+        )
+
+
 def get_types(ctx: dict[str, t.Any]) -> set[str]:
     """Return a set of Polarion types from the current context."""
     xtypes = set[str]()
@@ -107,6 +174,13 @@ def get_elements_and_type_map(
                 type_map[obj.uuid] = typ
 
     _fix_components(elements, type_map)
+    elements["Diagram"] = diagrams = [
+        diagram
+        for diagram in ctx["MODEL"].diagrams
+        if diagram.uuid in ctx["POLARION_ID_MAP"]
+    ]
+    for diag in diagrams:
+        type_map[diag.uuid] = "Diagram"
     return elements, type_map
 
 
@@ -150,7 +224,7 @@ def _fix_components(
         elements["PhysicalComponent"] = components
 
 
-def make_model_elements_index(ctx: dict[str, t.Any]) -> pathlib.Path:
+def make_model_elements_index(ctx: dict[str, t.Any]) -> None:
     """Create an elements index file for all migrated elements."""
     elements: list[dict[str, t.Any]] = []
     for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
@@ -176,7 +250,12 @@ def make_model_elements_index(ctx: dict[str, t.Any]) -> pathlib.Path:
         elements.append(element_)
 
     ELEMENTS_IDX_PATH.write_text(yaml.dump(elements), encoding="utf8")
-    return ELEMENTS_IDX_PATH
 
 
-from . import diagram, element, helpers, serialize
+from . import (  # pylint: disable=cyclic-import
+    api_helper,
+    diagram,
+    element,
+    helpers,
+    serialize,
+)

@@ -11,17 +11,21 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import POL2CAPELLA_TYPES, api_helper, serialize
+from capella2polarion import elements
+from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 TYPES_POL2CAPELLA = {
-    ctype: ptype for ptype, ctype in POL2CAPELLA_TYPES.items()
+    ctype: ptype for ptype, ctype in elements.POL2CAPELLA_TYPES.items()
 }
 
 
-def create_work_items(ctx: dict[str, t.Any]) -> None:
+def create_work_items(
+    ctx: dict[str, t.Any],
+    objects: cabc.Iterable[common.GenericElement] | None = None,
+) -> list[common.GenericElement]:
     """Create a set of work items in Polarion."""
 
     def serialize_for_create(
@@ -32,34 +36,13 @@ def create_work_items(ctx: dict[str, t.Any]) -> None:
         )
         return serialize.element(obj, ctx, serialize.generic_work_item)
 
-    objects = chain.from_iterable(ctx["ELEMENTS"].values())
+    objects = objects or chain.from_iterable(ctx["ELEMENTS"].values())
     work_items = [
         serialize_for_create(obj)
         for obj in objects
         if obj.uuid not in ctx["POLARION_ID_MAP"]
     ]
-    work_items = list(filter(None.__ne__, work_items))
-    if work_items:
-        try:
-            ctx["API"].create_work_items(work_items)
-        except polarion_api.PolarionApiException as error:
-            logger.error("Creating work items failed. %s", error.args[0])
-
-
-def update_work_items(ctx: dict[str, t.Any]) -> None:
-    """Update a set of work items in Polarion."""
-    for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
-        if obj.uuid not in ctx["POLARION_ID_MAP"]:
-            continue
-
-        api_helper.patch_work_item(
-            ctx,
-            ctx["POLARION_ID_MAP"][obj.uuid],
-            obj,
-            serialize.generic_work_item,
-            obj._short_repr_(),
-            "element",
-        )
+    return list(filter(None.__ne__, work_items))
 
 
 class LinkBuilder(t.NamedTuple):
@@ -88,62 +71,31 @@ class LinkBuilder(t.NamedTuple):
         )
 
 
-def update_links(
-    ctx: dict[str, t.Any],
-    elements: cabc.Iterable[common.GenericElement] | None = None,
-) -> None:
-    """Create and update work item links in Polarion."""
+def create_links(
+    obj: common.GenericElement, ctx: dict[str, t.Any]
+) -> list[polarion_api.WorkItemLink]:
+    """Create work item links in Polarion."""
     custom_link_resolvers = CUSTOM_LINKS
     reverse_type_map = TYPES_POL2CAPELLA
-    for elt in elements or chain.from_iterable(ctx["ELEMENTS"].values()):
-        if elt.uuid not in ctx["POLARION_ID_MAP"]:
+    link_builder = LinkBuilder(ctx, obj)
+    ptype = reverse_type_map.get(type(obj).__name__, type(obj).__name__)
+    new_links: list[polarion_api.WorkItemLink] = []
+    for role_id in ctx["ROLES"].get(ptype, []):
+        if resolver := custom_link_resolvers.get(role_id):
+            new_links.extend(resolver(link_builder, role_id, {}))
             continue
 
-        workitem_id = ctx["POLARION_ID_MAP"][elt.uuid]
-        logger.debug(
-            "Fetching links for work item %r(%r)...",
-            workitem_id,
-            elt._short_repr_(),
-        )
-        links: list[polarion_api.WorkItemLink]
-        try:
-            links = ctx["API"].get_all_work_item_links(workitem_id)
-        except polarion_api.PolarionApiException as error:
-            logger.error(
-                "Fetching links for work item %r(%r). failed %s",
-                workitem_id,
-                elt._short_repr_(),
-                error.args[0],
-            )
+        if (refs := getattr(obj, role_id, None)) is None:
             continue
 
-        link_builder = LinkBuilder(ctx, elt)
-        ptype = reverse_type_map.get(type(elt).__name__, type(elt).__name__)
-        for role_id in ctx["ROLES"].get(ptype, []):
-            id_link_map: dict[str, polarion_api.WorkItemLink] = {}
-            for link in links:
-                if role_id != link.role:
-                    continue
+        if isinstance(refs, common.ElementList):
+            new = refs.by_uuid
+        else:
+            assert hasattr(refs, "uuid")
+            new = [refs.uuid]
 
-                id_link_map[link.secondary_work_item_id] = link
-
-            if resolver := custom_link_resolvers.get(role_id):
-                resolver(link_builder, role_id, id_link_map)
-                continue
-
-            if (refs := getattr(elt, role_id, None)) is None:
-                continue
-
-            if isinstance(refs, common.ElementList):
-                new = refs.by_uuid
-            else:
-                assert hasattr(refs, "uuid")
-                new = [refs.uuid]
-
-            new = set(_get_work_item_ids(ctx, new, role_id))
-            _handle_create_and_delete(
-                link_builder, role_id, new, id_link_map, id_link_map
-            )
+        new_links.extend(_create(link_builder, role_id, new, {}))
+    return new_links
 
 
 def _get_work_item_ids(
@@ -166,26 +118,28 @@ def _handle_description_reference_links(
     link_builder: LinkBuilder,
     role_id: str,
     links: dict[str, polarion_api.WorkItemLink],
-) -> None:
+) -> list[polarion_api.WorkItemLink]:
     refs = link_builder.context["DESCR_REFERENCES"].get(link_builder.obj.uuid)
     refs = set(_get_work_item_ids(link_builder.context, refs, role_id))
-    _handle_create_and_delete(link_builder, role_id, refs, links, links)
+    return _create(link_builder, role_id, refs, links)
 
 
 def _handle_diagram_reference_links(
     link_builder: LinkBuilder,
     role_id: str,
     links: dict[str, polarion_api.WorkItemLink],
-) -> None:
+) -> list[polarion_api.WorkItemLink]:
     try:
         refs = set(_collect_uuids(link_builder.obj.nodes))
         refs = set(_get_work_item_ids(link_builder.context, refs, role_id))
-        _handle_create_and_delete(link_builder, role_id, refs, links, links)
+        ref_links = _create(link_builder, role_id, refs, links)
     except StopIteration:
         logger.exception(
             "Could not create links for diagram %r",
             link_builder.obj._short_repr_(),
         )
+        ref_links = []
+    return ref_links
 
 
 def _collect_uuids(nodes: list[common.GenericElement]) -> cabc.Iterator[str]:
@@ -198,29 +152,16 @@ def _collect_uuids(nodes: list[common.GenericElement]) -> cabc.Iterator[str]:
         yield uuid
 
 
-def _handle_create_and_delete(
+def _create(
     link_builder: LinkBuilder,
     role_id: str,
     new: cabc.Iterable[str],
     old: cabc.Iterable[str],
-    links: dict[str, t.Any],
-) -> None:
-    create = set(new) - set(old)
-    new_links = [link_builder.create(id, role_id) for id in create]
-    new_links = list(filter(None.__ne__, new_links))
-    if new_links:
-        link_builder.context["API"].create_work_item_links(new_links)
-
-    delete = set(old) - set(new)
-    dead_links = [links.get(id) for id in delete]
-    dead_links = list(filter(None.__ne__, dead_links))
-    for link in dead_links:
-        rep = link_builder.obj._short_repr_()
-        logger.debug(
-            "Delete work item link %r for model element %r", link, rep
-        )
-    if dead_links:
-        link_builder.context["API"].delete_work_item_links(dead_links)
+) -> list[polarion_api.WorkItemLink]:
+    new = set(new) - set(old)
+    new = set(_get_work_item_ids(link_builder.context, new, role_id))
+    _new_links = [link_builder.create(id, role_id) for id in new]
+    return list(filter(None.__ne__, _new_links))
 
 
 CUSTOM_LINKS = {
