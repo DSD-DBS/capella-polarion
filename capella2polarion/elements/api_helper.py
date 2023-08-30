@@ -66,7 +66,7 @@ def patch_work_item(
         try:
             ctx["API"].update_work_item(new)
 
-            nlinks, dlinks = get_new_and_dead_links(old.links, new.links)
+            dlinks = get_links(old.links, new.links)
             for link in dlinks:
                 log_args = (_get_link_id(link), _type, name)
                 logger.debug(
@@ -75,6 +75,7 @@ def patch_work_item(
             if dlinks:
                 ctx["API"].delete_work_item_links(dlinks)
 
+            nlinks = get_links(new.links, old.links)
             for link in nlinks:
                 log_args = (_get_link_id(link), _type, name)
                 logger.debug(
@@ -87,16 +88,14 @@ def patch_work_item(
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
-def get_new_and_dead_links(
-    new_links: cabc.Iterable[polarion_api.WorkItemLink],
-    old_links: cabc.Iterable[polarion_api.WorkItemLink],
-) -> tuple[list[polarion_api.WorkItemLink], list[polarion_api.WorkItemLink]]:
+def get_links(
+    left: cabc.Iterable[polarion_api.WorkItemLink],
+    right: cabc.Iterable[polarion_api.WorkItemLink],
+) -> list[polarion_api.WorkItemLink]:
     """Return new work item links for ceate and dead links for delete."""
-    news = {_get_link_id(link): link for link in new_links}
-    olds = {_get_link_id(link): link for link in old_links}
-    nlinks = [news[lid] for lid in set(news) - set(olds)]
-    dlinks = [olds[lid] for lid in set(olds) - set(news)]
-    return nlinks, dlinks
+    news = {_get_link_id(link): link for link in left}
+    olds = {_get_link_id(link): link for link in right}
+    return [news[lid] for lid in set(news) - set(olds)]
 
 
 def _get_link_id(link: polarion_api.WorkItemLink) -> str:
