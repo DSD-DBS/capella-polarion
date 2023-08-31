@@ -130,12 +130,14 @@ def cli(
         polarion_api_endpoint=f"{ctx.obj['POLARION_HOST']}/rest/v1",
         polarion_access_token=os.environ["POLARION_PAT"],
         custom_work_item=serialize.CapellaWorkItem,
+        add_work_item_checksum=True,
     )
     if not ctx.obj["API"].project_exists():
         sys.exit(1)
 
 
 @cli.command()
+@click.argument("model", type=cli_helpers.ModelCLI())
 @click.argument(
     "diagram_cache",
     type=click.Path(
@@ -146,10 +148,16 @@ def cli(
         path_type=pathlib.Path,
     ),
 )
+@click.argument("config_file", type=click.File(mode="r", encoding="utf8"))
 @click.pass_context
-def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
-    """Synchronise diagrams."""
-    logger.debug(
+def model_elements(
+    ctx: click.core.Context,
+    model: capellambse.MelodyModel,
+    diagram_cache: pathlib.Path,
+    config_file: t.TextIO,
+) -> None:
+    """Synchronise model elements."""
+    logger.info(
         "Synchronising diagrams from diagram cache at '%s' "
         "to Polarion project with id %r...",
         diagram_cache,
@@ -162,32 +170,8 @@ def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
 
     ctx.obj["DIAGRAM_CACHE"] = diagram_cache
     ctx.obj["DIAGRAM_IDX"] = json.loads(idx_file.read_text(encoding="utf8"))
-    ctx.obj["CAPELLA_UUIDS"] = [
-        d["uuid"] for d in ctx.obj["DIAGRAM_IDX"] if d["success"]
-    ]
-    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(
-        ctx.obj, "diagram"
-    )
-    ctx.obj["POLARION_ID_MAP"] = {
-        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
-    }
 
-    elements.delete_work_items(ctx.obj)
-    elements.diagram.create_diagrams(ctx.obj)
-    elements.diagram.update_diagrams(ctx.obj)
-
-
-@cli.command()
-@click.argument("model", type=cli_helpers.ModelCLI())
-@click.argument("config_file", type=click.File(mode="r", encoding="utf8"))
-@click.pass_context
-def model_elements(
-    ctx: click.core.Context,
-    model: capellambse.MelodyModel,
-    config_file: t.TextIO,
-) -> None:
-    """Synchronise model elements."""
-    logger.debug(
+    logger.info(
         "Synchronising model elements (%r) to Polarion project with id %r...",
         str(elements.ELEMENTS_IDX_PATH),
         ctx.obj["PROJECT_ID"],
@@ -205,10 +189,17 @@ def model_elements(
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
+    diagrams = ctx.obj["ELEMENTS"].pop("Diagram", [])
+    work_items = elements.element.create_work_items(ctx.obj)
+    ctx.obj["ELEMENTS"]["Diagram"] = diagrams
+    pdiagrams = elements.diagram.create_diagrams(ctx.obj)
+    ctx.obj["WORK_ITEMS"] = {
+        wi.uuid_capella: wi for wi in work_items + pdiagrams
+    }
 
     elements.delete_work_items(ctx.obj)
-    elements.create_work_items(ctx.obj)
-    elements.update_work_items(ctx.obj)
+    elements.post_work_items(ctx.obj)
+    elements.patch_work_items(ctx.obj)
 
     elements.make_model_elements_index(ctx.obj)
 

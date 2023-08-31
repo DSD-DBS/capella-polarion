@@ -78,7 +78,6 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
         description=description,
         status="open",
         uuid_capella=diag["uuid"],
-        links=[],
     )
 
 
@@ -121,7 +120,6 @@ def _generic_work_item(
         description=value,
         status="open",
         uuid_capella=obj.uuid,
-        links=[],
     )
 
 

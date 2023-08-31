@@ -13,19 +13,10 @@ from capella2polarion.elements import serialize
 logger = logging.getLogger(__name__)
 
 
-class Diagram(t.TypedDict):
-    """A Diagram object from the Diagram Cache Index."""
-
-    uuid: str
-    name: str
-    success: bool
-
-
 def patch_work_item(
     ctx: dict[str, t.Any],
-    wid: str,
-    obj: common.GenericElement | Diagram,
-    serializer: cabc.Callable[
+    obj: common.GenericElement,
+    receiver: cabc.Callable[
         [t.Any, dict[str, t.Any]], serialize.CapellaWorkItem
     ],
     name: str,
@@ -37,55 +28,62 @@ def patch_work_item(
     ----------
     ctx
         The context to execute the patch for.
-    wid
-        The ID of the polarion WorkItem
     obj
         The Capella object to update the WorkItem from
-    serializer
-        The serializer, which should be used to create the WorkItem.
+    receiver
+        A function that receives the WorkItem from the created
+        instances.
     name
         The name of the object, which should be displayed in log messages.
     _type
         The type of element, which should be shown in log messages.
     """
-    if new := serialize.element(obj, ctx, serializer):
-        uuid = obj["uuid"] if isinstance(obj, dict) else obj.uuid
-        old: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
-        if new.checksum == old.checksum:
+    if new := receiver(obj, ctx):
+        wid = ctx["POLARION_ID_MAP"][obj.uuid]
+        old: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][obj.uuid]
+        if new == old:
             return
 
         log_args = (wid, _type, name)
-        logger.debug("Update work item %r for model %s %r...", *log_args)
+        logger.info("Update work item %r for model %s %r...", *log_args)
         if new.uuid_capella:
             del new.additional_attributes["uuid_capella"]
 
-        old.links = ctx["API"].get_all_work_item_links(old.id)
+        old.linked_work_items = ctx["API"].get_all_work_item_links(old.id)
         new.type = None
         new.status = "open"
         new.id = wid
         try:
             ctx["API"].update_work_item(new)
-
-            dlinks = get_links(old.links, new.links)
-            for link in dlinks:
-                log_args = (_get_link_id(link), _type, name)
-                logger.debug(
-                    "Delete work item link %r for model %s %r", *log_args
-                )
-            if dlinks:
-                ctx["API"].delete_work_item_links(dlinks)
-
-            nlinks = get_links(new.links, old.links)
-            for link in nlinks:
-                log_args = (_get_link_id(link), _type, name)
-                logger.debug(
-                    "Create work item link %r for model %s %r", *log_args
-                )
-            if nlinks:
-                ctx["API"].create_work_item_links(nlinks)
+            handle_links(
+                old.linked_work_items,
+                new.linked_work_items,
+                ("Delete", _type, name),
+                ctx["API"].delete_work_item_links,
+            )
+            handle_links(
+                new.linked_work_items,
+                old.linked_work_items,
+                ("Create", _type, name),
+                ctx["API"].create_work_item_links,
+            )
         except polarion_api.PolarionApiException as error:
             wi = f"{wid}({_type} {name})"
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
+
+
+def handle_links(
+    left: cabc.Iterable[polarion_api.WorkItemLink],
+    right: cabc.Iterable[polarion_api.WorkItemLink],
+    log_args: tuple[str, ...],
+    handler: cabc.Callable[[cabc.Iterable[polarion_api.WorkItemLink]], None],
+):
+    """Handle work item links on Polarion."""
+    for link in (links := get_links(left, right)):
+        largs = (log_args[0], _get_link_id(link), *log_args[1:])
+        logger.info("%s work item link %r for model %s %r", *largs)
+    if links:
+        handler(links)
 
 
 def get_links(

@@ -21,6 +21,7 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse.model import common
+from capellambse.model import diagram as diag
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ PHYSICAL_COMPONENT_TYPES = {
     "PhysicalComponentNode": "PhysicalComponent",
     "PhysicalComponentBehavior": "PhysicalComponent",
 }
-POL2CAPELLA_TYPES = (
+POL2CAPELLA_TYPES: dict[str, str] = (
     {
         "OperationalEntity": "Entity",
         "OperationalInteraction": "FunctionalExchange",
@@ -74,7 +75,7 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
     """
 
     def serialize_for_delete(uuid: str) -> str:
-        logger.debug(
+        logger.info(
             "Delete work item %r...",
             workitem_id := ctx["POLARION_ID_MAP"][uuid],
         )
@@ -94,22 +95,30 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
             logger.error("Deleting work items failed. %s", error.args[0])
 
 
-def create_work_items(ctx: dict[str, t.Any]) -> None:
-    """Create work items for a Polarion project.
+def post_work_items(ctx: dict[str, t.Any]) -> None:
+    """Post work items in a Polarion project.
 
     Parameters
     ----------
     ctx
         The context for the workitem operation to be processed.
     """
-    if work_items := element.create_work_items(ctx):
+    work_items = [
+        wi
+        for wi in ctx["WORK_ITEMS"].values()
+        if wi.uuid_capella not in ctx["POLARION_ID_MAP"]
+    ]
+    for work_item in work_items:
+        assert work_item is not None
+        logger.info("Create work item for %r...", work_item.title)
+    if work_items:
         try:
             ctx["API"].create_work_items(work_items)
         except polarion_api.PolarionApiException as error:
             logger.error("Creating work items failed. %s", error.args[0])
 
 
-def update_work_items(ctx: dict[str, t.Any]) -> None:
+def patch_work_items(ctx: dict[str, t.Any]) -> None:
     """Update work items in a Polarion project.
 
     Parameters
@@ -118,10 +127,12 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
         The context for the workitem operation to be processed.
     """
 
-    def prepare_for_update(
-        obj: common.GenericElement, ctx: dict[str, t.Any], **kwargs
+    def add_content(
+        obj: common.GenericElement | diag.Diagram,
+        ctx: dict[str, t.Any],
+        **kwargs,
     ) -> serialize.CapellaWorkItem:
-        work_item = serialize.generic_work_item(obj, ctx)
+        work_item = ctx["WORK_ITEMS"][obj.uuid]
         for key, value in kwargs.items():
             if getattr(work_item, key, None) is None:
                 continue
@@ -129,17 +140,28 @@ def update_work_items(ctx: dict[str, t.Any]) -> None:
             setattr(work_item, key, value)
         return work_item
 
-    for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
-        if obj.uuid not in ctx["POLARION_ID_MAP"]:
+    ctx["POLARION_WI_MAP"] = get_polarion_wi_map(ctx)
+    ctx["POLARION_ID_MAP"] = uuids = {
+        uuid: wi.id
+        for uuid, wi in ctx["POLARION_WI_MAP"].items()
+        if wi.status == "open" and uuid in ctx["WORK_ITEMS"]
+    }
+    for uuid in uuids:
+        elements = ctx["MODEL"]
+        if uuid.startswith("_"):
+            elements = ctx["MODEL"].diagrams
+        try:
+            obj = elements.by_uuid(uuid)
+        except KeyError:
+            logger.error("Weird %r", uuid)
             continue
 
         links = element.create_links(obj, ctx)
 
         api_helper.patch_work_item(
             ctx,
-            ctx["POLARION_ID_MAP"][obj.uuid],
             obj,
-            functools.partial(prepare_for_update, links=links),
+            functools.partial(add_content, linked_work_items=links),
             obj._short_repr_(),
             "element",
         )
@@ -174,13 +196,14 @@ def get_elements_and_type_map(
                 type_map[obj.uuid] = typ
 
     _fix_components(elements, type_map)
-    elements["Diagram"] = diagrams = [
-        diagram
-        for diagram in ctx["MODEL"].diagrams
-        if diagram.uuid in ctx["POLARION_ID_MAP"]
+    diagrams_from_cache = {
+        d["uuid"] for d in ctx["DIAGRAM_IDX"] if d["success"]
+    }
+    elements["Diagram"] = [
+        d for d in ctx["MODEL"].diagrams if d.uuid in diagrams_from_cache
     ]
-    for diag in diagrams:
-        type_map[diag.uuid] = "Diagram"
+    for obj in elements["Diagram"]:
+        type_map[obj.uuid] = "Diagram"
     return elements, type_map
 
 
