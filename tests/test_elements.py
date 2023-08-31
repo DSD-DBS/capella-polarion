@@ -20,7 +20,7 @@ from capella2polarion.elements import diagram, element, helpers, serialize
 from .conftest import TEST_DIAGRAM_CACHE, TEST_HOST  # type: ignore[import]
 
 # pylint: disable=redefined-outer-name
-TEST_DIAG_UUID = "_6Td1kOQ8Ee2tXvmHzHzXCA"
+TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
 TEST_ELEMENT_UUID = "0d2edb8f-fa34-4e73-89ec-fb9a63001440"
 TEST_OCAP_UUID = "83d1334f-6180-46c4-a80d-6839341df688"
 TEST_DESCR = (
@@ -39,6 +39,7 @@ TEST_PHYS_COMP = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
 TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
 TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
+TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_POL_ID_MAP = {TEST_E_UUID: "TEST"}
 TEST_POL_TYPE_MAP = {
     TEST_ELEMENT_UUID: "LogicalComponent",
@@ -50,12 +51,12 @@ TEST_DIAG_DESCR = (
 )
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": None,
-    "title": "[CDB] Class tests",
+    "title": "[CC] Capability",
     "description_type": "text/html",
     "type": "diagram",
     "status": "open",
     "additional_attributes": {
-        "uuid_capella": "_Eiw7IOQ9Ee2tXvmHzHzXCA",
+        "uuid_capella": "_APMboAPhEeynfbzU12yy7w",
     },
 }
 TEST_WI_CHECKSUM = (
@@ -67,7 +68,8 @@ class TestDiagramElements:
     @staticmethod
     @pytest.fixture
     def context(
-        diagram_cache_index: list[dict[str, t.Any]]
+        diagram_cache_index: list[dict[str, t.Any]],
+        model: capellambse.MelodyModel,
     ) -> dict[str, t.Any]:
         api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
         uuid = diagram_cache_index[0]["uuid"]
@@ -76,6 +78,7 @@ class TestDiagramElements:
             "API": api,
             "PROJECT_ID": "project_id",
             "CAPELLA_UUIDS": [d["uuid"] for d in diagram_cache_index],
+            "MODEL": model,
             "POLARION_WI_MAP": {uuid: work_item},
             "POLARION_ID_MAP": {uuid: "Diag-1"},
             "DIAGRAM_IDX": diagram_cache_index,
@@ -85,6 +88,8 @@ class TestDiagramElements:
 
     @staticmethod
     def test_create_diagrams(context: dict[str, t.Any]):
+        context["ELEMENTS"] = {"Diagram": context["MODEL"].diagrams}
+
         diagrams = diagram.create_diagrams(context)
 
         assert len(diagrams) == 1
@@ -106,6 +111,7 @@ class TestDiagramElements:
     def test_create_diagrams_filters_non_diagram_elements(
         monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
     ):
+        context["ELEMENTS"] = {"Diagram": context["MODEL"].diagrams}
         attributes = mock.MagicMock()
         attributes.return_value = None
         monkeypatch.setattr(serialize, "element", attributes)
@@ -421,8 +427,8 @@ class TestHelpers:
 
 class TestSerializers:
     @staticmethod
-    def test_diagram():
-        diag = {"uuid": TEST_DIAG_UUID, "name": "test_diagram"}
+    def test_diagram(model: capellambse.MelodyModel):
+        diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
 
         serialized_diagram = serialize.diagram(
             diag, {"DIAGRAM_CACHE": TEST_DIAGRAM_CACHE}
@@ -432,7 +438,7 @@ class TestSerializers:
         assert serialized_diagram == serialize.CapellaWorkItem(
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
-            title="test_diagram",
+            title="[CC] Capability",
             description_type="text/html",
             status="open",
             linked_work_items=[],
@@ -440,7 +446,7 @@ class TestSerializers:
 
     @staticmethod
     def test__decode_diagram():
-        diagram_path = TEST_DIAGRAM_CACHE / "_6Td1kOQ8Ee2tXvmHzHzXCA.svg"
+        diagram_path = TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg"
 
         diagram = serialize._decode_diagram(diagram_path)
 
@@ -543,6 +549,18 @@ class TestSerializers:
                         "preCondition": {"type": "text/html", "value": ""},
                         "postCondition": {"type": "text/html", "value": ""},
                     },
+                },
+            ),
+            (
+                TEST_CONSTRAINT,
+                {
+                    "type": "constraint",
+                    "title": "",
+                    "uuid_capella": TEST_CONSTRAINT,
+                    "description_type": "text/html",
+                    "description": markupsafe.Markup(
+                        "This is a test context.Make Food"
+                    ),
                 },
             ),
         ],

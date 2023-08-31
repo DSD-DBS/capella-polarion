@@ -15,7 +15,8 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
-from capellambse.model.crosslayer import cs, interaction
+from capellambse.model import diagram as diagr
+from capellambse.model.crosslayer import capellacore, cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
@@ -51,7 +52,7 @@ class CapellaWorkItem(polarion_api.WorkItem):
 
 
 def element(
-    obj: dict[str, t.Any] | common.GenericElement,
+    obj: diagr.Diagram | common.GenericElement,
     ctx: dict[str, t.Any],
     serializer: cabc.Callable[[t.Any, dict[str, t.Any]], CapellaWorkItem],
 ) -> CapellaWorkItem | None:
@@ -63,9 +64,9 @@ def element(
         return None
 
 
-def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
+def diagram(diag: diagr.Diagram, ctx: dict[str, t.Any]) -> CapellaWorkItem:
     """Serialize a diagram for Polarion."""
-    diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag['uuid']}.svg"
+    diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag.uuid}.svg"
     src = _decode_diagram(diagram_path)
     style = "; ".join(
         (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
@@ -73,11 +74,11 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
     description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
     return CapellaWorkItem(
         type="diagram",
-        title=diag["name"],
+        title=diag.name,
         description_type="text/html",
         description=description,
         status="open",
-        uuid_capella=diag["uuid"],
+        uuid_capella=diag.uuid,
     )
 
 
@@ -185,7 +186,7 @@ def include_pre_and_post_condition(
     def get_condition(cap: PrePostConditionElement, name: str) -> str:
         if not (condition := getattr(cap, name)):
             return ""
-        return condition.specification["capella:linkedText"].striptags()
+        return get_linked_text(condition, ctx)
 
     def strike_through(string: str) -> str:
         if match := RE_DESCR_DELETED_PATTERN.match(string):
@@ -206,6 +207,26 @@ def include_pre_and_post_condition(
     work_item.preCondition = _condition(True, pre_condition)
     work_item.postCondition = _condition(True, post_condition)
 
+    return work_item
+
+
+def get_linked_text(
+    obj: capellacore.Constraint, ctx: dict[str, t.Any]
+) -> markupsafe.Markup:
+    """Return sanitized markup of the given ``obj`` linked text."""
+    description = obj.specification["capella:linkedText"].striptags()
+    uuids, value = _sanitize_description(description, ctx)
+    if uuids:
+        ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
+    return value
+
+
+def constraint(
+    obj: capellacore.Constraint, ctx: dict[str, t.Any]
+) -> CapellaWorkItem:
+    """Return attributes for a ``Constraint``."""
+    work_item = _generic_work_item(obj, ctx)
+    work_item.description = get_linked_text(obj, ctx)
     return work_item
 
 
@@ -245,4 +266,5 @@ SERIALIZERS = {
     "PhysicalComponent": physical_component,
     "SystemComponent": component_or_actor,
     "Scenario": include_pre_and_post_condition,
+    "Constraint": constraint,
 }

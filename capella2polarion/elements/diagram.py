@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 
 def create_diagrams(ctx: dict[str, t.Any]) -> list[serialize.CapellaWorkItem]:
     """Return a set of new work items of type ``diagram``."""
-    uuids = set(ctx["CAPELLA_UUIDS"]) - set(ctx["POLARION_ID_MAP"])
-    diagrams = [diag for diag in ctx["DIAGRAM_IDX"] if diag["uuid"] in uuids]
+    uuids = {diag["uuid"] for diag in ctx["DIAGRAM_IDX"] if diag["success"]}
+    diagrams = [
+        diag for diag in ctx["ELEMENTS"]["Diagram"] if diag.uuid in uuids
+    ]
     work_items = [
         serialize.element(diagram, ctx, serialize.diagram)
         for diagram in diagrams
