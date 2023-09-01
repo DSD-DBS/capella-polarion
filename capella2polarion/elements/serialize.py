@@ -115,7 +115,7 @@ def _generic_work_item(
 ) -> CapellaWorkItem:
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     raw_description = getattr(obj, "description", markupsafe.Markup(""))
-    uuids, value = _sanitize_description(raw_description, ctx)
+    uuids, value = _sanitize_description(obj, raw_description, ctx)
     ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
     return CapellaWorkItem(
         type=helpers.resolve_element_type(xtype),
@@ -128,7 +128,7 @@ def _generic_work_item(
 
 
 def _sanitize_description(
-    descr: markupsafe.Markup, ctx: dict[str, t.Any]
+    obj: common.GenericElement, descr: markupsafe.Markup, ctx: dict[str, t.Any]
 ) -> tuple[list[str], markupsafe.Markup]:
     referenced_uuids: list[str] = []
     replaced_markup = RE_DESCR_LINK_PATTERN.sub(
@@ -151,7 +151,11 @@ def _sanitize_description(
                 b64_img = base64.b64encode(img.read()).decode("utf8")
                 node.attrib["src"] = f"data:{mime_type};base64,{b64_img}"
         except FileNotFoundError:
-            logger.error("Inline image can't be found from %r", file_path)
+            logger.error(
+                "Inline image can't be found from %r for %r",
+                file_path,
+                obj._short_repr_(),
+            )
 
     repaired_markup = chelpers.process_html_fragments(
         replaced_markup, repair_images

@@ -11,7 +11,12 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import POL2CAPELLA_TYPES, api_helper, serialize
+from capella2polarion.elements import (
+    POL2CAPELLA_TYPES,
+    api_helper,
+    helpers,
+    serialize,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +28,33 @@ TYPES_POL2CAPELLA = {
 
 def create_work_items(ctx: dict[str, t.Any]) -> None:
     """Create a set of work items in Polarion."""
-
-    def serialize_for_create(
-        obj: common.GenericElement,
-    ) -> serialize.CapellaWorkItem | None:
-        logger.debug(
-            "Create work item for model element %r...", obj._short_repr_()
-        )
-        return serialize.element(obj, ctx, serialize.generic_work_item)
-
     objects = chain.from_iterable(ctx["ELEMENTS"].values())
-    work_items = [
-        serialize_for_create(obj)
+    _work_items = [
+        serialize.element(obj, ctx, serialize.generic_work_item)
         for obj in objects
         if obj.uuid not in ctx["POLARION_ID_MAP"]
     ]
-    work_items = list(filter(None.__ne__, work_items))
+    _work_items = list(filter(None.__ne__, _work_items))
+    valid_types = set(map(helpers.resolve_element_type, set(ctx["ELEMENTS"])))
+    work_items: list[polarion_api.CapellaWorkItem] = []
+    missing_types: set[str] = set()
+    for work_item in _work_items:
+        assert work_item is not None
+        if work_item.type in valid_types:
+            work_items.append(work_item)
+        else:
+            missing_types.add(work_item.type)
+    logger.debug(
+        "%r are missing in the capella2polarion configuration",
+        ", ".join(missing_types),
+    )
+
+    for work_item in work_items:
+        assert work_item is not None
+        obj = ctx["MODEL"].by_uuid(work_item.uuid_capella)
+        logger.debug(
+            "Create work item for model element %r...", obj._short_repr_()
+        )
     if work_items:
         try:
             ctx["API"].create_work_items(work_items)

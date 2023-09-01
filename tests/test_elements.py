@@ -189,6 +189,8 @@ class TestModelElements:
     def test_create_work_items(
         monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
     ):
+        context["MODEL"] = model = mock.MagicMock()
+        model.by_uuid.side_effect = context["ELEMENTS"]["FakeModelObject"]
         monkeypatch.setattr(
             serialize,
             "generic_work_item",
