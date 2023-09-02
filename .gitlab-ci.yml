@@ -8,6 +8,7 @@ stages:
 
 .patch-pyproject-toml: &patch-pyproject-toml
   - sed -i -e 's/\(^  "polarion-rest-api-client\).*",/\1",/' pyproject.toml
+  - pip install https://$PYPI_ARTIFACTORY_USERNAME:$PYPI_ARTIFACTORY_PASSWORD@$PYPI_ARTIFACTORY/polarion-rest-api-client/attachments/polarion_rest_api_client-attachments-py3-none-any.whl
 
 wheel:
   stage: build
