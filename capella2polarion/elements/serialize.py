@@ -186,7 +186,7 @@ def include_pre_and_post_condition(
     def get_condition(cap: PrePostConditionElement, name: str) -> str:
         if not (condition := getattr(cap, name)):
             return ""
-        return get_linked_text(condition, ctx)
+        return condition.specification["capella:linkedText"].striptags()
 
     def strike_through(string: str) -> str:
         if match := RE_DESCR_DELETED_PATTERN.match(string):
