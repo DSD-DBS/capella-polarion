@@ -13,7 +13,7 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 
 from capella2polarion import elements
-from capella2polarion.elements import serialize
+from capella2polarion.elements import helpers, serialize
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +28,25 @@ def create_work_items(
 ) -> list[serialize.CapellaWorkItem]:
     """Create a set of work items in Polarion."""
     objects = chain.from_iterable(ctx["ELEMENTS"].values())
-    work_items = [
+    _work_items = [
         serialize.element(obj, ctx, serialize.generic_work_item)
         for obj in objects
     ]
-    return list(filter(None.__ne__, work_items))  # type: ignore[arg-type]
+    _work_items = list(filter(None.__ne__, _work_items))
+    valid_types = set(map(helpers.resolve_element_type, set(ctx["ELEMENTS"])))
+    work_items: list[polarion_api.CapellaWorkItem] = []
+    missing_types: set[str] = set()
+    for work_item in _work_items:
+        assert work_item is not None
+        if work_item.type in valid_types:
+            work_items.append(work_item)
+        else:
+            missing_types.add(work_item.type)
+    logger.debug(
+        "%r are missing in the capella2polarion configuration",
+        ", ".join(missing_types),
+    )
+    return work_items
 
 
 def create_links(
