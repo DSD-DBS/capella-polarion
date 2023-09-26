@@ -103,13 +103,13 @@ def post_work_items(ctx: dict[str, t.Any]) -> None:
     ctx
         The context for the workitem operation to be processed.
     """
-    work_items = [
-        wi
-        for wi in ctx["WORK_ITEMS"].values()
-        if wi.uuid_capella not in ctx["POLARION_ID_MAP"]
-    ]
-    for work_item in work_items:
+    work_items: list[serialize.CapellaWorkItem] = []
+    for work_item in ctx["WORK_ITEMS"].values():
+        if work_item.uuid_capella not in ctx["POLARION_ID_MAP"]:
+            continue
+
         assert work_item is not None
+        work_items.append(work_item)
         logger.info("Create work item for %r...", work_item.title)
     if work_items:
         try:
