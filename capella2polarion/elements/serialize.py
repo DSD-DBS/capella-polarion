@@ -48,7 +48,6 @@ class CapellaWorkItem(polarion_api.WorkItem):
     uuid_capella: str | None
     preCondition: Condition | None
     postCondition: Condition | None
-    checksum: str | None
 
 
 def element(
