@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import logging
+import pathlib
+import re
 import typing as t
 from unittest import mock
 
@@ -12,9 +16,16 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
+from PIL import Image
 
 from capella2polarion import elements
-from capella2polarion.elements import diagram, element, helpers, serialize
+from capella2polarion.elements import (
+    api_helper,
+    diagram,
+    element,
+    helpers,
+    serialize,
+)
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_DIAGRAM_CACHE, TEST_HOST  # type: ignore[import]
@@ -62,6 +73,89 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
 TEST_WI_CHECKSUM = (
     "73508ec0c3048c5b33316dfa56ef5e5f4179ff69efaa209e47ab65b111415e82"
 )
+
+
+class TestAPIHelper:
+    SVG_PATH = (
+        pathlib.Path(__file__).parent / "data" / "svg_diff" / "example.svg"
+    )
+    SVG_PREFIX = "data:image/svg+xml;base64,"
+    PNG_PREFIX = "data:image/png;base64,"
+
+    def encode_png(self, img: Image.Image) -> str:
+        image_buffer = io.BytesIO()
+        img.save(image_buffer, format="PNG")
+        image_buffer.seek(0)
+        encoded = base64.b64encode(image_buffer.read()).decode()
+        image_buffer.close()
+        return f"{self.PNG_PREFIX}{encoded}"
+
+    def test_pixel_diff(self):
+        img1 = Image.new("RGB", (100, 100))
+        img2 = Image.new("RGB", (100, 100))
+        img2.putpixel((0, 0), (255, 0, 0))
+
+        assert (
+            api_helper.has_visual_changes(
+                self.encode_png(img1),
+                self.encode_png(img2),
+            )
+            is True
+        )
+
+        assert (
+            api_helper.has_visual_changes(
+                self.encode_png(img1),
+                self.encode_png(img1),
+            )
+            is False
+        )
+
+    def encode_svg(self, params) -> str:
+        svg = self.SVG_PATH.read_text()
+        for key, value in params.items():
+            svg = re.sub(f"{key}=[\"'][^\"']*[\"']", f'{key}="{value}"', svg)
+        encoded = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+        return f"{self.SVG_PREFIX}{encoded}"
+
+    @pytest.mark.parametrize(
+        "changed_params,expected",
+        [
+            pytest.param(
+                ({}, {}),
+                False,
+                id="unchanged",
+            ),
+            pytest.param(
+                ({"fill": "red"}, {"fill": "blue"}),
+                True,
+                id="fill_changed",
+            ),
+            pytest.param(
+                ({"id": "test"}, {"id": "test2"}),
+                False,
+                id="id_changed",
+            ),
+            pytest.param(
+                (
+                    {"id": "test", "fill": "blue"},
+                    {"id": "test2", "fill": "red"},
+                ),
+                True,
+                id="id_and_fill_changed",
+            ),
+        ],
+    )
+    def test_svg_diff(self, changed_params, expected):
+        old_params, new_params = changed_params
+
+        assert (
+            api_helper.has_visual_changes(
+                self.encode_svg(old_params),
+                self.encode_svg(new_params),
+            )
+            is expected
+        )
 
 
 class TestDiagramElements:

@@ -1,12 +1,16 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Capella2Polarion specific helper functions to use the API."""
+import base64
 import collections.abc as cabc
+import io
 import logging
+import re
 import typing as t
 
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
+from PIL import Image, ImageChops
 
 from capella2polarion.elements import serialize
 
@@ -41,6 +45,12 @@ def patch_work_item(
     if new := receiver(obj, ctx):
         wid = ctx["POLARION_ID_MAP"][obj.uuid]
         old: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][obj.uuid]
+
+        if _type == "diagram" and has_visual_changes(
+            old.description, new.description
+        ):
+            return
+
         if new == old:
             return
 
@@ -70,6 +80,40 @@ def patch_work_item(
         except polarion_api.PolarionApiException as error:
             wi = f"{wid}({_type} {name})"
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
+
+
+def decode_diagram(dia: str):
+    """Decode a diagram from a base64 string."""
+    encoded = dia.replace("data:image/", "").split(";base64,", 1)
+
+    decoded = base64.b64decode(encoded[1])
+
+    return encoded[0], decoded
+
+
+def has_visual_changes(old: str, new: str) -> bool:
+    """Return True if the images of the diagrams differ."""
+    type_old, decoded_old = decode_diagram(old)
+    type_new, decoded_new = decode_diagram(new)
+
+    if type_old != type_new:
+        return True
+
+    if type_old == "svg+xml":
+        d_new = decoded_new.decode("utf-8").splitlines()
+        for i, d_old in enumerate(decoded_old.decode("utf-8").splitlines()):
+            if re.sub(r'id=["\'][^"\']*["\']', "", d_old) != re.sub(
+                r'id=["\'][^"\']*["\']', "", d_new[i]
+            ):
+                return True
+        return False
+
+    image_old = Image.open(io.BytesIO(decoded_old))
+    image_new = Image.open(io.BytesIO(decoded_new))
+
+    diff = ImageChops.difference(image_old, image_new)
+
+    return bool(diff.getbbox())
 
 
 def handle_links(
