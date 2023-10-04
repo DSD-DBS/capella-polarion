@@ -38,6 +38,8 @@ pip install -U pip pre-commit
 pip install -e '.[docs,test]'
 pre-commit install
 ```
+# Current limitations
+The SVGs on diagram work items are not stable, meaning that although the content remains the same, symbols and other decorative or stylistic elements may have new IDs. This caused diagram work items to always be patched, regardless of whether or not there were visual changes. As a workaround, SVGs are converted to the PNG format before calculating the checksum. For this the [cairosvg](https://pypi.org/project/CairoSVG/) library is needed which depends on additional libraries. See the official [CairoSVG documentation](https://cairosvg.org/documentation/#installation) for detailed instructions.
 
 # Contributing
 
