@@ -1,16 +1,14 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Capella2Polarion specific helper functions to use the API."""
-import base64
+import base64 as b64
 import collections.abc as cabc
-import io
 import logging
-import re
 import typing as t
 
+import cairosvg
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
-from PIL import Image, ImageChops
 
 from capella2polarion.elements import serialize
 
@@ -82,38 +80,25 @@ def patch_work_item(
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
-def decode_diagram(dia: str):
-    """Decode a diagram from a base64 string."""
-    encoded = dia.replace("data:image/", "").split(";base64,", 1)
-
-    decoded = base64.b64decode(encoded[1])
-
-    return encoded[0], decoded
+def split_and_decode_diagram(diagram: str) -> tuple[str, bytes]:
+    """Split the diagram into type and data and decode the data."""
+    prefix, encoded = diagram.split(";base64,")
+    return prefix.replace("data:image/", ""), b64.b64decode(encoded)
 
 
 def has_visual_changes(old: str, new: str) -> bool:
     """Return True if the images of the diagrams differ."""
-    type_old, decoded_old = decode_diagram(old)
-    type_new, decoded_new = decode_diagram(new)
+    type_old, decoded_old = split_and_decode_diagram(old)
+    type_new, decoded_new = split_and_decode_diagram(new)
 
     if type_old != type_new:
         return True
 
     if type_old == "svg+xml":
-        d_new = decoded_new.decode("utf-8").splitlines()
-        for i, d_old in enumerate(decoded_old.decode("utf-8").splitlines()):
-            if re.sub(r'id=["\'][^"\']*["\']', "", d_old) != re.sub(
-                r'id=["\'][^"\']*["\']', "", d_new[i]
-            ):
-                return True
-        return False
+        decoded_old = cairosvg.svg2png(bytestring=decoded_old)
+        decoded_new = cairosvg.svg2png(bytestring=decoded_new)
 
-    image_old = Image.open(io.BytesIO(decoded_old))
-    image_new = Image.open(io.BytesIO(decoded_new))
-
-    diff = ImageChops.difference(image_old, image_new)
-
-    return bool(diff.getbbox())
+    return decoded_old != decoded_new
 
 
 def handle_links(

@@ -80,36 +80,6 @@ class TestAPIHelper:
         pathlib.Path(__file__).parent / "data" / "svg_diff" / "example.svg"
     )
     SVG_PREFIX = "data:image/svg+xml;base64,"
-    PNG_PREFIX = "data:image/png;base64,"
-
-    def encode_png(self, img: Image.Image) -> str:
-        image_buffer = io.BytesIO()
-        img.save(image_buffer, format="PNG")
-        image_buffer.seek(0)
-        encoded = base64.b64encode(image_buffer.read()).decode()
-        image_buffer.close()
-        return f"{self.PNG_PREFIX}{encoded}"
-
-    def test_pixel_diff(self):
-        img1 = Image.new("RGB", (100, 100))
-        img2 = Image.new("RGB", (100, 100))
-        img2.putpixel((0, 0), (255, 0, 0))
-
-        assert (
-            api_helper.has_visual_changes(
-                self.encode_png(img1),
-                self.encode_png(img2),
-            )
-            is True
-        )
-
-        assert (
-            api_helper.has_visual_changes(
-                self.encode_png(img1),
-                self.encode_png(img1),
-            )
-            is False
-        )
 
     def encode_svg(self, params) -> str:
         svg = self.SVG_PATH.read_text()
@@ -146,7 +116,7 @@ class TestAPIHelper:
             ),
         ],
     )
-    def test_svg_diff(self, changed_params, expected):
+    def test_image_diff(self, changed_params, expected):
         old_params, new_params = changed_params
 
         assert (

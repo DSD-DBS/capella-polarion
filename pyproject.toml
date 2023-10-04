@@ -33,6 +33,7 @@ dependencies = [
   "PyYAML",
   "polarion-rest-api-client @ git+https://github.com/DSD-DBS/polarion-rest-api-client.git@feat-add-attachments-workitem-relations",
   "requests",
+  "cairosvg",
 ]
 
 [project.urls]
