@@ -3,8 +3,7 @@
 
 from __future__ import annotations
 
-import base64
-import io
+import base64 as b64
 import logging
 import pathlib
 import re
@@ -16,7 +15,6 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
-from PIL import Image
 
 from capella2polarion import elements
 from capella2polarion.elements import (
@@ -79,17 +77,18 @@ class TestAPIHelper:
     SVG_PATH = (
         pathlib.Path(__file__).parent / "data" / "svg_diff" / "example.svg"
     )
-    SVG_PREFIX = "data:image/svg+xml;base64,"
 
-    def encode_svg(self, params) -> str:
+    def encode_svg(self, params: dict[str, str]) -> str:
         svg = self.SVG_PATH.read_text()
         for key, value in params.items():
             svg = re.sub(f"{key}=[\"'][^\"']*[\"']", f'{key}="{value}"', svg)
-        encoded = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
-        return f"{self.SVG_PREFIX}{encoded}"
+        content_encoded = b64.b64encode(svg.encode("utf-8"))
+        image_data = b"data:image/svg+xml;base64," + content_encoded
+        src = image_data.decode()
+        return src
 
     @pytest.mark.parametrize(
-        "changed_params,expected",
+        "params,expected",
         [
             pytest.param(
                 ({}, {}),
@@ -97,9 +96,14 @@ class TestAPIHelper:
                 id="unchanged",
             ),
             pytest.param(
-                ({"fill": "red"}, {"fill": "blue"}),
+                ({"fill": "blue"}, {"fill": "red"}),
                 True,
                 id="fill_changed",
+            ),
+            pytest.param(
+                ({"height": "100"}, {"height": "50"}),
+                True,
+                id="height_changed",
             ),
             pytest.param(
                 ({"id": "test"}, {"id": "test2"}),
@@ -116,16 +120,14 @@ class TestAPIHelper:
             ),
         ],
     )
-    def test_image_diff(self, changed_params, expected):
-        old_params, new_params = changed_params
+    def test_image_diff(self, params, expected):
+        old_params, new_params = params
+        old_svg = self.encode_svg(old_params)
+        new_svg = self.encode_svg(new_params)
 
-        assert (
-            api_helper.has_visual_changes(
-                self.encode_svg(old_params),
-                self.encode_svg(new_params),
-            )
-            is expected
-        )
+        is_different = api_helper.has_visual_changes(old_svg, new_svg)
+
+        assert is_different is expected
 
 
 class TestDiagramElements:

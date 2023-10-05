@@ -81,7 +81,7 @@ def patch_work_item(
 
 
 def split_and_decode_diagram(diagram: str) -> tuple[str, bytes]:
-    """Split the diagram into type and data and decode the data."""
+    """Split the diagram into type and decoded data."""
     prefix, encoded = diagram.split(";base64,")
     return prefix.replace("data:image/", ""), b64.b64decode(encoded)
 
