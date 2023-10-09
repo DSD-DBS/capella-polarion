@@ -112,10 +112,7 @@ class TestAPIHelper:
     def test_image_diff(self, params, expected):
         old_params, new_params = params
         old_svg = self._parameterize_and_decode_svg(self.SVG_PATH, old_params)
-        new_svg = self._parameterize_and_decode_svg(self.SVG_PATH, new_params)
-
         is_different = api_helper.has_visual_changes(old_svg, new_svg)
-
         assert is_different is expected
 
     def _parameterize_and_decode_svg(
