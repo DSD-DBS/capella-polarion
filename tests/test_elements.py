@@ -55,9 +55,7 @@ TEST_POL_TYPE_MAP = {
     TEST_OCAP_UUID: "OperationalCapability",
     TEST_WE_UUID: "Entity",
 }
-TEST_DIAG_DESCR = (
-    '<html><p><img style="max-width: 100%" src="data:image/svg+xml;base64,'
-)
+TEST_DIAG_DESCR = '<html><p><img style="max-width: 100%" src="attachment:'
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": None,
     "title": "[CC] Capability",
@@ -77,15 +75,6 @@ class TestAPIHelper:
     SVG_PATH = (
         pathlib.Path(__file__).parent / "data" / "svg_diff" / "example.svg"
     )
-
-    def encode_svg(self, params: dict[str, str]) -> str:
-        svg = self.SVG_PATH.read_text()
-        for key, value in params.items():
-            svg = re.sub(f"{key}=[\"'][^\"']*[\"']", f'{key}="{value}"', svg)
-        content_encoded = b64.b64encode(svg.encode("utf-8"))
-        image_data = b"data:image/svg+xml;base64," + content_encoded
-        src = image_data.decode()
-        return src
 
     @pytest.mark.parametrize(
         "params,expected",
@@ -122,12 +111,22 @@ class TestAPIHelper:
     )
     def test_image_diff(self, params, expected):
         old_params, new_params = params
-        old_svg = self.encode_svg(old_params)
-        new_svg = self.encode_svg(new_params)
+        old_svg = self._parameterize_and_decode_svg(self.SVG_PATH, old_params)
+        new_svg = self._parameterize_and_decode_svg(self.SVG_PATH, new_params)
 
         is_different = api_helper.has_visual_changes(old_svg, new_svg)
 
         assert is_different is expected
+
+    def _parameterize_and_decode_svg(
+        self, diagram_path: pathlib.Path, params: dict[str, str]
+    ) -> str:
+        svg = diagram_path.read_text()
+        for key, value in params.items():
+            svg = re.sub(f"{key}=[\"'][^\"']*[\"']", f'{key}="{value}"', svg)
+        content_encoded = b64.b64encode(svg.encode("utf-8"))
+        image_data = b"data:image/svg+xml;base64," + content_encoded
+        return image_data.decode()
 
 
 class TestDiagramElements:
@@ -494,32 +493,6 @@ class TestHelpers:
 
 
 class TestSerializers:
-    @staticmethod
-    def test_diagram(model: capellambse.MelodyModel):
-        diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
-
-        serialized_diagram = serialize.diagram(
-            diag, {"DIAGRAM_CACHE": TEST_DIAGRAM_CACHE}
-        )
-        serialized_diagram.description = None
-
-        assert serialized_diagram == serialize.CapellaWorkItem(
-            type="diagram",
-            uuid_capella=TEST_DIAG_UUID,
-            title="[CC] Capability",
-            description_type="text/html",
-            status="open",
-            linked_work_items=[],
-        )
-
-    @staticmethod
-    def test__decode_diagram():
-        diagram_path = TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg"
-
-        diagram = serialize._decode_diagram(diagram_path)
-
-        assert diagram.startswith("data:image/svg+xml;base64,")
-
     @staticmethod
     @pytest.mark.parametrize(
         "uuid,expected",
