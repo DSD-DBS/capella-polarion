@@ -80,25 +80,27 @@ def patch_work_item(
             logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
-def split_and_decode_diagram(diagram: str) -> tuple[str, bytes]:
-    """Split the diagram into type and decoded data."""
-    prefix, encoded = diagram.split(";base64,")
-    return prefix.replace("data:image/", ""), b64.b64decode(encoded)
-
-
 def has_visual_changes(old: str, new: str) -> bool:
     """Return True if the images of the diagrams differ."""
-    type_old, decoded_old = split_and_decode_diagram(old)
-    type_new, decoded_new = split_and_decode_diagram(new)
+    type_old, decoded_old = _typify_and_decode_diagram(old)
+    type_new, decoded_new = _typify_and_decode_diagram(new)
 
     if type_old != type_new:
         return True
 
-    if type_old == "svg+xml":
+    if type_old == "image/svg+xml":
         decoded_old = cairosvg.svg2png(bytestring=decoded_old)
         decoded_new = cairosvg.svg2png(bytestring=decoded_new)
 
     return decoded_old != decoded_new
+
+
+def _typify_and_decode_diagram(diagram: str) -> tuple[str, bytes]:
+    """Split the diagram into type and decoded data."""
+    prefix, content = diagram.split(";base64,")
+    mimetype = prefix.replace("data:", "")
+    content_decoded = b64.b64decode(content)
+    return mimetype, content_decoded
 
 
 def handle_links(

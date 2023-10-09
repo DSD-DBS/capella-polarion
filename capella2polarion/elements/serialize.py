@@ -3,7 +3,7 @@
 """Objects for serialization of capella objects to workitems."""
 from __future__ import annotations
 
-import base64
+import base64 as b64
 import collections.abc as cabc
 import logging
 import mimetypes
@@ -11,6 +11,7 @@ import pathlib
 import re
 import typing as t
 
+import cairosvg
 import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
@@ -66,35 +67,31 @@ def element(
 def diagram(diag: diagr.Diagram, ctx: dict[str, t.Any]) -> CapellaWorkItem:
     """Serialize a diagram for Polarion."""
     diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag.uuid}.svg"
-    src = _decode_diagram(diagram_path)
-    style = "; ".join(
-        (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
-    )
-    description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
+    content = diagram_path.read_bytes()
+    content_svg = b64.standard_b64encode(content)
+    svg_attachment = attachment("image/svg+xml", f"{diag.uuid}", content_svg)
+    content_png = b64.b16encode(cairosvg.svg2png(content.decode("utf8")))
+    png_attachment = attachment("image/png", f"{diag.uuid}", content_png)
     return CapellaWorkItem(
         type="diagram",
         title=diag.name,
-        description_type="text/html",
-        description=description,
         status="open",
+        attachments=[svg_attachment, png_attachment],
         uuid_capella=diag.uuid,
     )
 
 
-def _decode_diagram(diagram_path: pathlib.Path) -> str:
-    mime_type, _ = mimetypes.guess_type(diagram_path)
-    if mime_type is None:
-        logger.error(
-            "Do not understand the MIME subtype for the diagram '%s'!",
-            diagram_path,
-        )
-        return ""
-    content = diagram_path.read_bytes()
-    content_encoded = base64.standard_b64encode(content)
-    assert mime_type is not None
-    image_data = b"data:" + mime_type.encode() + b";base64," + content_encoded
-    src = image_data.decode()
-    return src
+def attachment(
+    mime_type: str, name: str, content: bytes
+) -> polarion_api.WorkItemAttachment:
+    """Serialize an attachment for Polarion."""
+    return polarion_api.WorkItemAttachment(
+        work_item_id="",
+        id="",
+        content_bytes=content,
+        mime_type=mime_type,
+        file_name=name,
+    )
 
 
 def generic_work_item(
@@ -143,7 +140,7 @@ def _sanitize_description(
         filehandler = resources[["\x00", workspace][workspace in resources]]
         try:
             with filehandler.open(file_path, "r") as img:
-                b64_img = base64.b64encode(img.read()).decode("utf8")
+                b64_img = b64.b64encode(img.read()).decode("utf8")
                 node.attrib["src"] = f"data:{mime_type};base64,{b64_img}"
         except FileNotFoundError:
             logger.error("Inline image can't be found from %r", file_path)
