@@ -173,8 +173,7 @@ def replace_markup(
             f'id="fake" data-item-id="{pid}" data-option-id="long">'
             "</span>"
         )
-    else:
-        return non_matcher(match.group(0))
+    return non_matcher(match.group(0))
 
 
 def include_pre_and_post_condition(
@@ -262,7 +261,10 @@ def physical_component(
     return work_item
 
 
-SERIALIZERS = {
+Serializer = cabc.Callable[
+    [common.GenericElement, dict[str, t.Any]], CapellaWorkItem
+]
+SERIALIZERS: dict[str, Serializer] = {
     "CapabilityRealization": include_pre_and_post_condition,
     "LogicalComponent": component_or_actor,
     "OperationalCapability": include_pre_and_post_condition,
