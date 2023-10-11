@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import collections.abc as cabc
+import functools
 import logging
 import typing as t
 from itertools import chain
@@ -11,6 +12,7 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 from capellambse.model import diagram as diag
+from capellambse.model.crosslayer import fa
 
 from capella2polarion import elements
 from capella2polarion.elements import helpers, serialize
@@ -80,7 +82,7 @@ def create_links(
             continue
 
         if isinstance(refs, common.ElementList):
-            new = refs.by_uuid
+            new: cabc.Iterable[str] = refs.by_uuid  # type: ignore[assignment]
         else:
             assert hasattr(refs, "uuid")
             new = [refs.uuid]
@@ -141,7 +143,9 @@ def _handle_diagram_reference_links(
     return ref_links
 
 
-def _collect_uuids(nodes: list[common.GenericElement]) -> cabc.Iterator[str]:
+def _collect_uuids(
+    nodes: cabc.Iterable[common.GenericElement],
+) -> cabc.Iterator[str]:
     type_resolvers = TYPE_RESOLVERS
     for node in nodes:
         uuid = node.uuid
@@ -171,7 +175,34 @@ def _create(
     return list(filter(None.__ne__, _new_links))
 
 
-CUSTOM_LINKS = {
-    "description_reference": _handle_description_reference_links,
-    "diagram_elements": _handle_diagram_reference_links,
+def _handle_exchanges(
+    context: dict[str, t.Any],
+    obj: fa.Function,
+    role_id: str,
+    links: dict[str, polarion_api.WorkItemLink],
+    attr: str = "inputs",
+) -> list[polarion_api.WorkItemLink]:
+    wid = context["POLARION_ID_MAP"][obj.uuid]
+    exchanges: list[str] = []
+    for element in getattr(obj, attr):
+        uuids = element.exchanges.by_uuid
+        exs = _get_work_item_ids(context, wid, uuids, role_id)
+        exchanges.extend(set(exs))
+    return _create(context, wid, role_id, exchanges, links)
+
+
+CustomLinkMaker = cabc.Callable[
+    [
+        dict[str, t.Any],
+        diag.Diagram | common.GenericElement,
+        str,
+        dict[str, t.Any],
+    ],
+    list[polarion_api.WorkItemLink],
+]
+CUSTOM_LINKS: dict[str, CustomLinkMaker] = {
+    "description_reference": _handle_description_reference_links,  # type: ignore[dict-item]
+    "diagram_elements": _handle_diagram_reference_links,  # type: ignore[dict-item]
+    "input_exchanges": functools.partial(_handle_exchanges, attr="inputs"),
+    "output_exchanges": functools.partial(_handle_exchanges, attr="outputs"),
 }

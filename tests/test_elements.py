@@ -137,7 +137,7 @@ class FakeModelObject:
         self,
         uuid: str,
         name: str = "",
-        attribute: FakeModelObject | None = None,
+        attribute: t.Any | None = None,
     ):
         self.uuid = uuid
         self.name = name
@@ -238,6 +238,26 @@ class TestModelElements:
         assert links == [expected]
 
     @staticmethod
+    def test_create_links_custom_exchanges_resolver(context: dict[str, t.Any]):
+        function_uuid = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
+        obj = context["MODEL"].by_uuid(function_uuid)
+        context["POLARION_ID_MAP"][function_uuid] = "Obj-1"
+        context["POLARION_ID_MAP"][
+            "1a414995-f4cd-488c-8152-486e459fb9de"
+        ] = "Obj-2"
+        context["ROLES"] = {"SystemFunction": ["input_exchanges"]}
+        expected = polarion_api.WorkItemLink(
+            "Obj-1",
+            "Obj-2",
+            "input_exchanges",
+            secondary_work_item_project="project_id",
+        )
+
+        links = element.create_links(obj, context)
+
+        assert links == [expected]
+
+    @staticmethod
     def test_create_links_missing_attribute(
         context: dict[str, t.Any], caplog: pytest.LogCaptureFixture
     ):
@@ -282,7 +302,7 @@ class TestModelElements:
             secondary_work_item_project="project_id",
         )
 
-        links = element.create_links(obj, context)
+        links = element.create_links(obj, context)  # type: ignore[arg-type]
 
         assert expected_link in links
         assert expected_link1 in links
