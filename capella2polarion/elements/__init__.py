@@ -105,7 +105,7 @@ def post_work_items(ctx: dict[str, t.Any]) -> None:
     """
     work_items: list[serialize.CapellaWorkItem] = []
     for work_item in ctx["WORK_ITEMS"].values():
-        if work_item.uuid_capella not in ctx["POLARION_ID_MAP"]:
+        if work_item.uuid_capella in ctx["POLARION_ID_MAP"]:
             continue
 
         assert work_item is not None
