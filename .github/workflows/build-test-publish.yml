@@ -29,6 +29,17 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{matrix.python_version}}
+      - name: Download GTK Runtime Installer (Windows only)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install wget -y
+          wget https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2022-01-04/gtk3-runtime-3.24.31-2022-01-04-ts-win64.exe
+      - name: Install GTK Runtime (Windows only)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          Start-Process -FilePath "gtk3-runtime-3.24.31-2022-01-04-ts-win64.exe" -ArgumentList "/SILENT /LOG=install.log" -Wait -NoNewWindow
+          Get-Content "install.log"
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -48,7 +59,6 @@ jobs:
       - name: Run unit tests
         run: |-
           python -m pytest --cov-report=term --cov=capella2polarion --rootdir=.
-
 
 #  publish:
 #    name: Publish artifacts
