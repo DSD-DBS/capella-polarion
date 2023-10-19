@@ -59,6 +59,7 @@ def create_work_items(
             "%r are missing in the capella2polarion configuration",
             ", ".join(missing_types),
         )
+    ctx["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
     return work_items
 
 
@@ -212,8 +213,8 @@ CustomLinkMaker = cabc.Callable[
     list[polarion_api.WorkItemLink],
 ]
 CUSTOM_LINKS: dict[str, CustomLinkMaker] = {
-    "description_reference": _handle_description_reference_links,  # type: ignore[dict-item]
-    "diagram_elements": _handle_diagram_reference_links,  # type: ignore[dict-item]
+    "description_reference": _handle_description_reference_links,
+    "diagram_elements": _handle_diagram_reference_links,
     "input_exchanges": functools.partial(_handle_exchanges, attr="inputs"),
     "output_exchanges": functools.partial(_handle_exchanges, attr="outputs"),
 }

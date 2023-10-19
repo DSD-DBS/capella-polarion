@@ -232,14 +232,13 @@ def model_elements(
     ctx.obj["ELEMENTS"]["Diagram"] = [
         diag for diag in ctx.obj["ELEMENTS"]["Diagram"] if diag.uuid in duuids
     ]
-    work_items = elements.element.create_work_items(ctx.obj)
-    ctx.obj["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
 
+    elements.element.create_work_items(ctx.obj)
     elements.delete_work_items(ctx.obj)
     elements.post_work_items(ctx.obj)
 
-    work_items = elements.element.create_work_items(ctx.obj)
-    ctx.obj["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
+    # Create missing links b/c of unresolved references
+    elements.element.create_work_items(ctx.obj)
     elements.patch_work_items(ctx.obj)
 
     elements.make_model_elements_index(ctx.obj)
