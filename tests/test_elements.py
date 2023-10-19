@@ -14,7 +14,7 @@ import pytest
 from capellambse.model import common
 
 from capella2polarion import elements
-from capella2polarion.elements import diagram, element, helpers, serialize
+from capella2polarion.elements import element, helpers, serialize
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_DIAGRAM_CACHE, TEST_HOST  # type: ignore[import]
@@ -90,7 +90,7 @@ class TestDiagramElements:
     def test_create_diagrams(context: dict[str, t.Any]):
         context["ELEMENTS"] = {"Diagram": context["MODEL"].diagrams}
 
-        diagrams = diagram.create_diagrams(context)
+        diagrams = element.create_work_items(context)
 
         assert len(diagrams) == 1
         work_item = diagrams[0]
@@ -116,7 +116,7 @@ class TestDiagramElements:
         attributes.return_value = None
         monkeypatch.setattr(serialize, "element", attributes)
 
-        diagram.create_diagrams(context)
+        element.create_work_items(context)
 
         assert context["API"].create_work_items.call_count == 0
 
@@ -385,7 +385,7 @@ class TestModelElements:
 
     @staticmethod
     def test_update_links_with_no_elements(context: dict[str, t.Any]):
-        context["POLARION_ID_MAP"] = {}
+        context["POLARION_WI_MAP"] = {}
 
         elements.patch_work_items(context)
 

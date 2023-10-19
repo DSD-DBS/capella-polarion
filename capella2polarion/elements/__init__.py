@@ -114,6 +114,11 @@ def post_work_items(ctx: dict[str, t.Any]) -> None:
     if work_items:
         try:
             ctx["API"].create_work_items(work_items)
+            workitems = {wi.uuid_capella: wi for wi in work_items if wi.id}
+            ctx["POLARION_WI_MAP"].update(workitems)
+            ctx["POLARION_ID_MAP"] = {
+                uuid: wi.id for uuid, wi in ctx["POLARION_WI_MAP"].items()
+            }
         except polarion_api.PolarionApiException as error:
             logger.error("Creating work items failed. %s", error.args[0])
 
@@ -140,21 +145,16 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
             setattr(work_item, key, value)
         return work_item
 
-    ctx["POLARION_WI_MAP"] = get_polarion_wi_map(ctx)
     ctx["POLARION_ID_MAP"] = uuids = {
         uuid: wi.id
         for uuid, wi in ctx["POLARION_WI_MAP"].items()
-        if wi.status == "open" and uuid in ctx["WORK_ITEMS"]
+        if wi.status == "open" and wi.uuid_capella and wi.id
     }
     for uuid in uuids:
         elements = ctx["MODEL"]
         if uuid.startswith("_"):
             elements = ctx["MODEL"].diagrams
-        try:
-            obj = elements.by_uuid(uuid)
-        except KeyError:
-            logger.error("Weird %r", uuid)
-            continue
+        obj = elements.by_uuid(uuid)
 
         links = element.create_links(obj, ctx)
 
@@ -188,6 +188,9 @@ def get_elements_and_type_map(
         for typ in pol_types:
             if isinstance(typ, dict):
                 typ = list(typ.keys())[0]
+
+            if typ == "Diagram":
+                continue
 
             xtype = convert_type.get(typ, typ)
             objects = ctx["MODEL"].search(xtype, below=below)
@@ -277,7 +280,6 @@ def make_model_elements_index(ctx: dict[str, t.Any]) -> None:
 
 from . import (  # pylint: disable=cyclic-import
     api_helper,
-    diagram,
     element,
     helpers,
     serialize,

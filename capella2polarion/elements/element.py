@@ -28,12 +28,21 @@ TYPES_POL2CAPELLA = {
 def create_work_items(
     ctx: dict[str, t.Any]
 ) -> list[serialize.CapellaWorkItem]:
-    """Create a set of work items in Polarion."""
+    """Create a list of work items for Polarion."""
     objects = chain.from_iterable(ctx["ELEMENTS"].values())
-    _work_items = [
-        serialize.element(obj, ctx, serialize.generic_work_item)
-        for obj in objects
+    _work_items = []
+    serializer: cabc.Callable[
+        [diag.Diagram | common.GenericElement, dict[str, t.Any]],
+        serialize.CapellaWorkItem,
     ]
+    for obj in objects:
+        if isinstance(obj, diag.Diagram):
+            serializer = serialize.diagram
+        else:
+            serializer = serialize.generic_work_item
+
+        _work_items.append(serialize.element(obj, ctx, serializer))
+
     _work_items = list(filter(None.__ne__, _work_items))
     valid_types = set(map(helpers.resolve_element_type, set(ctx["ELEMENTS"])))
     work_items: list[polarion_api.CapellaWorkItem] = []
@@ -44,10 +53,12 @@ def create_work_items(
             work_items.append(work_item)
         else:
             missing_types.add(work_item.type)
-    logger.debug(
-        "%r are missing in the capella2polarion configuration",
-        ", ".join(missing_types),
-    )
+
+    if missing_types:
+        logger.debug(
+            "%r are missing in the capella2polarion configuration",
+            ", ".join(missing_types),
+        )
     return work_items
 
 
@@ -118,7 +129,7 @@ def _handle_description_reference_links(
     role_id: str,
     links: dict[str, polarion_api.WorkItemLink],
 ) -> list[polarion_api.WorkItemLink]:
-    refs = context["DESCR_REFERENCES"].get(obj.uuid)
+    refs = context["DESCR_REFERENCES"].get(obj.uuid, [])
     wid = context["POLARION_ID_MAP"][obj.uuid]
     refs = set(_get_work_item_ids(context, wid, refs, role_id))
     return _create(context, wid, role_id, refs, links)
