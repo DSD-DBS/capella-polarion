@@ -67,10 +67,6 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
             {},
         ),
     )
-    mock_create_diagrams = mock.MagicMock()
-    monkeypatch.setattr(
-        elements.diagram, "create_diagrams", mock_create_diagrams
-    )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
     mock_post_work_items = mock.MagicMock()
@@ -93,5 +89,4 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     assert mock_delete_work_items.call_count == 1
     assert mock_patch_work_items.call_count == 1
     assert mock_post_work_items.call_count == 1
-    assert mock_create_diagrams.call_count == 1
     assert ELEMENTS_IDX_PATH.exists()

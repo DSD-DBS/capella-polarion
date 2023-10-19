@@ -79,13 +79,30 @@ def _get_roles_from_config(ctx: dict[str, t.Any]) -> dict[str, list[str]]:
                 roles[key] = list(role_ids)
         else:
             roles[typ] = []
-    roles["Diagram"] = ["diagram_elements"]
     return roles
 
 
 def _sanitize_config(
-    config: dict[str, list[str | dict[str, t.Any]]], special: dict[str, t.Any]
+    config: dict[str, list[str | dict[str, t.Any]]],
+    special: list[str | dict[str, t.Any]],
 ) -> dict[str, t.Any]:
+    special_config: dict[str, t.Any] = {}
+    for typ in special:
+        if isinstance(typ, str):
+            special_config[typ] = None
+        else:
+            special_config.update(typ)
+
+    lookup: dict[str, dict[str, list[str]]] = {}
+    for layer, xtypes in config.items():
+        for xt in xtypes:
+            if isinstance(xt, str):
+                item: dict[str, list[str]] = {xt: []}
+            else:
+                item = xt
+
+            lookup.setdefault(layer, {}).update(item)
+
     new_config: dict[str, t.Any] = {}
     for layer, xtypes in config.items():
         new_entries: list[str | dict[str, t.Any]] = []
@@ -93,16 +110,36 @@ def _sanitize_config(
             if isinstance(xtype, dict):
                 for sub_key, sub_value in xtype.items():
                     new_value = (
-                        special.get("*", [])
-                        + special.get(sub_key, [])
+                        special_config.get("*", [])
+                        + special_config.get(sub_key, [])
                         + sub_value
                     )
                     new_entries.append({sub_key: new_value})
             else:
-                if new_value := special.get("*", []) + special.get(xtype, []):
+                star = special_config.get("*", [])
+                special_xtype = special_config.get(xtype, [])
+                if new_value := star + special_xtype:
                     new_entries.append({xtype: new_value})
                 else:
                     new_entries.append(xtype)
+
+        wildcard_values = special_config.get("*", [])
+        for key, value in special_config.items():
+            if key == "*":
+                continue
+
+            if isinstance(value, list):
+                new_value = (
+                    lookup.get(layer, {}).get(key, [])
+                    + wildcard_values
+                    + value
+                )
+                new_entries.append({key: new_value})
+            elif value is None and key not in [
+                entry if isinstance(entry, str) else list(entry.keys())[0]
+                for entry in new_entries
+            ]:
+                new_entries.append({key: wildcard_values})
         new_config[layer] = new_entries
 
     return new_config
@@ -189,16 +226,20 @@ def model_elements(
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
-    diagrams = ctx.obj["ELEMENTS"].pop("Diagram", [])
-    work_items = elements.element.create_work_items(ctx.obj)
-    ctx.obj["ELEMENTS"]["Diagram"] = diagrams
-    pdiagrams = elements.diagram.create_diagrams(ctx.obj)
-    ctx.obj["WORK_ITEMS"] = {
-        wi.uuid_capella: wi for wi in work_items + pdiagrams
+    duuids = {
+        diag["uuid"] for diag in ctx.obj["DIAGRAM_IDX"] if diag["success"]
     }
+    ctx.obj["ELEMENTS"]["Diagram"] = [
+        diag for diag in ctx.obj["ELEMENTS"]["Diagram"] if diag.uuid in duuids
+    ]
+    work_items = elements.element.create_work_items(ctx.obj)
+    ctx.obj["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
 
     elements.delete_work_items(ctx.obj)
     elements.post_work_items(ctx.obj)
+
+    work_items = elements.element.create_work_items(ctx.obj)
+    ctx.obj["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
     elements.patch_work_items(ctx.obj)
 
     elements.make_model_elements_index(ctx.obj)
