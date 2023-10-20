@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import collections
 import collections.abc as cabc
 import logging
 import mimetypes
@@ -113,6 +114,7 @@ def _generic_work_item(
     raw_description = getattr(obj, "description", markupsafe.Markup(""))
     uuids, value = _sanitize_description(raw_description, ctx)
     ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
+    requirement_types = _get_requirement_types_text(obj)
     return CapellaWorkItem(
         type=helpers.resolve_element_type(xtype),
         title=obj.name,
@@ -120,7 +122,43 @@ def _generic_work_item(
         description=value,
         status="open",
         uuid_capella=obj.uuid,
+        **requirement_types,
     )
+
+
+def _get_requirement_types_text(
+    obj: common.GenericElement,
+) -> dict[str, dict[str, str]]:
+    type_texts = collections.defaultdict(list)
+    for req in obj.requirements:
+        if req is None:
+            logger.error(
+                "RequirementsRelation with broken target found %r", obj.name
+            )
+            continue
+
+        if not (req.type and req.text):
+            continue
+
+        type_texts[req.type.long_name].append(req.text)
+    return _format_texts(type_texts)
+
+
+def _format_texts(
+    type_texts: dict[str, list[str]]
+) -> dict[str, dict[str, str]]:
+    def _format(texts: list[str]) -> dict[str, str]:
+        if len(texts) > 1:
+            items = "".join(f"<li>{text}</li>" for text in texts)
+            text = f"<ul>{items}</ul>"
+        else:
+            text = texts[0]
+        return {"type": "text/html", "value": text}
+
+    requirement_types = {}
+    for typ, texts in type_texts.items():
+        requirement_types[typ.lower()] = _format(texts)
+    return requirement_types
 
 
 def _sanitize_description(
