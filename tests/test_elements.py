@@ -62,6 +62,12 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
 TEST_WI_CHECKSUM = (
     "73508ec0c3048c5b33316dfa56ef5e5f4179ff69efaa209e47ab65b111415e82"
 )
+TEST_REQ_TEXT = (
+    "<p>Test requirement 1 really l o n g text that is&nbsp;way too long to "
+    "display here as that</p>\n\n<p>&lt; &gt; &quot; &#39;</p>\n\n<ul>\n\t<li>"
+    "This&nbsp;is a list</li>\n\t<li>an unordered one</li>\n</ul>\n\n<ol>\n\t"
+    "<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n"
+)
 
 
 class TestDiagramElements:
@@ -478,7 +484,7 @@ class TestSerializers:
     @pytest.mark.parametrize(
         "uuid,expected",
         [
-            (
+            pytest.param(
                 TEST_ELEMENT_UUID,
                 {
                     "type": "logicalComponent",
@@ -486,9 +492,14 @@ class TestSerializers:
                     "uuid_capella": TEST_ELEMENT_UUID,
                     "description_type": "text/html",
                     "description": markupsafe.Markup(TEST_DESCR),
+                    "reqtype": {
+                        "type": "text/html",
+                        "value": markupsafe.Markup(TEST_REQ_TEXT),
+                    },
                 },
+                id="logicalComponent",
             ),
-            (
+            pytest.param(
                 TEST_OCAP_UUID,
                 {
                     "type": "operationalCapability",
@@ -501,8 +512,9 @@ class TestSerializers:
                         "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
+                id="operationalCapability",
             ),
-            (
+            pytest.param(
                 TEST_WE_UUID,
                 {
                     "type": "entity",
@@ -511,8 +523,9 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(TEST_WE_DESCR),
                 },
+                id="entity",
             ),
-            (
+            pytest.param(
                 TEST_ACTOR_UUID,
                 {
                     "type": "logicalActor",
@@ -524,8 +537,9 @@ class TestSerializers:
                         "and greatest mage of all time.</p>\n"
                     ),
                 },
+                id="logicalActor",
             ),
-            (
+            pytest.param(
                 TEST_PHYS_COMP,
                 {
                     "type": "physicalComponent",
@@ -534,8 +548,9 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
                 },
+                id="physicalComponent",
             ),
-            (
+            pytest.param(
                 TEST_PHYS_NODE,
                 {
                     "type": "physicalComponentNode",
@@ -544,8 +559,9 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
                 },
+                id="physicalComponentNode",
             ),
-            (
+            pytest.param(
                 TEST_SCENARIO,
                 {
                     "type": "scenario",
@@ -558,8 +574,9 @@ class TestSerializers:
                         "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
+                id="scenario",
             ),
-            (
+            pytest.param(
                 TEST_CAP_REAL,
                 {
                     "type": "capabilityRealization",
@@ -572,8 +589,9 @@ class TestSerializers:
                         "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
+                id="capabilityRealization",
             ),
-            (
+            pytest.param(
                 TEST_CONSTRAINT,
                 {
                     "type": "constraint",
@@ -584,6 +602,7 @@ class TestSerializers:
                         "This is a test context.Make Food"
                     ),
                 },
+                id="constraint",
             ),
         ],
     )
