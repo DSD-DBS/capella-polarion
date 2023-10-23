@@ -138,6 +138,9 @@ def _get_requirement_types_text(
             continue
 
         if not (req.type and req.text):
+            logger.warning(
+                "Requirement without text or type found %r", req.name
+            )
             continue
 
         type_texts[req.type.long_name].append(req.text)
