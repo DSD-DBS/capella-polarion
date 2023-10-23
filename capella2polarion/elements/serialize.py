@@ -224,9 +224,7 @@ def constraint(
 ) -> CapellaWorkItem:
     """Return attributes for a ``Constraint``."""
     work_item = _generic_work_item(obj, ctx)
-    work_item.description = (  # pylint: disable=attribute-defined-outside-init
-        get_linked_text(obj, ctx)
-    )
+    work_item.description = get_linked_text(obj, ctx)
     return work_item
 
 
@@ -244,9 +242,7 @@ def component_or_actor(
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        work_item.type = helpers.resolve_element_type(  # pylint: disable=attribute-defined-outside-init
-            xtype
-        )
+        work_item.type = helpers.resolve_element_type(xtype)
     return work_item
 
 

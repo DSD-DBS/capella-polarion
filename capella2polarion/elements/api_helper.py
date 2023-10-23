@@ -29,12 +29,16 @@ def patch_work_item(
     ctx
         The context to execute the patch for.
     obj
-        The Capella object to update the WorkItem from
+        The Capella object to update the WorkItem from.
     receiver
         A function that receives the WorkItem from the created
-        instances.
+        instances. This function alters the WorkItem instances by adding
+        attributes, e.g.: `linked_work_items`. It can be useful to add
+        attributes which can only be computed after the work item and
+        its default attributes were instantiated.
     name
-        The name of the object, which should be displayed in log messages.
+        The name of the object, which should be displayed in log
+        messages.
     _type
         The type of element, which should be shown in log messages.
     """
@@ -46,7 +50,7 @@ def patch_work_item(
 
         log_args = (wid, _type, name)
         logger.info("Update work item %r for model %s %r...", *log_args)
-        if new.uuid_capella:
+        if "uuid_capella" in new.additional_attributes:
             del new.additional_attributes["uuid_capella"]
 
         old.linked_work_items = ctx["API"].get_all_work_item_links(old.id)
