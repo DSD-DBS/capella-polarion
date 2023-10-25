@@ -217,7 +217,7 @@ def get_linked_text(
 ) -> markupsafe.Markup:
     """Return sanitized markup of the given ``obj`` linked text."""
     description = obj.specification["capella:linkedText"].striptags()
-    uuids, value = _sanitize_description(description, ctx)
+    uuids, value = _sanitize_description(obj, description, ctx)
     if uuids:
         ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
     return value
