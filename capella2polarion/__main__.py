@@ -83,8 +83,26 @@ def _get_roles_from_config(ctx: dict[str, t.Any]) -> dict[str, list[str]]:
 
 
 def _sanitize_config(
-    config: dict[str, list[str | dict[str, t.Any]]], special: dict[str, t.Any]
+    config: dict[str, list[str | dict[str, t.Any]]],
+    special: list[str | dict[str, t.Any]],
 ) -> dict[str, t.Any]:
+    special_config: dict[str, t.Any] = {}
+    for typ in special:
+        if isinstance(typ, str):
+            special_config[typ] = None
+        else:
+            special_config.update(typ)
+
+    lookup: dict[str, dict[str, list[str]]] = {}
+    for layer, xtypes in config.items():
+        for xt in xtypes:
+            if isinstance(xt, str):
+                item: dict[str, list[str]] = {xt: []}
+            else:
+                item = xt
+
+            lookup.setdefault(layer, {}).update(item)
+
     new_config: dict[str, t.Any] = {}
     for layer, xtypes in config.items():
         new_entries: list[str | dict[str, t.Any]] = []
@@ -92,34 +110,39 @@ def _sanitize_config(
             if isinstance(xtype, dict):
                 for sub_key, sub_value in xtype.items():
                     new_value = (
-                        special.get("*", [])
-                        + special.get(sub_key, [])
+                        special_config.get("*", [])
+                        + special_config.get(sub_key, [])
                         + sub_value
                     )
                     new_entries.append({sub_key: new_value})
             else:
-                if new_value := special.get("*", []) + special.get(xtype, []):
+                star = special_config.get("*", [])
+                special_xtype = special_config.get(xtype, [])
+                if new_value := star + special_xtype:
                     new_entries.append({xtype: new_value})
                 else:
                     new_entries.append(xtype)
+
+        wildcard_values = special_config.get("*", [])
+        for key, value in special_config.items():
+            if key == "*":
+                continue
+
+            if isinstance(value, list):
+                new_value = (
+                    lookup.get(layer, {}).get(key, [])
+                    + wildcard_values
+                    + value
+                )
+                new_entries.append({key: new_value})
+            elif value is None and key not in [
+                entry if isinstance(entry, str) else list(entry.keys())[0]
+                for entry in new_entries
+            ]:
+                new_entries.append({key: wildcard_values})
         new_config[layer] = new_entries
 
     return new_config
-
-
-def get_polarion_wi_map(
-    ctx: dict[str, t.Any], type_: str = ""
-) -> dict[str, t.Any]:
-    """Return a map from Capella UUIDs to Polarion work items."""
-    types_ = map(elements.helpers.resolve_element_type, ctx.get("TYPES", []))
-    work_item_types = [type_] if type_ else list(types_)
-    _type = " ".join(work_item_types)
-    work_items = ctx["API"].get_all_work_items(
-        f"type:({_type})", {"workitems": "id,uuid_capella,status"}
-    )
-    return {
-        wi.uuid_capella: wi for wi in work_items if wi.id and wi.uuid_capella
-    }
 
 
 @click.group()
@@ -144,12 +167,14 @@ def cli(
         polarion_api_endpoint=f"{ctx.obj['POLARION_HOST']}/rest/v1",
         polarion_access_token=os.environ["POLARION_PAT"],
         custom_work_item=serialize.CapellaWorkItem,
+        add_work_item_checksum=True,
     )
     if not ctx.obj["API"].project_exists():
         sys.exit(1)
 
 
 @cli.command()
+@click.argument("model", type=cli_helpers.ModelCLI())
 @click.argument(
     "diagram_cache",
     type=click.Path(
@@ -160,10 +185,16 @@ def cli(
         path_type=pathlib.Path,
     ),
 )
+@click.argument("config_file", type=click.File(mode="r", encoding="utf8"))
 @click.pass_context
-def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
-    """Synchronise diagrams."""
-    logger.debug(
+def model_elements(
+    ctx: click.core.Context,
+    model: capellambse.MelodyModel,
+    diagram_cache: pathlib.Path,
+    config_file: t.TextIO,
+) -> None:
+    """Synchronise model elements."""
+    logger.info(
         "Synchronising diagrams from diagram cache at '%s' "
         "to Polarion project with id %r...",
         diagram_cache,
@@ -176,29 +207,12 @@ def diagrams(ctx: click.core.Context, diagram_cache: pathlib.Path) -> None:
 
     ctx.obj["DIAGRAM_CACHE"] = diagram_cache
     ctx.obj["DIAGRAM_IDX"] = json.loads(idx_file.read_text(encoding="utf8"))
-    ctx.obj["CAPELLA_UUIDS"] = [
-        d["uuid"] for d in ctx.obj["DIAGRAM_IDX"] if d["success"]
-    ]
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj, "diagram")
-    ctx.obj["POLARION_ID_MAP"] = {
-        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
-    }
 
-    elements.delete_work_items(ctx.obj)
-    elements.diagram.update_diagrams(ctx.obj)
-    elements.diagram.create_diagrams(ctx.obj)
-
-
-@cli.command()
-@click.argument("model", type=cli_helpers.ModelCLI())
-@click.argument("config_file", type=click.File(mode="r", encoding="utf8"))
-@click.pass_context
-def model_elements(
-    ctx: click.core.Context,
-    model: capellambse.MelodyModel,
-    config_file: t.TextIO,
-) -> None:
-    """Synchronise model elements."""
+    logger.info(
+        "Synchronising model elements (%r) to Polarion project with id %r...",
+        str(elements.ELEMENTS_IDX_PATH),
+        ctx.obj["PROJECT_ID"],
+    )
     ctx.obj["MODEL"] = model
     ctx.obj["CONFIG"] = yaml.safe_load(config_file)
     ctx.obj["ROLES"] = _get_roles_from_config(ctx.obj)
@@ -208,39 +222,26 @@ def model_elements(
     ) = elements.get_elements_and_type_map(ctx.obj)
     ctx.obj["CAPELLA_UUIDS"] = set(ctx.obj["POLARION_TYPE_MAP"])
     ctx.obj["TYPES"] = elements.get_types(ctx.obj)
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
+    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(ctx.obj)
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
-
-    elements.delete_work_items(ctx.obj)
-    elements.element.update_work_items(ctx.obj)
-    elements.element.create_work_items(ctx.obj)
-
-    ctx.obj["POLARION_WI_MAP"] = get_polarion_wi_map(ctx.obj)
-    ctx.obj["POLARION_ID_MAP"] = {
-        uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
+    duuids = {
+        diag["uuid"] for diag in ctx.obj["DIAGRAM_IDX"] if diag["success"]
     }
-    elements.element.update_links(ctx.obj)
-
-    diagram_work = get_polarion_wi_map(ctx.obj, "diagram")
-    ctx.obj["POLARION_ID_MAP"] |= {
-        uuid: wi.id for uuid, wi in diagram_work.items()
-    }
-    _diagrams = [
-        diagram
-        for diagram in model.diagrams
-        if diagram.uuid in ctx.obj["POLARION_ID_MAP"]
+    ctx.obj["ELEMENTS"]["Diagram"] = [
+        diag for diag in ctx.obj["ELEMENTS"]["Diagram"] if diag.uuid in duuids
     ]
-    ctx.obj["ROLES"]["Diagram"] = ["diagram_elements"]
-    elements.element.update_links(ctx.obj, _diagrams)
 
-    elements_index_file = elements.make_model_elements_index(ctx.obj)
-    logger.debug(
-        "Synchronising model objects (%r) to Polarion project with id %r...",
-        str(elements_index_file),
-        ctx.obj["PROJECT_ID"],
-    )
+    elements.element.create_work_items(ctx.obj)
+    elements.delete_work_items(ctx.obj)
+    elements.post_work_items(ctx.obj)
+
+    # Create missing links b/c of unresolved references
+    elements.element.create_work_items(ctx.obj)
+    elements.patch_work_items(ctx.obj)
+
+    elements.make_model_elements_index(ctx.obj)
 
 
 if __name__ == "__main__":

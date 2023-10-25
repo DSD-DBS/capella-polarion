@@ -15,7 +15,8 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
-from capellambse.model.crosslayer import cs, interaction
+from capellambse.model import diagram as diagr
+from capellambse.model.crosslayer import capellacore, cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
@@ -49,13 +50,8 @@ class CapellaWorkItem(polarion_api.WorkItem):
     postCondition: Condition | None
 
 
-def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
-    _type = "text/html" if html else "text/plain"
-    return {"type": _type, "value": value}
-
-
 def element(
-    obj: dict[str, t.Any] | common.GenericElement,
+    obj: diagr.Diagram | common.GenericElement,
     ctx: dict[str, t.Any],
     serializer: cabc.Callable[[t.Any, dict[str, t.Any]], CapellaWorkItem],
 ) -> CapellaWorkItem | None:
@@ -67,9 +63,9 @@ def element(
         return None
 
 
-def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
+def diagram(diag: diagr.Diagram, ctx: dict[str, t.Any]) -> CapellaWorkItem:
     """Serialize a diagram for Polarion."""
-    diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag['uuid']}.svg"
+    diagram_path = ctx["DIAGRAM_CACHE"] / f"{diag.uuid}.svg"
     src = _decode_diagram(diagram_path)
     style = "; ".join(
         (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
@@ -77,11 +73,11 @@ def diagram(diag: dict[str, t.Any], ctx: dict[str, t.Any]) -> CapellaWorkItem:
     description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
     return CapellaWorkItem(
         type="diagram",
-        title=diag["name"],
+        title=diag.name,
         description_type="text/html",
         description=description,
         status="open",
-        uuid_capella=diag["uuid"],
+        uuid_capella=diag.uuid,
     )
 
 
@@ -104,7 +100,7 @@ def _decode_diagram(diagram_path: pathlib.Path) -> str:
 def generic_work_item(
     obj: common.GenericElement, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
-    """Return an attributes dictionary for the given model element."""
+    """Return a work item for the given model element."""
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     serializer = SERIALIZERS.get(xtype, _generic_work_item)
     return serializer(obj, ctx)
@@ -135,7 +131,6 @@ def _sanitize_description(
         lambda match: replace_markup(match, ctx, referenced_uuids), descr
     )
 
-    # XXX: Can be removed after fix in capellambse
     def repair_images(node: etree._Element) -> None:
         if node.tag != "img":
             return
@@ -182,8 +177,7 @@ def replace_markup(
             f'id="fake" data-item-id="{pid}" data-option-id="long">'
             "</span>"
         )
-    else:
-        return non_matcher(match.group(0))
+    return non_matcher(match.group(0))
 
 
 def include_pre_and_post_condition(
@@ -218,6 +212,32 @@ def include_pre_and_post_condition(
     return work_item
 
 
+def get_linked_text(
+    obj: capellacore.Constraint, ctx: dict[str, t.Any]
+) -> markupsafe.Markup:
+    """Return sanitized markup of the given ``obj`` linked text."""
+    description = obj.specification["capella:linkedText"].striptags()
+    uuids, value = _sanitize_description(obj, description, ctx)
+    if uuids:
+        ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
+    return value
+
+
+def constraint(
+    obj: capellacore.Constraint, ctx: dict[str, t.Any]
+) -> CapellaWorkItem:
+    """Return attributes for a ``Constraint``."""
+    work_item = _generic_work_item(obj, ctx)
+    # pylint: disable-next=attribute-defined-outside-init
+    work_item.description = get_linked_text(obj, ctx)
+    return work_item
+
+
+def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
+    _type = "text/html" if html else "text/plain"
+    return {"type": _type, "value": value}
+
+
 def component_or_actor(
     obj: cs.Component, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
@@ -227,9 +247,8 @@ def component_or_actor(
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         work_item.type = helpers.resolve_element_type(xtype)
-        # pylint: enable=attribute-defined-outside-init
     return work_item
 
 
@@ -240,17 +259,20 @@ def physical_component(
     work_item = component_or_actor(obj, ctx)
     xtype = work_item.type
     if obj.nature is not None:
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
-        # pylint: enable=attribute-defined-outside-init
     return work_item
 
 
-SERIALIZERS = {
+Serializer = cabc.Callable[
+    [common.GenericElement, dict[str, t.Any]], CapellaWorkItem
+]
+SERIALIZERS: dict[str, Serializer] = {
     "CapabilityRealization": include_pre_and_post_condition,
     "LogicalComponent": component_or_actor,
     "OperationalCapability": include_pre_and_post_condition,
     "PhysicalComponent": physical_component,
     "SystemComponent": component_or_actor,
     "Scenario": include_pre_and_post_condition,
+    "Constraint": constraint,
 }

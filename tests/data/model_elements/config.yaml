@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 "*": # All layers
-  "*": # All class types
-    - parent # Specify workitem links
-    - description_reference # Custom attribute
-  Class:
-    - state_machines
+  - "*": # All class types
+      - parent # Specify workitem links
+      - description_reference # Custom attribute
+  - Class:
+      - state_machines
+  - Diagram:
+      - diagram_elements
+  - Constraint
 
 oa: # Specify below
   - OperationalCapability: # Capella Type with references
@@ -19,7 +22,6 @@ oa: # Specify below
   - CommunicationMean
   - Class
   - StateMachine
-  - Constraint
 
 sa:
   - SystemComponent:
@@ -34,7 +36,6 @@ sa:
       - exchanged_items
   - ExchangeItem
   - Class
-  - Constraint
 
 pa:
   - PhysicalComponent:

@@ -35,7 +35,9 @@ def prepare_cli_test(
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     mock_get_polarion_wi_map = mock.MagicMock()
-    monkeypatch.setattr(main, "get_polarion_wi_map", mock_get_polarion_wi_map)
+    monkeypatch.setattr(
+        elements, "get_polarion_wi_map", mock_get_polarion_wi_map
+    )
     if isinstance(return_value, cabc.Iterable) and not isinstance(
         return_value, (str, dict)
     ):
@@ -45,35 +47,6 @@ def prepare_cli_test(
 
     setattr(mock_get_polarion_wi_map, id_map_attr, return_value)
     return mock_get_polarion_wi_map
-
-
-def test_migrate_diagrams(monkeypatch: pytest.MonkeyPatch):
-    mock_get_polarion_wi_map = prepare_cli_test(
-        monkeypatch,
-        {
-            "uuid1": polarion_api.WorkItem("project/W-1"),
-            "uuid2": polarion_api.WorkItem("project/W-2"),
-        },
-    )
-    mock_delete_work_items = mock.MagicMock()
-    monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
-    mock_update_diagrams = mock.MagicMock()
-    monkeypatch.setattr(
-        elements.diagram, "update_diagrams", mock_update_diagrams
-    )
-    mock_create_diagrams = mock.MagicMock()
-    monkeypatch.setattr(
-        elements.diagram, "create_diagrams", mock_create_diagrams
-    )
-    command = ["--project-id=project_id", "diagrams", str(TEST_DIAGRAM_CACHE)]
-
-    result = testing.CliRunner().invoke(main.cli, command)
-
-    assert result.exit_code == 0
-    assert mock_get_polarion_wi_map.call_count == 1
-    assert mock_delete_work_items.call_count == 1
-    assert mock_update_diagrams.call_count == 1
-    assert mock_create_diagrams.call_count == 1
 
 
 def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
@@ -96,30 +69,24 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
-    mock_update_work_items = mock.MagicMock()
-    monkeypatch.setattr(
-        elements.element, "update_work_items", mock_update_work_items
-    )
-    mock_create_work_items = mock.MagicMock()
-    monkeypatch.setattr(
-        elements.element, "create_work_items", mock_create_work_items
-    )
-    mock_update_links = mock.MagicMock()
-    monkeypatch.setattr(elements.element, "update_links", mock_update_links)
+    mock_post_work_items = mock.MagicMock()
+    monkeypatch.setattr(elements, "post_work_items", mock_post_work_items)
+    mock_patch_work_items = mock.MagicMock()
+    monkeypatch.setattr(elements, "patch_work_items", mock_patch_work_items)
 
     command = [
         "--project-id=project_id",
         "model-elements",
         str(TEST_MODEL),
+        str(TEST_DIAGRAM_CACHE),
         str(TEST_MODEL_ELEMENTS_CONFIG),
     ]
 
     result = testing.CliRunner().invoke(main.cli, command)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_wi_map.call_count == 3
+    assert mock_get_polarion_wi_map.call_count == 1
     assert mock_delete_work_items.call_count == 1
-    assert mock_update_work_items.call_count == 1
-    assert mock_create_work_items.call_count == 1
-    assert mock_update_links.call_count == 2
+    assert mock_patch_work_items.call_count == 1
+    assert mock_post_work_items.call_count == 1
     assert ELEMENTS_IDX_PATH.exists()

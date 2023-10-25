@@ -12,6 +12,7 @@ __all__ = [
     "STATUS_DELETE",
 ]
 
+import functools
 import logging
 import pathlib
 import typing as t
@@ -20,6 +21,7 @@ from itertools import chain
 import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse.model import common
+from capellambse.model import diagram as diag
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ PHYSICAL_COMPONENT_TYPES = {
     "PhysicalComponentNode": "PhysicalComponent",
     "PhysicalComponentBehavior": "PhysicalComponent",
 }
-POL2CAPELLA_TYPES = (
+POL2CAPELLA_TYPES: dict[str, str] = (
     {
         "OperationalEntity": "Entity",
         "OperationalInteraction": "FunctionalExchange",
@@ -43,6 +45,21 @@ POL2CAPELLA_TYPES = (
     | ACTOR_TYPES
     | PHYSICAL_COMPONENT_TYPES
 )
+
+
+def get_polarion_wi_map(
+    ctx: dict[str, t.Any], type_: str = ""
+) -> dict[str, t.Any]:
+    """Return a map from Capella UUIDs to Polarion work items."""
+    types_ = map(helpers.resolve_element_type, ctx.get("TYPES", []))
+    work_item_types = [type_] if type_ else list(types_)
+    _type = " ".join(work_item_types)
+    work_items = ctx["API"].get_all_work_items(
+        f"type:({_type})", {"workitems": "id,uuid_capella,checksum,status"}
+    )
+    return {
+        wi.uuid_capella: wi for wi in work_items if wi.id and wi.uuid_capella
+    }
 
 
 def delete_work_items(ctx: dict[str, t.Any]) -> None:
@@ -58,7 +75,7 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
     """
 
     def serialize_for_delete(uuid: str) -> str:
-        logger.debug(
+        logger.info(
             "Delete work item %r...",
             workitem_id := ctx["POLARION_ID_MAP"][uuid],
         )
@@ -76,6 +93,78 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
             ctx["API"].delete_work_items(work_items)
         except polarion_api.PolarionApiException as error:
             logger.error("Deleting work items failed. %s", error.args[0])
+
+
+def post_work_items(ctx: dict[str, t.Any]) -> None:
+    """Post work items in a Polarion project.
+
+    Parameters
+    ----------
+    ctx
+        The context for the workitem operation to be processed.
+    """
+    work_items: list[serialize.CapellaWorkItem] = []
+    for work_item in ctx["WORK_ITEMS"].values():
+        if work_item.uuid_capella in ctx["POLARION_ID_MAP"]:
+            continue
+
+        assert work_item is not None
+        work_items.append(work_item)
+        logger.info("Create work item for %r...", work_item.title)
+    if work_items:
+        try:
+            ctx["API"].create_work_items(work_items)
+            workitems = {wi.uuid_capella: wi for wi in work_items if wi.id}
+            ctx["POLARION_WI_MAP"].update(workitems)
+            ctx["POLARION_ID_MAP"] = {
+                uuid: wi.id for uuid, wi in ctx["POLARION_WI_MAP"].items()
+            }
+        except polarion_api.PolarionApiException as error:
+            logger.error("Creating work items failed. %s", error.args[0])
+
+
+def patch_work_items(ctx: dict[str, t.Any]) -> None:
+    """Update work items in a Polarion project.
+
+    Parameters
+    ----------
+    ctx
+        The context for the workitem operation to be processed.
+    """
+
+    def add_content(
+        obj: common.GenericElement | diag.Diagram,
+        ctx: dict[str, t.Any],
+        **kwargs,
+    ) -> serialize.CapellaWorkItem:
+        work_item = ctx["WORK_ITEMS"][obj.uuid]
+        for key, value in kwargs.items():
+            if getattr(work_item, key, None) is None:
+                continue
+
+            setattr(work_item, key, value)
+        return work_item
+
+    ctx["POLARION_ID_MAP"] = uuids = {
+        uuid: wi.id
+        for uuid, wi in ctx["POLARION_WI_MAP"].items()
+        if wi.status == "open" and wi.uuid_capella and wi.id
+    }
+    for uuid in uuids:
+        elements = ctx["MODEL"]
+        if uuid.startswith("_"):
+            elements = ctx["MODEL"].diagrams
+        obj = elements.by_uuid(uuid)
+
+        links = element.create_links(obj, ctx)
+
+        api_helper.patch_work_item(
+            ctx,
+            obj,
+            functools.partial(add_content, linked_work_items=links),
+            obj._short_repr_(),
+            "element",
+        )
 
 
 def get_types(ctx: dict[str, t.Any]) -> set[str]:
@@ -100,6 +189,9 @@ def get_elements_and_type_map(
             if isinstance(typ, dict):
                 typ = list(typ.keys())[0]
 
+            if typ == "Diagram":
+                continue
+
             xtype = convert_type.get(typ, typ)
             objects = ctx["MODEL"].search(xtype, below=below)
             elements.setdefault(typ, []).extend(objects)
@@ -107,6 +199,14 @@ def get_elements_and_type_map(
                 type_map[obj.uuid] = typ
 
     _fix_components(elements, type_map)
+    diagrams_from_cache = {
+        d["uuid"] for d in ctx["DIAGRAM_IDX"] if d["success"]
+    }
+    elements["Diagram"] = [
+        d for d in ctx["MODEL"].diagrams if d.uuid in diagrams_from_cache
+    ]
+    for obj in elements["Diagram"]:
+        type_map[obj.uuid] = "Diagram"
     return elements, type_map
 
 
@@ -150,7 +250,7 @@ def _fix_components(
         elements["PhysicalComponent"] = components
 
 
-def make_model_elements_index(ctx: dict[str, t.Any]) -> pathlib.Path:
+def make_model_elements_index(ctx: dict[str, t.Any]) -> None:
     """Create an elements index file for all migrated elements."""
     elements: list[dict[str, t.Any]] = []
     for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
@@ -176,7 +276,11 @@ def make_model_elements_index(ctx: dict[str, t.Any]) -> pathlib.Path:
         elements.append(element_)
 
     ELEMENTS_IDX_PATH.write_text(yaml.dump(elements), encoding="utf8")
-    return ELEMENTS_IDX_PATH
 
 
-from . import diagram, element, helpers, serialize
+from . import (  # pylint: disable=cyclic-import
+    api_helper,
+    element,
+    helpers,
+    serialize,
+)
