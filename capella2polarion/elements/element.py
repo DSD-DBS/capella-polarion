@@ -43,7 +43,7 @@ def create_work_items(
 
         _work_items.append(serialize.element(obj, ctx, serializer))
 
-    _work_items = list(filter(None.__ne__, _work_items))
+    _work_items = list(filter(None, _work_items))
     valid_types = set(map(helpers.resolve_element_type, set(ctx["ELEMENTS"])))
     work_items: list[polarion_api.CapellaWorkItem] = []
     missing_types: set[str] = set()
@@ -184,7 +184,7 @@ def _create(
         )
         for id in new
     ]
-    return list(filter(None.__ne__, _new_links))
+    return list(filter(None, _new_links))
 
 
 def _handle_exchanges(

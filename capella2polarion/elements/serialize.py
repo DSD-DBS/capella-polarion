@@ -112,7 +112,7 @@ def _generic_work_item(
 ) -> CapellaWorkItem:
     xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
     raw_description = getattr(obj, "description", markupsafe.Markup(""))
-    uuids, value = _sanitize_description(raw_description, ctx)
+    uuids, value = _sanitize_description(obj, raw_description, ctx)
     ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
     requirement_types = _get_requirement_types_text(obj)
     return CapellaWorkItem(
@@ -165,7 +165,7 @@ def _format_texts(
 
 
 def _sanitize_description(
-    descr: markupsafe.Markup, ctx: dict[str, t.Any]
+    obj: common.GenericElement, descr: markupsafe.Markup, ctx: dict[str, t.Any]
 ) -> tuple[list[str], markupsafe.Markup]:
     referenced_uuids: list[str] = []
     replaced_markup = RE_DESCR_LINK_PATTERN.sub(
@@ -187,7 +187,11 @@ def _sanitize_description(
                 b64_img = base64.b64encode(img.read()).decode("utf8")
                 node.attrib["src"] = f"data:{mime_type};base64,{b64_img}"
         except FileNotFoundError:
-            logger.error("Inline image can't be found from %r", file_path)
+            logger.error(
+                "Inline image can't be found from %r for %r",
+                file_path,
+                obj._short_repr_(),
+            )
 
     repaired_markup = chelpers.process_html_fragments(
         replaced_markup, repair_images
@@ -254,7 +258,7 @@ def get_linked_text(
 ) -> markupsafe.Markup:
     """Return sanitized markup of the given ``obj`` linked text."""
     description = obj.specification["capella:linkedText"].striptags()
-    uuids, value = _sanitize_description(description, ctx)
+    uuids, value = _sanitize_description(obj, description, ctx)
     if uuids:
         ctx.setdefault("DESCR_REFERENCES", {})[obj.uuid] = uuids
     return value
@@ -265,9 +269,8 @@ def constraint(
 ) -> CapellaWorkItem:
     """Return attributes for a ``Constraint``."""
     work_item = _generic_work_item(obj, ctx)
-    work_item.description = (  # pylint: disable=attribute-defined-outside-init
-        get_linked_text(obj, ctx)
-    )
+    # pylint: disable-next=attribute-defined-outside-init
+    work_item.description = get_linked_text(obj, ctx)
     return work_item
 
 
@@ -285,9 +288,8 @@ def component_or_actor(
         xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
             r"\1Actor", type(obj).__name__
         )
-        work_item.type = helpers.resolve_element_type(  # pylint: disable=attribute-defined-outside-init
-            xtype
-        )
+        # pylint: disable-next=attribute-defined-outside-init
+        work_item.type = helpers.resolve_element_type(xtype)
     return work_item
 
 
@@ -298,7 +300,8 @@ def physical_component(
     work_item = component_or_actor(obj, ctx)
     xtype = work_item.type
     if obj.nature is not None:
-        work_item.type = f"{xtype}{obj.nature.name.capitalize()}"  # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
+        work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
     return work_item
 
 
