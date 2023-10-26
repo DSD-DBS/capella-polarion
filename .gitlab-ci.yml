@@ -6,14 +6,9 @@ stages:
   - test
   - deploy
 
-.patch-pyproject-toml: &patch-pyproject-toml
-  - sed -i -e 's/\(^  "polarion-rest-api-client\).*",/\1",/' pyproject.toml
-
 wheel:
   stage: build
   extends: .wheel
-  before_script:
-    - *patch-pyproject-toml
 
 pages:
   stage: build
@@ -22,8 +17,6 @@ pages:
     OUTPUT_DIR: public
     SPHINX_DEPENDENCIES: ".[docs]"
   only: [main]
-  before_script:
-    - *patch-pyproject-toml
 
 pages:test:
   extends: pages
@@ -31,8 +24,6 @@ pages:test:
     OUTPUT_DIR: pages-test
   only: []
   except: [main]
-  before_script:
-    - *patch-pyproject-toml
 
 coverage:
   stage: test
@@ -40,15 +31,11 @@ coverage:
   variables:
     COVERAGE_SOURCE: capella2polarion
   needs: []
-  before_script:
-    - *patch-pyproject-toml
 
 pre-commit:
   stage: test
   extends: .pre-commit
   needs: []
-  before_script:
-    - *patch-pyproject-toml
 
 artifactory:
   stage: deploy
