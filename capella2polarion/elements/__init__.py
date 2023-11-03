@@ -87,10 +87,13 @@ def delete_work_items(ctx: dict[str, t.Any]) -> None:
         if work_item.status != "deleted"
     }
     uuids: set[str] = existing_work_items - set(ctx["CAPELLA_UUIDS"])
-    work_items = [serialize_for_delete(uuid) for uuid in uuids]
-    if work_items:
+    work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
+    if work_item_ids:
         try:
-            ctx["API"].delete_work_items(work_items)
+            ctx["API"].delete_work_items(work_item_ids)
+            for uuid in uuids:
+                del ctx["POLARION_WI_MAP"][uuid]
+                del ctx["POLARION_ID_MAP"][uuid]
         except polarion_api.PolarionApiException as error:
             logger.error("Deleting work items failed. %s", error.args[0])
 
