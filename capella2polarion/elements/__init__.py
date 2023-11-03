@@ -131,13 +131,14 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
     ctx
         The context for the workitem operation to be processed.
     """
+    work_items_lookup = ctx["POLARION_WI_MAP"] | ctx["WORK_ITEMS"]
 
     def add_content(
         obj: common.GenericElement | diag.Diagram,
-        ctx: dict[str, t.Any],
+        _: dict[str, t.Any],
         **kwargs,
     ) -> serialize.CapellaWorkItem:
-        work_item = ctx["WORK_ITEMS"][obj.uuid]
+        work_item = work_items_lookup[obj.uuid]
         for key, value in kwargs.items():
             if getattr(work_item, key, None) is None:
                 continue
