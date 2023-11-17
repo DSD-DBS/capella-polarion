@@ -481,7 +481,9 @@ class TestModelElements:
         assert [l[0][0] for l in links] == ["Obj-0", "Obj-1", "Obj-2"]
         work_items = context["API"].update_work_item.call_args_list
         assert context["API"].get_all_work_item_links.call_count == 3
-        assert work_items[0][0][0].additional_attributes["attribute"] == (
+        assert work_items[0][0][0].additional_attributes["attribute"][
+            "value"
+        ] == (
             "<ul><li>"
             '<span class="polarion-rte-link" data-type="workItem" id="fake" '
             'data-item-id="Obj-1" data-option-id="long"></span>'
@@ -515,8 +517,8 @@ class TestModelElements:
         work_items = context["API"].update_work_item.call_args_list
         assert context["API"].update_work_item.call_count == 2
         assert work_items[0][0][0].additional_attributes == {}
-        assert work_items[1][0][0].additional_attributes[
-            "attribute_reverse"
+        assert work_items[1][0][0].additional_attributes["attribute_reverse"][
+            "value"
         ] == (
             "<ul><li>"
             '<span class="polarion-rte-link" data-type="workItem" id="fake" '

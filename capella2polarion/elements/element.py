@@ -46,7 +46,7 @@ def create_work_items(
 
     _work_items = list(filter(None, _work_items))
     valid_types = set(map(helpers.resolve_element_type, set(ctx["ELEMENTS"])))
-    work_items: list[polarion_api.CapellaWorkItem] = []
+    work_items: list[serialize.CapellaWorkItem] = []
     missing_types: set[str] = set()
     for work_item in _work_items:
         assert work_item is not None
@@ -204,7 +204,7 @@ def _handle_exchanges(
     return _create(context, wid, role_id, exchanges, links)
 
 
-def create_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
+def maintain_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
     """Create list attributes for links of all work items.
 
     The list is updated on all primary (source) work items.
@@ -259,9 +259,10 @@ def maintain_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
             if len(links) < 2:
                 continue
 
-            work_item.additional_attributes[
-                f"{role}_reverse"
-            ] = _make_url_list(links, reverse=True)
+            work_item.additional_attributes[f"{role}_reverse"] = {
+                "type": "text/html",
+                "value": _make_url_list(links, reverse=True),
+            }
 
         if work_item.uuid_capella:
             del work_item.additional_attributes["uuid_capella"]
