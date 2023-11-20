@@ -204,77 +204,55 @@ def _handle_exchanges(
     return _create(context, wid, role_id, exchanges, links)
 
 
-def maintain_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
+def maintain_grouped_links_attributes(
+    work_item_map: dict[str, serialize.CapellaWorkItem],
+    polarion_id_map: dict[str, str],
+    include_back_links,
+) -> None:
     """Create list attributes for links of all work items.
 
-    The list is updated on all primary (source) work items.
+    The list is updated on all primary work items and reverse links can
+    be added, too.
     """
-    ctx["LINKS"] = []
-    for work_item in ctx["POLARION_WI_MAP"].values():
+    back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+    reverse_polarion_id_map = {v: k for k, v in polarion_id_map.items()}
+
+    def _create_link_fields(
+        work_item: serialize.CapellaWorkItem,
+        role: str,
+        links: list[polarion_api.WorkItemLink],
+        reverse: bool = False,
+    ):
+        # TODO check why we only create links for > 2 per role
+        if len(links) < 2:
+            return
+        role = f"{role}_reverse" if reverse else role
+        work_item.additional_attributes[role] = {
+            "type": "text/html",
+            "value": _make_url_list(links, reverse),
+        }
+
+    for work_item in work_item_map.values():
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
-        logger.debug("Fetching links for work item %r...", wi)
-        links: list[polarion_api.WorkItemLink]
-        try:
-            links = ctx["API"].get_all_work_item_links(work_item.id)
-        except polarion_api.PolarionApiException as error:
-            logger.error(
-                "Fetching links for work item %r failed %s", wi, error.args[0]
-            )
-            continue
+        logger.debug("Building grouped links for work item %r...", wi)
 
-        for role, links in _group_by("role", links).items():
-            if len(links) < 2:
-                continue
+        for role, grouped_links in _group_by(
+            "role", work_item.linked_work_items
+        ).items():
+            if include_back_links:
+                for link in grouped_links:
+                    uuid = reverse_polarion_id_map[link.secondary_work_item_id]
+                    if uuid not in back_links:
+                        back_links[uuid] = []
+                    back_links[uuid].append(link)
 
-            work_item.additional_attributes[role] = {
-                "type": "text/html",
-                "value": _make_url_list(links),
-            }
-            ctx["LINKS"].extend(links)
+            _create_link_fields(work_item, role, grouped_links)
 
-        if work_item.uuid_capella:
-            del work_item.additional_attributes["uuid_capella"]
-        work_item.type = None
-        try:
-            ctx["API"].update_work_item(work_item)
-        except polarion_api.PolarionApiException as error:
-            logger.error("Updating work item %r failed. %s", wi, error.args[0])
-
-
-def maintain_reverse_grouped_links_attributes(ctx: dict[str, t.Any]) -> None:
-    """Create list attributes for links of all work items.
-
-    The list is updated on all secondary (target) work items.
-    """
-    wid_uuid_map = {v: k for k, v in ctx["POLARION_ID_MAP"].items()}
-    link_groups = _group_by("secondary_work_item_id", ctx["LINKS"])
-    for wid, links in link_groups.items():
-        uuid = wid_uuid_map.get(wid)
-        work_item = ctx["POLARION_WI_MAP"].get(uuid)
-        if work_item is None:
-            logger.debug("Unknown work item ID %r found", wid)
-            continue
-
-        for role, links in _group_by("role", links).items():
-            if len(links) < 2:
-                continue
-
-            work_item.additional_attributes[f"{role}_reverse"] = {
-                "type": "text/html",
-                "value": _make_url_list(links, reverse=True),
-            }
-
-        if work_item.uuid_capella:
-            del work_item.additional_attributes["uuid_capella"]
-        work_item.type = None
-        try:
-            ctx["API"].update_work_item(work_item)
-        except polarion_api.PolarionApiException as error:
-            logger.error(
-                "Updating work item [%r] failed. %s",
-                work_item.id,
-                error.args[0],
-            )
+    if include_back_links:
+        for uuid, links in back_links.items():
+            work_item = work_item_map[uuid]
+            for role, grouped_links in _group_by("role", links).items():
+                _create_link_fields(work_item, role, grouped_links, True)
 
 
 def _group_by(
