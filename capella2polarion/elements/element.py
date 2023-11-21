@@ -204,55 +204,48 @@ def _handle_exchanges(
     return _create(context, wid, role_id, exchanges, links)
 
 
-def maintain_grouped_links_attributes(
-    work_item_map: dict[str, serialize.CapellaWorkItem],
-    polarion_id_map: dict[str, str],
-    include_back_links,
-) -> None:
-    """Create list attributes for links of all work items.
+def create_grouped_link_fields(
+    work_item: serialize.CapellaWorkItem,
+    back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
+):
+    """Create the grouped link workitems fields from of the primary work items.
 
-    The list is updated on all primary work items and reverse links can
-    be added, too.
+    Parameters
+    ----------
+    work_item
+        WorkItem to create the fields for
+    back_links
+        A dictionary of secondary WorkItem IDs to links to create backlinks afterwards
     """
-    back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
-    reverse_polarion_id_map = {v: k for k, v in polarion_id_map.items()}
+    wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+    logger.debug("Building grouped links for work item %r...", wi)
+    for role, grouped_links in _group_by(
+        "role", work_item.linked_work_items
+    ).items():
+        if back_links is not None:
+            for link in grouped_links:
+                if link.secondary_work_item_id not in back_links:
+                    back_links[link.secondary_work_item_id] = []
+                back_links[link.secondary_work_item_id].append(link)
 
-    def _create_link_fields(
-        work_item: serialize.CapellaWorkItem,
-        role: str,
-        links: list[polarion_api.WorkItemLink],
-        reverse: bool = False,
-    ):
-        # TODO check why we only create links for > 2 per role
-        if len(links) < 2:
-            return
-        role = f"{role}_reverse" if reverse else role
-        work_item.additional_attributes[role] = {
-            "type": "text/html",
-            "value": _make_url_list(links, reverse),
-        }
+        _create_link_fields(work_item, role, grouped_links)
 
-    for work_item in work_item_map.values():
-        wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
-        logger.debug("Building grouped links for work item %r...", wi)
 
-        for role, grouped_links in _group_by(
-            "role", work_item.linked_work_items
-        ).items():
-            if include_back_links:
-                for link in grouped_links:
-                    uuid = reverse_polarion_id_map[link.secondary_work_item_id]
-                    if uuid not in back_links:
-                        back_links[uuid] = []
-                    back_links[uuid].append(link)
+def create_grouped_back_link_fields(
+    work_item: serialize.CapellaWorkItem,
+    links: list[polarion_api.WorkItemLink],
+):
+    """Create backlinks for the given WorkItem using a list of backlinks.
 
-            _create_link_fields(work_item, role, grouped_links)
-
-    if include_back_links:
-        for uuid, links in back_links.items():
-            work_item = work_item_map[uuid]
-            for role, grouped_links in _group_by("role", links).items():
-                _create_link_fields(work_item, role, grouped_links, True)
+    Parameters
+    ----------
+    work_item
+        WorkItem to create the fields for
+    links
+        List of links referencing work_item as secondary
+    """
+    for role, grouped_links in _group_by("role", links).items():
+        _create_link_fields(work_item, role, grouped_links, True)
 
 
 def _group_by(
@@ -280,6 +273,22 @@ def _make_url_list(
         urls.append(f"<li>{url}</li>")
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
+
+
+def _create_link_fields(
+    work_item: serialize.CapellaWorkItem,
+    role: str,
+    links: list[polarion_api.WorkItemLink],
+    reverse: bool = False,
+):
+    # TODO check why we only create links for > 2 per role
+    if len(links) < 2:
+        return
+    role = f"{role}_reverse" if reverse else role
+    work_item.additional_attributes[role] = {
+        "type": "text/html",
+        "value": _make_url_list(links, reverse),
+    }
 
 
 CustomLinkMaker = cabc.Callable[

@@ -445,9 +445,8 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes(dummy_work_items):
-        element.maintain_grouped_links_attributes(
-            dummy_work_items, POLARION_ID_MAP, False
-        )
+        for work_item in dummy_work_items.values():
+            element.create_grouped_link_fields(work_item)
 
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
@@ -485,9 +484,15 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_reverse_grouped_links_attributes(dummy_work_items):
-        element.maintain_grouped_links_attributes(
-            dummy_work_items, POLARION_ID_MAP, True
-        )
+        reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
+        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+
+        for work_item in dummy_work_items.values():
+            element.create_grouped_link_fields(work_item, back_links)
+
+        for work_item_id, links in back_links.items():
+            work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
+            element.create_grouped_back_link_fields(work_item, links)
 
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
