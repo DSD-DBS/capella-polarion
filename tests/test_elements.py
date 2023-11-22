@@ -70,6 +70,55 @@ TEST_REQ_TEXT = (
 )
 POLARION_ID_MAP = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
 
+HTML_LINK_0 = {
+    "attribute": (
+        "<ul><li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-1" data-option-id="long"></span>'
+        "</li>\n"
+        "<li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-2" data-option-id="long"></span>'
+        "</li></ul>"
+    ),
+    "attribute_reverse": (
+        "<ul><li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-1" data-option-id="long"></span>'
+        "</li></ul>"
+    ),
+}
+HTML_LINK_1 = {
+    "attribute": (
+        "<ul><li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-0" data-option-id="long"></span>'
+        "</li>\n"
+        "<li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-2" data-option-id="long"></span>'
+        "</li></ul>"
+    ),
+    "attribute_reverse": (
+        "<ul><li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-0" data-option-id="long"></span>'
+        "</li></ul>"
+    ),
+}
+HTML_LINK_2 = {
+    "attribute_reverse": (
+        "<ul><li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-0" data-option-id="long"></span>'
+        "</li>\n"
+        "<li>"
+        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        'data-item-id="Obj-1" data-option-id="long"></span>'
+        "</li></ul>"
+    )
+}
+
 
 class TestDiagramElements:
     @staticmethod
@@ -444,6 +493,65 @@ class TestModelElements:
         assert context["API"].delete_work_item_links.call_args[0][0] == [link]
 
     @staticmethod
+    def test_patch_work_item_grouped_links(
+        monkeypatch: pytest.MonkeyPatch,
+        context: dict[str, t.Any],
+        dummy_work_items,
+    ):
+        context["WORK_ITEMS"] = dummy_work_items
+
+        context["POLARION_WI_MAP"] = {
+            "uuid0": serialize.CapellaWorkItem(
+                id="Obj-0", uuid_capella="uuid0", status="open"
+            ),
+            "uuid1": serialize.CapellaWorkItem(
+                id="Obj-1", uuid_capella="uuid1", status="open"
+            ),
+            "uuid2": serialize.CapellaWorkItem(
+                id="Obj-2", uuid_capella="uuid2", status="open"
+            ),
+        }
+        mock_create_links = mock.MagicMock()
+        monkeypatch.setattr(element, "create_links", mock_create_links)
+        mock_create_links.side_effect = lambda obj, ctx: dummy_work_items[
+            obj.uuid
+        ].linked_work_items
+
+        context["MODEL"] = mock_model = mock.MagicMock()
+        mock_model.by_uuid.side_effect = [
+            FakeModelObject(f"uuid{i}", name=f"Fake {i}") for i in range(3)
+        ]
+
+        elements.patch_work_items(context)
+
+        update_work_item_calls = context["API"].update_work_item.call_args_list
+
+        assert len(update_work_item_calls) == 3
+
+        work_item_0 = update_work_item_calls[0][0][0]
+        work_item_1 = update_work_item_calls[1][0][0]
+        work_item_2 = update_work_item_calls[2][0][0]
+
+        assert (
+            work_item_0.additional_attributes.pop("attribute")["value"]
+            == HTML_LINK_0["attribute"]
+        )
+
+        assert (
+            work_item_1.additional_attributes.pop("attribute")["value"]
+            == HTML_LINK_1["attribute"]
+        )
+
+        assert (
+            work_item_2.additional_attributes.pop("attribute_reverse")["value"]
+            == HTML_LINK_2["attribute_reverse"]
+        )
+
+        assert work_item_0.additional_attributes == {}
+        assert work_item_1.additional_attributes == {}
+        assert work_item_2.additional_attributes == {}
+
+    @staticmethod
     def test_maintain_grouped_links_attributes(dummy_work_items):
         for work_item in dummy_work_items.values():
             element.create_grouped_link_fields(work_item)
@@ -452,30 +560,18 @@ class TestModelElements:
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid2"].additional_attributes["uuid_capella"]
 
-        assert dummy_work_items["uuid0"].additional_attributes.pop(
-            "attribute"
-        )["value"] == (
-            "<ul><li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-1" data-option-id="long"></span>'
-            "</li>\n"
-            "<li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-2" data-option-id="long"></span>'
-            "</li></ul>"
+        assert (
+            dummy_work_items["uuid0"].additional_attributes.pop("attribute")[
+                "value"
+            ]
+            == HTML_LINK_0["attribute"]
         )
 
-        assert dummy_work_items["uuid1"].additional_attributes.pop(
-            "attribute"
-        )["value"] == (
-            "<ul><li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-0" data-option-id="long"></span>'
-            "</li>\n"
-            "<li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-2" data-option-id="long"></span>'
-            "</li></ul>"
+        assert (
+            dummy_work_items["uuid1"].additional_attributes.pop("attribute")[
+                "value"
+            ]
+            == HTML_LINK_1["attribute"]
         )
 
         assert dummy_work_items["uuid0"].additional_attributes == {}
@@ -505,33 +601,17 @@ class TestModelElements:
         """
         assert dummy_work_items["uuid0"].additional_attributes.pop("attribute_reverse")[
             "value"
-        ] == (
-            "<ul><li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-1" data-option-id="long"></span>'
-            "</li></ul>"
-        )
+        ] == HTML_LINK_0["attribute_reverse"]
 
         assert dummy_work_items["uuid1"].additional_attributes.pop("attribute_reverse")[
             "value"
-        ] == (
-            "<ul><li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-0" data-option-id="long"></span>'
-            "</li></ul>"
-        )
+        ] == HTML_LINK_1["attribute_reverse"]
         """
-        assert dummy_work_items["uuid2"].additional_attributes.pop(
-            "attribute_reverse"
-        )["value"] == (
-            "<ul><li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-0" data-option-id="long"></span>'
-            "</li>\n"
-            "<li>"
-            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
-            'data-item-id="Obj-1" data-option-id="long"></span>'
-            "</li></ul>"
+        assert (
+            dummy_work_items["uuid2"].additional_attributes.pop(
+                "attribute_reverse"
+            )["value"]
+            == HTML_LINK_2["attribute_reverse"]
         )
 
         assert dummy_work_items["uuid0"].additional_attributes == {}

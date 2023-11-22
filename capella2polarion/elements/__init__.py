@@ -134,6 +134,7 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
     ctx
         The context for the workitem operation to be processed.
     """
+    # TODO Why did we have this lookup?
     work_items_lookup = ctx["POLARION_WI_MAP"] | ctx["WORK_ITEMS"]
 
     ctx["POLARION_ID_MAP"] = uuids = {
@@ -151,13 +152,13 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
         obj = objects.by_uuid(uuid)
 
         links = element.create_links(obj, ctx)
-        work_item: serialize.CapellaWorkItem = work_items_lookup[obj.uuid]
+        work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
         work_item.linked_work_items = links
 
         element.create_grouped_link_fields(work_item, back_links)
 
     for uuid in uuids:
-        new_work_item: serialize.CapellaWorkItem = work_items_lookup[uuid]
+        new_work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
         old_work_item: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
 
         if old_work_item.id in back_links:

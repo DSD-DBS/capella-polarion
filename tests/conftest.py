@@ -52,6 +52,7 @@ def dummy_work_items() -> dict[str, serialize.CapellaWorkItem]:
                 for j in range(3)
                 if (i not in (j, 2))
             ],
+            status="open",
         )
         for i in range(3)
     }
