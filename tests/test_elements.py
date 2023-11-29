@@ -517,6 +517,18 @@ class TestModelElements:
             obj.uuid
         ].linked_work_items
 
+        mock_grouped_links = mock.MagicMock()
+        monkeypatch.setattr(
+            element, "create_grouped_link_fields", mock_grouped_links
+        )
+
+        mock_grouped_links_reverse = mock.MagicMock()
+        monkeypatch.setattr(
+            element,
+            "create_grouped_back_link_fields",
+            mock_grouped_links_reverse,
+        )
+
         context["MODEL"] = mock_model = mock.MagicMock()
         mock_model.by_uuid.side_effect = [
             FakeModelObject(f"uuid{i}", name=f"Fake {i}") for i in range(3)
@@ -525,27 +537,19 @@ class TestModelElements:
         elements.patch_work_items(context)
 
         update_work_item_calls = context["API"].update_work_item.call_args_list
-
         assert len(update_work_item_calls) == 3
+
+        mock_grouped_links_calls = mock_grouped_links.call_args_list
+
+        assert len(mock_grouped_links_calls) == 3
+
+        assert mock_grouped_links_calls[0][0][0] == dummy_work_items["uuid0"]
+        assert mock_grouped_links_calls[1][0][0] == dummy_work_items["uuid1"]
+        assert mock_grouped_links_calls[2][0][0] == dummy_work_items["uuid2"]
 
         work_item_0 = update_work_item_calls[0][0][0]
         work_item_1 = update_work_item_calls[1][0][0]
         work_item_2 = update_work_item_calls[2][0][0]
-
-        assert (
-            work_item_0.additional_attributes.pop("attribute")["value"]
-            == HTML_LINK_0["attribute"]
-        )
-
-        assert (
-            work_item_1.additional_attributes.pop("attribute")["value"]
-            == HTML_LINK_1["attribute"]
-        )
-
-        assert (
-            work_item_2.additional_attributes.pop("attribute_reverse")["value"]
-            == HTML_LINK_2["attribute_reverse"]
-        )
 
         assert work_item_0.additional_attributes == {}
         assert work_item_1.additional_attributes == {}
@@ -597,16 +601,20 @@ class TestModelElements:
         del dummy_work_items["uuid0"].additional_attributes["attribute"]
         del dummy_work_items["uuid1"].additional_attributes["attribute"]
 
-        # TODO check if we really want to exclude groups of <2
-        """
-        assert dummy_work_items["uuid0"].additional_attributes.pop("attribute_reverse")[
-            "value"
-        ] == HTML_LINK_0["attribute_reverse"]
+        assert (
+            dummy_work_items["uuid0"].additional_attributes.pop(
+                "attribute_reverse"
+            )["value"]
+            == HTML_LINK_0["attribute_reverse"]
+        )
 
-        assert dummy_work_items["uuid1"].additional_attributes.pop("attribute_reverse")[
-            "value"
-        ] == HTML_LINK_1["attribute_reverse"]
-        """
+        assert (
+            dummy_work_items["uuid1"].additional_attributes.pop(
+                "attribute_reverse"
+            )["value"]
+            == HTML_LINK_1["attribute_reverse"]
+        )
+
         assert (
             dummy_work_items["uuid2"].additional_attributes.pop(
                 "attribute_reverse"

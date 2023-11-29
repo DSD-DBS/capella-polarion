@@ -281,9 +281,6 @@ def _create_link_fields(
     links: list[polarion_api.WorkItemLink],
     reverse: bool = False,
 ):
-    # TODO check why we only create links for > 2 per role
-    if len(links) < 2:
-        return
     role = f"{role}_reverse" if reverse else role
     work_item.additional_attributes[role] = {
         "type": "text/html",
