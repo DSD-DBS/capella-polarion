@@ -225,9 +225,8 @@ def create_grouped_link_fields(
     ).items():
         if back_links is not None:
             for link in grouped_links:
-                if link.secondary_work_item_id not in back_links:
-                    back_links[link.secondary_work_item_id] = []
-                back_links[link.secondary_work_item_id].append(link)
+                key = link.secondary_work_item_id
+                back_links.setdefault(key, []).append(link)
 
         _create_link_fields(work_item, role, grouped_links)
 
