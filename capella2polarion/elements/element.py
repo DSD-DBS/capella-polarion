@@ -271,6 +271,8 @@ def _make_url_list(
 
         url = serialize.POLARION_WORK_ITEM_URL.format(pid=pid)
         urls.append(f"<li>{url}</li>")
+
+    urls.sort()
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
 

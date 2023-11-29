@@ -632,6 +632,25 @@ class TestModelElements:
         assert dummy_work_items["uuid2"].additional_attributes == {}
 
 
+def test_grouped_linked_work_items_order_consistency():
+    work_item = serialize.CapellaWorkItem("id", "Dummy")
+    links = [
+        polarion_api.WorkItemLink("prim1", "id", "role1"),
+        polarion_api.WorkItemLink("prim2", "id", "role1"),
+    ]
+    element.create_grouped_back_link_fields(work_item, links)
+
+    check_sum = work_item.calculate_checksum()
+
+    links = [
+        polarion_api.WorkItemLink("prim2", "id", "role1"),
+        polarion_api.WorkItemLink("prim1", "id", "role1"),
+    ]
+    element.create_grouped_back_link_fields(work_item, links)
+
+    assert check_sum == work_item.calculate_checksum()
+
+
 class TestHelpers:
     @staticmethod
     def test_resolve_element_type():
