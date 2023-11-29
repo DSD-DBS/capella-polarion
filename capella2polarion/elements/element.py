@@ -208,14 +208,15 @@ def create_grouped_link_fields(
     work_item: serialize.CapellaWorkItem,
     back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
 ):
-    """Create the grouped link workitems fields from of the primary work items.
+    """Create the grouped link work items fields from the primary work item.
 
     Parameters
     ----------
     work_item
-        WorkItem to create the fields for
+        WorkItem to create the fields for.
     back_links
-        A dictionary of secondary WorkItem IDs to links to create backlinks later
+        A dictionary of secondary WorkItem IDs to links to create
+        backlinks later.
     """
     wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
     logger.debug("Building grouped links for work item %r...", wi)
