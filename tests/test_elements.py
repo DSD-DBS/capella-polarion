@@ -517,10 +517,14 @@ class TestModelElements:
             obj.uuid
         ].linked_work_items
 
+        def mock_back_link(work_item, back_links):
+            back_links[work_item.id] = []
+
         mock_grouped_links = mock.MagicMock()
         monkeypatch.setattr(
             element, "create_grouped_link_fields", mock_grouped_links
         )
+        mock_grouped_links.side_effect = mock_back_link
 
         mock_grouped_links_reverse = mock.MagicMock()
         monkeypatch.setattr(
@@ -542,6 +546,7 @@ class TestModelElements:
         mock_grouped_links_calls = mock_grouped_links.call_args_list
 
         assert len(mock_grouped_links_calls) == 3
+        assert mock_grouped_links_reverse.call_count == 3
 
         assert mock_grouped_links_calls[0][0][0] == dummy_work_items["uuid0"]
         assert mock_grouped_links_calls[1][0][0] == dummy_work_items["uuid1"]
