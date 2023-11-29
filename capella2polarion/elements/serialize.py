@@ -312,6 +312,7 @@ SERIALIZERS: dict[str, Serializer] = {
     "CapabilityRealization": include_pre_and_post_condition,
     "LogicalComponent": component_or_actor,
     "OperationalCapability": include_pre_and_post_condition,
+    "Capability": include_pre_and_post_condition,
     "PhysicalComponent": physical_component,
     "SystemComponent": component_or_actor,
     "Scenario": include_pre_and_post_condition,
