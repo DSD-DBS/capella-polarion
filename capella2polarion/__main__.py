@@ -219,27 +219,61 @@ def model_elements(
     (
         ctx.obj["ELEMENTS"],
         ctx.obj["POLARION_TYPE_MAP"],
-    ) = elements.get_elements_and_type_map(ctx.obj)
+    ) = elements.get_elements_and_type_map(
+        ctx.obj["CONFIG"], ctx.obj["MODEL"], ctx.obj["DIAGRAM_IDX"]
+    )
     ctx.obj["CAPELLA_UUIDS"] = set(ctx.obj["POLARION_TYPE_MAP"])
-    ctx.obj["TYPES"] = elements.get_types(ctx.obj)
-    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(ctx.obj)
+    types = elements.get_types(
+        ctx.obj["POLARION_TYPE_MAP"], ctx.obj["ELEMENTS"]
+    )
+    ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(
+        types, ctx.obj["API"]
+    )
     ctx.obj["POLARION_ID_MAP"] = {
         uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     }
-    duuids = {
-        diag["uuid"] for diag in ctx.obj["DIAGRAM_IDX"] if diag["success"]
-    }
-    ctx.obj["ELEMENTS"]["Diagram"] = [
-        diag for diag in ctx.obj["ELEMENTS"]["Diagram"] if diag.uuid in duuids
-    ]
+    ctx.obj["DESCR_REFERENCES"] = {}
 
-    elements.element.create_work_items(ctx.obj)
-    elements.delete_work_items(ctx.obj)
-    elements.post_work_items(ctx.obj)
+    new_work_items = elements.element.create_work_items(
+        ctx.obj["ELEMENTS"],
+        ctx.obj["DIAGRAM_CACHE"],
+        ctx.obj["POLARION_TYPE_MAP"],
+        ctx.obj["MODEL"],
+        ctx.obj["POLARION_ID_MAP"],
+        ctx.obj["DESCR_REFERENCES"],
+    )
+    elements.delete_work_items(
+        ctx.obj["POLARION_ID_MAP"],
+        ctx.obj["POLARION_WI_MAP"],
+        ctx.obj["CAPELLA_UUIDS"],
+        ctx.obj["API"],
+    )
+    elements.post_work_items(
+        ctx.obj["POLARION_ID_MAP"],
+        new_work_items,
+        ctx.obj["POLARION_WI_MAP"],
+        ctx.obj["API"],
+    )
 
     # Create missing links b/c of unresolved references
-    elements.element.create_work_items(ctx.obj)
-    elements.patch_work_items(ctx.obj)
+    new_work_items = elements.element.create_work_items(
+        ctx.obj["ELEMENTS"],
+        ctx.obj["DIAGRAM_CACHE"],
+        ctx.obj["POLARION_TYPE_MAP"],
+        ctx.obj["MODEL"],
+        ctx.obj["POLARION_ID_MAP"],
+        ctx.obj["DESCR_REFERENCES"],
+    )
+    elements.patch_work_items(
+        ctx.obj["POLARION_ID_MAP"],
+        ctx.obj["MODEL"],
+        new_work_items,
+        ctx.obj["POLARION_WI_MAP"],
+        ctx.obj["API"],
+        ctx.obj["DESCR_REFERENCES"],
+        ctx.obj["PROJECT_ID"],
+        ctx.obj["ROLES"],
+    )
 
 
 if __name__ == "__main__":

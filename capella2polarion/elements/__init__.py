@@ -16,6 +16,7 @@ import pathlib
 import typing as t
 from itertools import chain
 
+import capellambse
 import polarion_rest_api_client as polarion_api
 import yaml
 from capellambse.model import common
@@ -48,13 +49,12 @@ POL2CAPELLA_TYPES: dict[str, str] = (
 
 
 def get_polarion_wi_map(
-    ctx: dict[str, t.Any], type_: str = ""
+    _types: set, api_client: polarion_api.OpenAPIPolarionProjectClient
 ) -> dict[str, t.Any]:
     """Return a map from Capella UUIDs to Polarion work items."""
-    types_ = map(helpers.resolve_element_type, ctx.get("TYPES", []))
-    work_item_types = [type_] if type_ else list(types_)
+    work_item_types = list(map(helpers.resolve_element_type, _types))
     _type = " ".join(work_item_types)
-    work_items = ctx["API"].get_all_work_items(
+    work_items = api_client.get_all_work_items(
         f"type:({_type})", {"workitems": "id,uuid_capella,checksum,status"}
     )
     return {
@@ -62,129 +62,137 @@ def get_polarion_wi_map(
     }
 
 
-def delete_work_items(ctx: dict[str, t.Any]) -> None:
+def delete_work_items(
+    polarion_id_map: dict[str, str],
+    polarion_wi_map: dict[str, serialize.CapellaWorkItem],
+    capella_uuids: set[str],
+    api_client: polarion_api.OpenAPIPolarionProjectClient,
+) -> None:
     """Delete work items in a Polarion project.
 
     If the delete flag is set to ``False`` in the context work items are
     marked as ``to be deleted`` via the status attribute.
-
-    Parameters
-    ----------
-    ctx
-        The context for the workitem operation to be processed.
     """
 
     def serialize_for_delete(uuid: str) -> str:
         logger.info(
             "Delete work item %r...",
-            workitem_id := ctx["POLARION_ID_MAP"][uuid],
+            workitem_id := polarion_id_map[uuid],
         )
         return workitem_id
 
     existing_work_items = {
         uuid
-        for uuid, work_item in ctx["POLARION_WI_MAP"].items()
+        for uuid, work_item in polarion_wi_map.items()
         if work_item.status != "deleted"
     }
-    uuids: set[str] = existing_work_items - set(ctx["CAPELLA_UUIDS"])
+    uuids: set[str] = existing_work_items - capella_uuids
     work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
     if work_item_ids:
         try:
-            ctx["API"].delete_work_items(work_item_ids)
+            api_client.delete_work_items(work_item_ids)
             for uuid in uuids:
-                del ctx["POLARION_WI_MAP"][uuid]
-                del ctx["POLARION_ID_MAP"][uuid]
+                del polarion_wi_map[uuid]
+                del polarion_id_map[uuid]
         except polarion_api.PolarionApiException as error:
             logger.error("Deleting work items failed. %s", error.args[0])
 
 
-def post_work_items(ctx: dict[str, t.Any]) -> None:
-    """Post work items in a Polarion project.
-
-    Parameters
-    ----------
-    ctx
-        The context for the workitem operation to be processed.
-    """
-    work_items: list[serialize.CapellaWorkItem] = []
-    for work_item in ctx["WORK_ITEMS"].values():
-        if work_item.uuid_capella in ctx["POLARION_ID_MAP"]:
+def post_work_items(
+    polarion_id_map: dict[str, str],
+    new_work_items: dict[str, serialize.CapellaWorkItem],
+    polarion_wi_map: dict[str, serialize.CapellaWorkItem],
+    api_client: polarion_api.OpenAPIPolarionProjectClient,
+) -> None:
+    """Post work items in a Polarion project."""
+    missing_work_items: list[serialize.CapellaWorkItem] = []
+    for work_item in new_work_items.values():
+        if work_item.uuid_capella in polarion_id_map:
             continue
 
         assert work_item is not None
-        work_items.append(work_item)
+        missing_work_items.append(work_item)
         logger.info("Create work item for %r...", work_item.title)
-    if work_items:
+    if missing_work_items:
         try:
-            ctx["API"].create_work_items(work_items)
-            workitems = {wi.uuid_capella: wi for wi in work_items if wi.id}
-            ctx["POLARION_WI_MAP"].update(workitems)
-            ctx["POLARION_ID_MAP"] = {
-                uuid: wi.id for uuid, wi in ctx["POLARION_WI_MAP"].items()
-            }
+            api_client.create_work_items(missing_work_items)
+            for work_item in missing_work_items:
+                polarion_id_map[work_item.uuid_capella] = work_item.id
+                polarion_wi_map[work_item.uuid_capella] = work_item
         except polarion_api.PolarionApiException as error:
             logger.error("Creating work items failed. %s", error.args[0])
 
 
-def patch_work_items(ctx: dict[str, t.Any]) -> None:
-    """Update work items in a Polarion project.
-
-    Parameters
-    ----------
-    ctx
-        The context for the workitem operation to be processed.
-    """
-    ctx["POLARION_ID_MAP"] = uuids = {
-        uuid: wi.id
-        for uuid, wi in ctx["POLARION_WI_MAP"].items()
-        if wi.status == "open" and wi.uuid_capella and wi.id
-    }
+def patch_work_items(
+    polarion_id_map: dict[str, str],
+    model: capellambse.MelodyModel,
+    new_work_items: dict[str, serialize.CapellaWorkItem],
+    polarion_wi_map: dict[str, serialize.CapellaWorkItem],
+    api_client: polarion_api.OpenAPIPolarionProjectClient,
+    descr_references,
+    project_id,
+    link_roles,
+) -> None:
+    """Update work items in a Polarion project."""
+    polarion_id_map.update(
+        {
+            uuid: wi.id
+            for uuid, wi in polarion_wi_map.items()
+            if wi.status == "open" and wi.uuid_capella and wi.id
+        }
+    )
 
     back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
-    for uuid in uuids:
-        objects = ctx["MODEL"]
+    for uuid in polarion_id_map:
+        objects = model
         if uuid.startswith("_"):
-            objects = ctx["MODEL"].diagrams
-
+            objects = model.diagrams
         obj = objects.by_uuid(uuid)
-        work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
-        old_work_item: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
 
-        links = element.create_links(obj, ctx)
+        links = element.create_links(
+            obj,
+            polarion_id_map,
+            descr_references,
+            project_id,
+            model,
+            link_roles,
+        )
+        work_item: serialize.CapellaWorkItem = new_work_items[uuid]
         work_item.linked_work_items = links
-        work_item.id = old_work_item.id
 
         element.create_grouped_link_fields(work_item, back_links)
 
-    for uuid in uuids:
-        new_work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
-        old_work_item = ctx["POLARION_WI_MAP"][uuid]
+    for uuid in polarion_id_map:
+        new_work_item: serialize.CapellaWorkItem = new_work_items[uuid]
+        old_work_item = polarion_wi_map[uuid]
         if old_work_item.id in back_links:
             element.create_grouped_back_link_fields(
                 new_work_item, back_links[old_work_item.id]
             )
 
-        api_helper.patch_work_item(ctx["API"], new_work_item, old_work_item)
+        api_helper.patch_work_item(api_client, new_work_item, old_work_item)
 
 
-def get_types(ctx: dict[str, t.Any]) -> set[str]:
+def get_types(polarion_type_map, elements) -> set[str]:
     """Return a set of Polarion types from the current context."""
     xtypes = set[str]()
-    for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
-        xtype = ctx["POLARION_TYPE_MAP"].get(obj.uuid, type(obj).__name__)
+    for obj in chain.from_iterable(elements.values()):
+        xtype = polarion_type_map.get(obj.uuid, type(obj).__name__)
         xtypes.add(helpers.resolve_element_type(xtype))
     return xtypes
 
 
 def get_elements_and_type_map(
-    ctx: dict[str, t.Any]
+    config: dict[str, t.Any],
+    model: capellambse.MelodyModel,
+    diagram_idx: list[dict[str, t.Any]],
 ) -> tuple[dict[str, list[common.GenericElement]], dict[str, str]]:
     """Return an elements and UUID to Polarion type map."""
     convert_type = POL2CAPELLA_TYPES
     type_map: dict[str, str] = {}
     elements: dict[str, list[common.GenericElement]] = {}
-    for _below, pol_types in ctx["CONFIG"].items():
-        below = getattr(ctx["MODEL"], _below)
+    for _below, pol_types in config.items():
+        below = getattr(model, _below)
         for typ in pol_types:
             if isinstance(typ, dict):
                 typ = list(typ.keys())[0]
@@ -193,17 +201,15 @@ def get_elements_and_type_map(
                 continue
 
             xtype = convert_type.get(typ, typ)
-            objects = ctx["MODEL"].search(xtype, below=below)
+            objects = model.search(xtype, below=below)
             elements.setdefault(typ, []).extend(objects)
             for obj in objects:
                 type_map[obj.uuid] = typ
 
     _fix_components(elements, type_map)
-    diagrams_from_cache = {
-        d["uuid"] for d in ctx["DIAGRAM_IDX"] if d["success"]
-    }
+    diagrams_from_cache = {d["uuid"] for d in diagram_idx if d["success"]}
     elements["Diagram"] = [
-        d for d in ctx["MODEL"].diagrams if d.uuid in diagrams_from_cache
+        d for d in model.diagrams if d.uuid in diagrams_from_cache
     ]
     for obj in elements["Diagram"]:
         type_map[obj.uuid] = "Diagram"

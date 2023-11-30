@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 import typing as t
 from unittest import mock
 
@@ -55,7 +56,7 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "type": "diagram",
     "status": "open",
     "additional_attributes": {
-        "uuid_capella": "_APMboAPhEeynfbzU12yy7w",
+        "uuid_capella": TEST_DIAG_UUID,
     },
 }
 TEST_WI_CHECKSUM = (
@@ -122,7 +123,7 @@ HTML_LINK_2 = {
 class TestDiagramElements:
     @staticmethod
     @pytest.fixture
-    def context(
+    def ctx(
         diagram_cache_index: list[dict[str, t.Any]],
         model: capellambse.MelodyModel,
     ) -> dict[str, t.Any]:
@@ -142,13 +143,20 @@ class TestDiagramElements:
         }
 
     @staticmethod
-    def test_create_diagrams(context: dict[str, t.Any]):
-        context["ELEMENTS"] = {"Diagram": context["MODEL"].diagrams}
+    def test_create_diagrams(ctx: dict[str, t.Any]):
+        ctx["ELEMENTS"] = {"Diagram": ctx["MODEL"].diagrams}
 
-        diagrams = element.create_work_items(context)
+        diagrams = element.create_work_items(
+            ctx["ELEMENTS"],
+            ctx["DIAGRAM_CACHE"],
+            {},
+            ctx["MODEL"],
+            ctx["POLARION_ID_MAP"],
+            {},
+        )
 
         assert len(diagrams) == 1
-        work_item = diagrams[0]
+        work_item = diagrams[TEST_DIAG_UUID]
         work_item.calculate_checksum()
         assert isinstance(work_item, serialize.CapellaWorkItem)
         assert {
@@ -164,25 +172,34 @@ class TestDiagramElements:
 
     @staticmethod
     def test_create_diagrams_filters_non_diagram_elements(
-        monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
+        ctx: dict[str, t.Any]
     ):
-        context["ELEMENTS"] = {"Diagram": context["MODEL"].diagrams}
-        attributes = mock.MagicMock()
-        attributes.return_value = None
-        monkeypatch.setattr(serialize, "element", attributes)
+        ctx["ELEMENTS"] = {"Diagram": ctx["MODEL"].diagrams}
 
-        element.create_work_items(context)
+        element.create_work_items(
+            ctx["ELEMENTS"],
+            ctx["DIAGRAM_CACHE"],
+            {},
+            ctx["MODEL"],
+            ctx["POLARION_ID_MAP"],
+            {},
+        )
 
-        assert context["API"].create_work_items.call_count == 0
+        assert ctx["API"].create_work_items.call_count == 0
 
     @staticmethod
-    def test_delete_diagrams(context: dict[str, t.Any]):
-        context["CAPELLA_UUIDS"] = []
+    def test_delete_diagrams(ctx: dict[str, t.Any]):
+        ctx["CAPELLA_UUIDS"] = set()
 
-        elements.delete_work_items(context)
+        elements.delete_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["POLARION_WI_MAP"],
+            ctx["CAPELLA_UUIDS"],
+            ctx["API"],
+        )
 
-        assert context["API"].delete_work_items.call_count == 1
-        assert context["API"].delete_work_items.call_args[0][0] == ["Diag-1"]
+        assert ctx["API"].delete_work_items.call_count == 1
+        assert ctx["API"].delete_work_items.call_args[0][0] == ["Diag-1"]
 
 
 class FakeModelObject:
@@ -217,7 +234,7 @@ class TestModelElements:
 
     @staticmethod
     @pytest.fixture
-    def context(model: capellambse.MelodyModel) -> dict[str, t.Any]:
+    def ctx(model: capellambse.MelodyModel) -> dict[str, t.Any]:
         api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
         fake = FakeModelObject("uuid1", name="Fake 1")
         work_item = serialize.CapellaWorkItem(
@@ -226,6 +243,7 @@ class TestModelElements:
         return {
             "API": api,
             "PROJECT_ID": "project_id",
+            "DIAGRAM_CACHE": pathlib.Path(""),
             "ELEMENTS": {
                 "FakeModelObject": [
                     fake,
@@ -246,14 +264,14 @@ class TestModelElements:
 
     @staticmethod
     def test_create_work_items(
-        monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
+        monkeypatch: pytest.MonkeyPatch, ctx: dict[str, t.Any]
     ):
-        del context["ELEMENTS"]["UnsupportedFakeModelObject"]
-        context["MODEL"] = model = mock.MagicMock()
-        model.by_uuid.side_effect = context["ELEMENTS"]["FakeModelObject"]
+        del ctx["ELEMENTS"]["UnsupportedFakeModelObject"]
+        ctx["MODEL"] = model = mock.MagicMock()
+        model.by_uuid.side_effect = ctx["ELEMENTS"]["FakeModelObject"]
         monkeypatch.setattr(
-            serialize,
-            "generic_work_item",
+            serialize.CapellaWorkItemSerializer,
+            "serialize",
             mock_generic_work_item := mock.MagicMock(),
         )
         mock_generic_work_item.side_effect = [
@@ -273,9 +291,16 @@ class TestModelElements:
             ),
         ]
 
-        work_items = element.create_work_items(context)
+        work_items = element.create_work_items(
+            ctx["ELEMENTS"],
+            ctx["DIAGRAM_CACHE"],
+            ctx["POLARION_TYPE_MAP"],
+            ctx["MODEL"],
+            ctx["POLARION_ID_MAP"],
+            {},
+        )
 
-        assert work_items == [expected, expected1]
+        assert list(work_items.values()) == [expected, expected1]
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -314,10 +339,12 @@ class TestModelElements:
         assert work_items == [expected]
 
     @staticmethod
-    def test_create_links_custom_resolver(context: dict[str, t.Any]):
-        obj = context["ELEMENTS"]["FakeModelObject"][1]
-        context["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
-        context["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
+    def test_create_links_custom_resolver(ctx: dict[str, t.Any]):
+        obj = ctx["ELEMENTS"]["FakeModelObject"][1]
+        ctx["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
+        ctx["ROLES"] = {"FakeModelObject": ["description_reference"]}
+        ctx["DESCR_REFERENCES"] = {"uuid2": ["uuid1"]}
+        ctx["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -325,8 +352,6 @@ class TestModelElements:
             description=markupsafe.Markup(""),
             status="open",
         )
-        context["ROLES"] = {"FakeModelObject": ["description_reference"]}
-        context["DESCR_REFERENCES"] = {"uuid2": ["uuid1"]}
         expected = polarion_api.WorkItemLink(
             "Obj-2",
             "Obj-1",
@@ -334,17 +359,24 @@ class TestModelElements:
             secondary_work_item_project="project_id",
         )
 
-        links = element.create_links(obj, context)
+        links = element.create_links(
+            obj,
+            ctx["POLARION_ID_MAP"],
+            ctx["DESCR_REFERENCES"],
+            ctx["PROJECT_ID"],
+            ctx["MODEL"],
+            ctx["ROLES"],
+        )
 
         assert links == [expected]
 
     @staticmethod
-    def test_create_links_custom_exchanges_resolver(context: dict[str, t.Any]):
+    def test_create_links_custom_exchanges_resolver(ctx: dict[str, t.Any]):
         function_uuid = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
         uuid = "1a414995-f4cd-488c-8152-486e459fb9de"
-        obj = context["MODEL"].by_uuid(function_uuid)
-        context["POLARION_ID_MAP"][function_uuid] = "Obj-1"
-        context["WORK_ITEMS"][function_uuid] = serialize.CapellaWorkItem(
+        obj = ctx["MODEL"].by_uuid(function_uuid)
+        ctx["POLARION_ID_MAP"][function_uuid] = "Obj-1"
+        ctx["WORK_ITEMS"][function_uuid] = serialize.CapellaWorkItem(
             id="Obj-1",
             uuid_capella=function_uuid,
             type=type(obj).__name__,
@@ -352,8 +384,8 @@ class TestModelElements:
             description=markupsafe.Markup(""),
             status="open",
         )
-        context["POLARION_ID_MAP"][uuid] = "Obj-2"
-        context["WORK_ITEMS"][uuid] = serialize.CapellaWorkItem(
+        ctx["POLARION_ID_MAP"][uuid] = "Obj-2"
+        ctx["WORK_ITEMS"][uuid] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella=uuid,
             type="functionalExchange",
@@ -361,7 +393,7 @@ class TestModelElements:
             description=markupsafe.Markup(""),
             status="open",
         )
-        context["ROLES"] = {"SystemFunction": ["input_exchanges"]}
+        ctx["ROLES"] = {"SystemFunction": ["input_exchanges"]}
         expected = polarion_api.WorkItemLink(
             "Obj-1",
             "Obj-2",
@@ -369,21 +401,28 @@ class TestModelElements:
             secondary_work_item_project="project_id",
         )
 
-        links = element.create_links(obj, context)
+        links = element.create_links(
+            obj,
+            ctx["POLARION_ID_MAP"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["MODEL"],
+            ctx["ROLES"],
+        )
 
         assert links == [expected]
 
     @staticmethod
     def test_create_links_missing_attribute(
-        context: dict[str, t.Any], caplog: pytest.LogCaptureFixture
+        ctx: dict[str, t.Any], caplog: pytest.LogCaptureFixture
     ):
-        obj = context["ELEMENTS"]["FakeModelObject"][0]
+        obj = ctx["ELEMENTS"]["FakeModelObject"][0]
         expected = (
             "Unable to create work item link 'attribute' for [Obj-1]. "
             "There is no 'attribute' attribute on "
             "<FakeModelObject 'Fake 1' (uuid1)>"
         )
-        context["WORK_ITEMS"] = {
+        ctx["WORK_ITEMS"] = {
             "uuid1": serialize.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
@@ -395,28 +434,32 @@ class TestModelElements:
         }
 
         with caplog.at_level(logging.DEBUG):
-            links = element.create_links(obj, context)
+            links = element.create_links(
+                obj,
+                ctx["POLARION_ID_MAP"],
+                {},
+                ctx["PROJECT_ID"],
+                ctx["MODEL"],
+                ctx["ROLES"],
+            )
 
         assert not links
         assert caplog.messages[0] == expected
 
     @staticmethod
-    def test_create_links_from_ElementList(context: dict[str, t.Any]):
+    def test_create_links_from_ElementList(ctx: dict[str, t.Any]):
         fake = FakeModelObject("uuid4", name="Fake 4")
         fake1 = FakeModelObject("uuid5", name="Fake 5")
         obj = FakeModelObject(
             "uuid6",
             name="Fake 6",
             attribute=common.ElementList(
-                context["MODEL"], [fake, fake1], FakeModelObject
+                ctx["MODEL"], [fake, fake1], FakeModelObject
             ),
         )
-        context["ELEMENTS"]["FakeModelObject"].append(obj)
+        ctx["ELEMENTS"]["FakeModelObject"].append(obj)
 
-        context["POLARION_ID_MAP"] |= {
-            f"uuid{i}": f"Obj-{i}" for i in range(4, 7)
-        }
-        context["WORK_ITEMS"] |= {
+        ctx["POLARION_ID_MAP"] |= {f"uuid{i}": f"Obj-{i}" for i in range(4, 7)}context["WORK_ITEMS"] |= {
             f"uuid{i}": serialize.CapellaWorkItem(
                 id=f"Obj-{i}",
                 uuid_capella=f"uuid{i}",
@@ -440,16 +483,23 @@ class TestModelElements:
             secondary_work_item_project="project_id",
         )
 
-        links = element.create_links(obj, context)  # type: ignore[arg-type]
+        links = element.create_links(
+            obj,
+            ctx["POLARION_ID_MAP"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["MODEL"],
+            ctx["ROLES"],
+        )  # type: ignore[arg-type]
 
         assert expected_link in links
         assert expected_link1 in links
 
     @staticmethod
-    def test_create_link_from_single_attribute(context: dict[str, t.Any]):
-        obj = context["ELEMENTS"]["FakeModelObject"][1]
-        context["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
-        context["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
+    def test_create_link_from_single_attribute(ctx: dict[str, t.Any]):
+        obj = ctx["ELEMENTS"]["FakeModelObject"][1]
+        ctx["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
+        ctx["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -464,15 +514,22 @@ class TestModelElements:
             secondary_work_item_project="project_id",
         )
 
-        links = element.create_links(obj, context)
+        links = element.create_links(
+            obj,
+            ctx["POLARION_ID_MAP"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["MODEL"],
+            ctx["ROLES"],
+        )
 
         assert links == [expected]
 
     @staticmethod
     def test_update_work_items(
-        monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
+        monkeypatch: pytest.MonkeyPatch, ctx: dict[str, t.Any]
     ):
-        context["POLARION_WI_MAP"]["uuid1"] = serialize.CapellaWorkItem(
+        ctx["POLARION_WI_MAP"]["uuid1"] = serialize.CapellaWorkItem(
             id="Obj-1",
             type="type",
             uuid_capella="uuid1",
@@ -486,8 +543,8 @@ class TestModelElements:
         monkeypatch.setattr(
             elements, "get_polarion_wi_map", mock_get_polarion_wi_map
         )
-        mock_get_polarion_wi_map.return_value = context["POLARION_WI_MAP"]
-        context["WORK_ITEMS"] = {
+        mock_get_polarion_wi_map.return_value = ctx["POLARION_WI_MAP"]
+        ctx["WORK_ITEMS"] = {
             "uuid1": serialize.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
@@ -497,18 +554,25 @@ class TestModelElements:
                 type="fakeModelObject",
             )
         }
-        context["MODEL"] = mock_model = mock.MagicMock()
-        mock_model.by_uuid.return_value = context["ELEMENTS"][
-            "FakeModelObject"
-        ][0]
+        ctx["MODEL"] = mock_model = mock.MagicMock()
+        mock_model.by_uuid.return_value = ctx["ELEMENTS"]["FakeModelObject"][0]
 
-        elements.patch_work_items(context)
+        elements.patch_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["MODEL"],
+            ctx["WORK_ITEMS"],
+            ctx["POLARION_WI_MAP"],
+            ctx["API"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["ROLES"],
+        )
 
-        assert context["API"].get_all_work_item_links.call_count == 1
-        assert context["API"].delete_work_item_links.call_count == 0
-        assert context["API"].create_work_item_links.call_count == 0
-        assert context["API"].update_work_item.call_count == 1
-        work_item = context["API"].update_work_item.call_args[0][0]
+        assert ctx["API"].get_all_work_item_links.call_count == 1
+        assert ctx["API"].delete_work_item_links.call_count == 0
+        assert ctx["API"].create_work_item_links.call_count == 0
+        assert ctx["API"].update_work_item.call_count == 1
+        work_item = ctx["API"].update_work_item.call_args[0][0]
         assert isinstance(work_item, serialize.CapellaWorkItem)
         assert work_item.id == "Obj-1"
         assert work_item.title == "Fake 1"
@@ -520,36 +584,54 @@ class TestModelElements:
 
     @staticmethod
     def test_update_work_items_filters_work_items_with_same_checksum(
-        context: dict[str, t.Any]
+        ctx: dict[str, t.Any]
     ):
-        context["POLARION_WI_MAP"]["uuid1"] = serialize.CapellaWorkItem(
+        ctx["POLARION_WI_MAP"]["uuid1"] = serialize.CapellaWorkItem(
             checksum=TEST_WI_CHECKSUM,
         )
 
-        elements.patch_work_items(context)
+        elements.patch_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["MODEL"],
+            ctx["WORK_ITEMS"],
+            ctx["POLARION_WI_MAP"],
+            ctx["API"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["ROLES"],
+        )
 
-        assert context["API"].update_work_item.call_count == 0
+        assert ctx["API"].update_work_item.call_count == 0
 
     @staticmethod
-    def test_update_links_with_no_elements(context: dict[str, t.Any]):
-        context["POLARION_WI_MAP"] = {}
+    def test_update_links_with_no_elements(ctx: dict[str, t.Any]):
+        ctx["POLARION_WI_MAP"] = {}
 
-        elements.patch_work_items(context)
+        elements.patch_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["MODEL"],
+            ctx["WORK_ITEMS"],
+            ctx["POLARION_WI_MAP"],
+            ctx["API"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["ROLES"],
+        )
 
-        assert context["API"].get_all_work_item_links.call_count == 0
+        assert ctx["API"].get_all_work_item_links.call_count == 0
 
     @staticmethod
     def test_update_links(
-        monkeypatch: pytest.MonkeyPatch, context: dict[str, t.Any]
+        monkeypatch: pytest.MonkeyPatch, ctx: dict[str, t.Any]
     ):
         link = polarion_api.WorkItemLink(
             "Obj-1", "Obj-2", "attribute", True, "project_id"
         )
-        context["POLARION_WI_MAP"]["uuid1"].linked_work_items = [link]
-        context["POLARION_WI_MAP"]["uuid2"] = serialize.CapellaWorkItem(
+        ctx["POLARION_WI_MAP"]["uuid1"].linked_work_items = [link]
+        ctx["POLARION_WI_MAP"]["uuid2"] = serialize.CapellaWorkItem(
             id="Obj-2", uuid_capella="uuid2", status="open"
         )
-        context["WORK_ITEMS"] = {
+        ctx["WORK_ITEMS"] = {
             "uuid1": serialize.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
@@ -567,37 +649,46 @@ class TestModelElements:
         monkeypatch.setattr(
             elements, "get_polarion_wi_map", mock_get_polarion_wi_map
         )
-        mock_get_polarion_wi_map.return_value = context["POLARION_WI_MAP"]
-        context["API"].get_all_work_item_links.side_effect = (
+        mock_get_polarion_wi_map.return_value = ctx["POLARION_WI_MAP"]
+        ctx["API"].get_all_work_item_links.side_effect = (
             [link],
             [],
         )
-        context["MODEL"] = mock_model = mock.MagicMock()
-        mock_model.by_uuid.side_effect = context["ELEMENTS"]["FakeModelObject"]
+        ctx["MODEL"] = mock_model = mock.MagicMock()
+        mock_model.by_uuid.side_effect = ctx["ELEMENTS"]["FakeModelObject"]
         expected_new_link = polarion_api.WorkItemLink(
             "Obj-2", "Obj-1", "attribute", None, "project_id"
         )
 
-        elements.patch_work_items(context)
+        elements.patch_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["MODEL"],
+            ctx["WORK_ITEMS"],
+            ctx["POLARION_WI_MAP"],
+            ctx["API"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["ROLES"],
+        )
 
-        links = context["API"].get_all_work_item_links.call_args_list
-        assert context["API"].get_all_work_item_links.call_count == 2
+        links = ctx["API"].get_all_work_item_links.call_args_list
+        assert ctx["API"].get_all_work_item_links.call_count == 2
         assert [links[0][0][0], links[1][0][0]] == ["Obj-1", "Obj-2"]
-        new_links = context["API"].create_work_item_links.call_args[0][0]
-        assert context["API"].create_work_item_links.call_count == 1
+        new_links = ctx["API"].create_work_item_links.call_args[0][0]
+        assert ctx["API"].create_work_item_links.call_count == 1
         assert new_links == [expected_new_link]
-        assert context["API"].delete_work_item_links.call_count == 1
-        assert context["API"].delete_work_item_links.call_args[0][0] == [link]
+        assert ctx["API"].delete_work_item_links.call_count == 1
+        assert ctx["API"].delete_work_item_links.call_args[0][0] == [link]
 
     @staticmethod
     def test_patch_work_item_grouped_links(
         monkeypatch: pytest.MonkeyPatch,
-        context: dict[str, t.Any],
+        ctx: dict[str, t.Any],
         dummy_work_items,
     ):
-        context["WORK_ITEMS"] = dummy_work_items
+        ctx["WORK_ITEMS"] = dummy_work_items
 
-        context["POLARION_WI_MAP"] = {
+        ctx["POLARION_WI_MAP"] = {
             "uuid0": serialize.CapellaWorkItem(
                 id="Obj-0", uuid_capella="uuid0", status="open"
             ),
@@ -610,7 +701,7 @@ class TestModelElements:
         }
         mock_create_links = mock.MagicMock()
         monkeypatch.setattr(element, "create_links", mock_create_links)
-        mock_create_links.side_effect = lambda obj, ctx: dummy_work_items[
+        mock_create_links.side_effect = lambda obj, *args: dummy_work_items[
             obj.uuid
         ].linked_work_items
 
@@ -630,14 +721,23 @@ class TestModelElements:
             mock_grouped_links_reverse,
         )
 
-        context["MODEL"] = mock_model = mock.MagicMock()
+        ctx["MODEL"] = mock_model = mock.MagicMock()
         mock_model.by_uuid.side_effect = [
             FakeModelObject(f"uuid{i}", name=f"Fake {i}") for i in range(3)
         ]
 
-        elements.patch_work_items(context)
+        elements.patch_work_items(
+            ctx["POLARION_ID_MAP"],
+            ctx["MODEL"],
+            ctx["WORK_ITEMS"],
+            ctx["POLARION_WI_MAP"],
+            ctx["API"],
+            {},
+            ctx["PROJECT_ID"],
+            ctx["ROLES"],
+        )
 
-        update_work_item_calls = context["API"].update_work_item.call_args_list
+        update_work_item_calls = ctx["API"].update_work_item.call_args_list
         assert len(update_work_item_calls) == 3
 
         mock_grouped_links_calls = mock_grouped_links.call_args_list
@@ -763,9 +863,11 @@ class TestSerializers:
     def test_diagram(model: capellambse.MelodyModel):
         diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
 
-        serialized_diagram = serialize.diagram(
-            diag, {"DIAGRAM_CACHE": TEST_DIAGRAM_CACHE}
+        serializer = serialize.CapellaWorkItemSerializer(
+            TEST_DIAGRAM_CACHE, {}, model, {}, {}
         )
+
+        serialized_diagram = serializer.serialize(diag)
         serialized_diagram.description = None
 
         assert serialized_diagram == serialize.CapellaWorkItem(
@@ -916,13 +1018,11 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
 
-        work_item = serialize.generic_work_item(
-            obj,
-            {
-                "POLARION_ID_MAP": TEST_POL_ID_MAP,
-                "POLARION_TYPE_MAP": TEST_POL_TYPE_MAP,
-            },
+        serializer = serialize.CapellaWorkItemSerializer(
+            pathlib.Path(""), TEST_POL_TYPE_MAP, model, TEST_POL_ID_MAP, {}
         )
+
+        work_item = serializer.serialize(obj)
         status = work_item.status
         work_item.status = None
 
