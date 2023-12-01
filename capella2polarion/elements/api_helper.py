@@ -6,7 +6,6 @@ import logging
 import typing as t
 
 import polarion_rest_api_client as polarion_api
-from capellambse.model import common
 
 from capella2polarion.elements import serialize
 
@@ -14,11 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def patch_work_item(
-    ctx: dict[str, t.Any],
-    obj: common.GenericElement,
-    receiver: cabc.Callable[
-        [t.Any, dict[str, t.Any]], serialize.CapellaWorkItem
-    ],
+    api: polarion_api.OpenAPIPolarionProjectClient,
+    new: serialize.CapellaWorkItem,
+    old: serialize.CapellaWorkItem,
     name: str,
     _type: str,
 ):
@@ -26,61 +23,54 @@ def patch_work_item(
 
     Parameters
     ----------
-    ctx
+    api
         The context to execute the patch for.
-    obj
-        The Capella object to update the WorkItem from.
-    receiver
-        A function that receives the WorkItem from the created
-        instances. This function alters the WorkItem instances by adding
-        attributes, e.g.: `linked_work_items`. It can be useful to add
-        attributes which can only be computed after the work item and
-        its default attributes were instantiated.
+    new
+        The updated CapellaWorkItem
+    old
+        The CapellaWorkItem currently present on polarion
     name
         The name of the object, which should be displayed in log
         messages.
     _type
         The type of element, which should be shown in log messages.
     """
-    if new := receiver(obj, ctx):
-        wid = ctx["POLARION_ID_MAP"][obj.uuid]
-        old: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][obj.uuid]
-        if new == old:
-            return
+    if new == old:
+        return
 
-        log_args = (wid, _type, name)
-        logger.info("Update work item %r for model %s %r...", *log_args)
-        if "uuid_capella" in new.additional_attributes:
-            del new.additional_attributes["uuid_capella"]
+    log_args = (old.id, _type, name)
+    logger.info("Update work item %r for model %s %r...", *log_args)
+    if "uuid_capella" in new.additional_attributes:
+        del new.additional_attributes["uuid_capella"]
 
-        old.linked_work_items = ctx["API"].get_all_work_item_links(old.id)
-        new.type = None
-        new.status = "open"
-        new.id = wid
-        try:
-            ctx["API"].update_work_item(new)
-            handle_links(
-                old.linked_work_items,
-                new.linked_work_items,
-                ("Delete", _type, name),
-                ctx["API"].delete_work_item_links,
-            )
-            handle_links(
-                new.linked_work_items,
-                old.linked_work_items,
-                ("Create", _type, name),
-                ctx["API"].create_work_item_links,
-            )
-        except polarion_api.PolarionApiException as error:
-            wi = f"{wid}({_type} {name})"
-            logger.error("Updating work item %r failed. %s", wi, error.args[0])
+    old.linked_work_items = api.get_all_work_item_links(old.id)
+    new.type = None
+    new.status = "open"
+    new.id = old.id
+    try:
+        api.update_work_item(new)
+        handle_links(
+            old.linked_work_items,
+            new.linked_work_items,
+            ("Delete", _type, name),
+            api.delete_work_item_links,
+        )
+        handle_links(
+            new.linked_work_items,
+            old.linked_work_items,
+            ("Create", _type, name),
+            api.create_work_item_links,
+        )
+    except polarion_api.PolarionApiException as error:
+        wi = f"{old.id}({_type} {name})"
+        logger.error("Updating work item %r failed. %s", wi, error.args[0])
 
 
 def handle_links(
     left: cabc.Iterable[polarion_api.WorkItemLink],
     right: cabc.Iterable[polarion_api.WorkItemLink],
     log_args: tuple[str, ...],
-    handler: cabc.Callable[[cabc.Iterable[polarion_api.WorkItemLink]], None],
+    handler: cabc.Callable[[cabc.Iterable[polarion_api.WorkItemLink]], t.Any],
 ):
     """Handle work item links on Polarion."""
     for link in (links := get_links(left, right)):

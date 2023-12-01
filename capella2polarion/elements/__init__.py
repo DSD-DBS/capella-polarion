@@ -12,7 +12,6 @@ __all__ = [
     "STATUS_DELETE",
 ]
 
-import functools
 import logging
 import pathlib
 import typing as t
@@ -134,39 +133,41 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
     ctx
         The context for the workitem operation to be processed.
     """
-    work_items_lookup = ctx["POLARION_WI_MAP"] | ctx["WORK_ITEMS"]
-
-    def add_content(
-        obj: common.GenericElement | diag.Diagram,
-        _: dict[str, t.Any],
-        **kwargs,
-    ) -> serialize.CapellaWorkItem:
-        work_item = work_items_lookup[obj.uuid]
-        for key, value in kwargs.items():
-            if getattr(work_item, key, None) is None:
-                continue
-
-            setattr(work_item, key, value)
-        return work_item
-
     ctx["POLARION_ID_MAP"] = uuids = {
         uuid: wi.id
         for uuid, wi in ctx["POLARION_WI_MAP"].items()
         if wi.status == "open" and wi.uuid_capella and wi.id
     }
+
+    back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
     for uuid in uuids:
-        elements = ctx["MODEL"]
+        objects = ctx["MODEL"]
         if uuid.startswith("_"):
-            elements = ctx["MODEL"].diagrams
-        obj = elements.by_uuid(uuid)
+            objects = ctx["MODEL"].diagrams
+
+        obj = objects.by_uuid(uuid)
+        work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
+        old_work_item: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
 
         links = element.create_links(obj, ctx)
+        work_item.linked_work_items = links
+        work_item.id = old_work_item.id
+
+        element.create_grouped_link_fields(work_item, back_links)
+
+    for uuid in uuids:
+        new_work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
+        old_work_item = ctx["POLARION_WI_MAP"][uuid]
+        if old_work_item.id in back_links:
+            element.create_grouped_back_link_fields(
+                new_work_item, back_links[old_work_item.id]
+            )
 
         api_helper.patch_work_item(
-            ctx,
-            obj,
-            functools.partial(add_content, linked_work_items=links),
-            obj._short_repr_(),
+            ctx["API"],
+            new_work_item,
+            old_work_item,
+            old_work_item.title,
             "element",
         )
 
