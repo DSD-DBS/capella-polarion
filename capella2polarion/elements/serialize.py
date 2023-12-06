@@ -291,7 +291,7 @@ def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
     return {"type": _type, "value": value}
 
 
-def component_or_actor(
+def _include_actor_in_type(
     obj: cs.Component, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
     """Return attributes for a ``Component``."""
@@ -305,11 +305,11 @@ def component_or_actor(
     return work_item
 
 
-def physical_component(
+def _include_nature_in_type(
     obj: pa.PhysicalComponent, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
     """Return attributes for a ``PhysicalComponent``."""
-    work_item = component_or_actor(obj, ctx)
+    work_item = _include_actor_in_type(obj, ctx)
     xtype = work_item.type
     if obj.nature is not None:
         # pylint: disable-next=attribute-defined-outside-init
@@ -322,11 +322,11 @@ Serializer = cabc.Callable[
 ]
 SERIALIZERS: dict[str, Serializer] = {
     "CapabilityRealization": include_pre_and_post_condition,
-    "LogicalComponent": component_or_actor,
+    "LogicalComponent": _include_actor_in_type,
     "OperationalCapability": include_pre_and_post_condition,
-    "PhysicalComponent": physical_component,
+    "PhysicalComponent": _include_nature_in_type,
     "SystemCapability": include_pre_and_post_condition,
-    "SystemComponent": component_or_actor,
+    "SystemComponent": _include_actor_in_type,
     "Scenario": include_pre_and_post_condition,
     "Constraint": constraint,
 }
