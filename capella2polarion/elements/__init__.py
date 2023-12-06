@@ -163,13 +163,7 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
                 new_work_item, back_links[old_work_item.id]
             )
 
-        api_helper.patch_work_item(
-            ctx["API"],
-            new_work_item,
-            old_work_item,
-            old_work_item.title,
-            "element",
-        )
+        api_helper.patch_work_item(ctx["API"], new_work_item, old_work_item)
 
 
 def get_types(ctx: dict[str, t.Any]) -> set[str]:

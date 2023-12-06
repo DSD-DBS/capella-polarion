@@ -143,8 +143,9 @@ def _get_requirement_types_text(
             continue
 
         if not (req.type and req.text):
+            identifier = req.long_name or req.name or req.summary or req.uuid
             logger.warning(
-                "Requirement without text or type found %r", req.name
+                "Requirement without text or type found %r", identifier
             )
             continue
 
