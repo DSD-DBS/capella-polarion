@@ -23,7 +23,9 @@ from lxml import etree
 
 from capella2polarion.elements import helpers
 
-RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">[^<]+<\/a>")
+RE_DESCR_LINK_PATTERN = re.compile(
+    r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
+)
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
@@ -175,7 +177,7 @@ def _sanitize_description(
 ) -> tuple[list[str], markupsafe.Markup]:
     referenced_uuids: list[str] = []
     replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-        lambda match: replace_markup(match, ctx, referenced_uuids), descr
+        lambda match: replace_markup(match, ctx, referenced_uuids, 2), descr
     )
 
     def repair_images(node: etree._Element) -> None:
@@ -209,7 +211,7 @@ def replace_markup(
     match: re.Match,
     ctx: dict[str, t.Any],
     referenced_uuids: list[str],
-    non_matcher: cabc.Callable[[str], str] = lambda i: i,
+    default_group: int = 1,
 ) -> str:
     """Replace UUID references in a ``match`` with a work item link.
 
@@ -217,10 +219,16 @@ def replace_markup(
     text is returned.
     """
     uuid = match.group(1)
-    if pid := ctx["POLARION_ID_MAP"].get(uuid):
-        referenced_uuids.append(uuid)
-        return POLARION_WORK_ITEM_URL.format(pid=pid)
-    return non_matcher(match.group(0))
+    try:
+        ctx["MODEL"].by_uuid(uuid)
+        if pid := ctx["POLARION_ID_MAP"].get(uuid):
+            referenced_uuids.append(uuid)
+            return POLARION_WORK_ITEM_URL.format(pid=pid)
+        logger.warning("Found reference to non-existing work item: %r", uuid)
+        return match.group(default_group)
+    except KeyError:
+        logger.error("Found link to non-existing model element: %r", uuid)
+        return strike_through(match.group(default_group))
 
 
 def include_pre_and_post_condition(
@@ -232,11 +240,6 @@ def include_pre_and_post_condition(
         if not (condition := getattr(cap, name)):
             return ""
         return condition.specification["capella:linkedText"].striptags()
-
-    def strike_through(string: str) -> str:
-        if match := RE_DESCR_DELETED_PATTERN.match(string):
-            string = match.group(1)
-        return f'<span style="text-decoration: line-through;">{string}</span>'
 
     def matcher(match: re.Match) -> str:
         return strike_through(replace_markup(match, ctx, []))
@@ -253,6 +256,13 @@ def include_pre_and_post_condition(
     work_item.postCondition = _condition(True, post_condition)
 
     return work_item
+
+
+def strike_through(string: str) -> str:
+    """Return a striked-through html span from given ``string``."""
+    if match := RE_DESCR_DELETED_PATTERN.match(string):
+        string = match.group(1)
+    return f'<span style="text-decoration: line-through;">{string}</span>'
 
 
 def get_linked_text(

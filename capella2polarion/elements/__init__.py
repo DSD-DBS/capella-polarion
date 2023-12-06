@@ -146,7 +146,9 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
             objects = ctx["MODEL"].diagrams
 
         obj = objects.by_uuid(uuid)
-        work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
+        work_item: serialize.CapellaWorkItem
+        if (work_item := ctx["WORK_ITEMS"][uuid]) is None:
+            continue
         old_work_item: serialize.CapellaWorkItem = ctx["POLARION_WI_MAP"][uuid]
 
         links = element.create_links(obj, ctx)
@@ -157,6 +159,8 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
 
     for uuid in uuids:
         new_work_item: serialize.CapellaWorkItem = ctx["WORK_ITEMS"][uuid]
+        if (new_work_item := ctx["WORK_ITEMS"][uuid]) is None:
+            continue
         old_work_item = ctx["POLARION_WI_MAP"][uuid]
         if old_work_item.id in back_links:
             element.create_grouped_back_link_fields(
