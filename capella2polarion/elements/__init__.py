@@ -235,7 +235,7 @@ def _fix_components(
         elements[xtype] = components
 
     nature_mapping: dict[str, tuple[list[common.GenericElement], str]] = {
-        "None": ([], "PhysicalComponentNode"),
+        "UNSET": ([], "PhysicalComponent"),
         "NODE": ([], "PhysicalComponentNode"),
         "BEHAVIOR": ([], "PhysicalComponentBehavior"),
         "NODE_actor": ([], "PhysicalActorNode"),
