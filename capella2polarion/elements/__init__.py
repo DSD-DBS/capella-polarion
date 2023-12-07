@@ -242,8 +242,8 @@ def _fix_components(
         "BEHAVIOR_actor": ([], "PhysicalActorBehavior"),
     }
     for obj in elements.get("PhysicalComponent", []):
-        is_actor = "_actor" if obj.is_actor else ""
-        container, xtype = nature_mapping[f"{str(obj.nature)}{is_actor}"]
+        postfix = "_actor" if obj.is_actor else ""
+        container, xtype = nature_mapping[f"{str(obj.nature)}{postfix}"]
         container.append(obj)
         type_map[obj.uuid] = xtype
 
