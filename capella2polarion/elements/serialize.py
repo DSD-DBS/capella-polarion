@@ -221,14 +221,14 @@ def replace_markup(
     uuid = match.group(1)
     try:
         ctx["MODEL"].by_uuid(uuid)
-        if pid := ctx["POLARION_ID_MAP"].get(uuid):
-            referenced_uuids.append(uuid)
-            return POLARION_WORK_ITEM_URL.format(pid=pid)
-        logger.warning("Found reference to non-existing work item: %r", uuid)
-        return match.group(default_group)
     except KeyError:
         logger.error("Found link to non-existing model element: %r", uuid)
         return strike_through(match.group(default_group))
+    if pid := ctx["POLARION_ID_MAP"].get(uuid):
+        referenced_uuids.append(uuid)
+        return POLARION_WORK_ITEM_URL.format(pid=pid)
+    logger.warning("Found reference to non-existing work item: %r", uuid)
+    return match.group(default_group)
 
 
 def include_pre_and_post_condition(
