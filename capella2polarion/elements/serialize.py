@@ -311,9 +311,9 @@ def _include_nature_in_type(
     """Return attributes for a ``PhysicalComponent``."""
     work_item = _include_actor_in_type(obj, ctx)
     xtype = work_item.type
-    if obj.nature is not None:
-        # pylint: disable-next=attribute-defined-outside-init
-        work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
+    nature = [obj.nature.name, ""][obj.nature == "UNSET"]
+    # pylint: disable-next=attribute-defined-outside-init
+    work_item.type = f"{xtype}{nature.capitalize()}"
     return work_item
 
 
