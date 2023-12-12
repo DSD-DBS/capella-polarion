@@ -33,6 +33,7 @@ dependencies = [
   "PyYAML",
 #  "polarion-rest-api-client==0.2.1",
   "requests",
+  "validators"
 ]
 
 [project.urls]

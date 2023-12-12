@@ -67,7 +67,7 @@ class CapellaWorkItem(polarion_api.WorkItem):
         type: str
         value: str
 
-    uuid_capella: str | None
+    uuid_capella: str
     preCondition: Condition | None
     postCondition: Condition | None
 

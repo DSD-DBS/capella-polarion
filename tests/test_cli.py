@@ -13,16 +13,16 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from click import testing
 
-import capella2polarion.__main__ as main
-from capella2polarion import elements
-
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
-from .conftest import (  # type: ignore[import]
+from conftest import (  # type: ignore[import]
     TEST_DIAGRAM_CACHE,
     TEST_HOST,
     TEST_MODEL,
     TEST_MODEL_ELEMENTS_CONFIG,
 )
+
+import capella2polarion.__main__ as main
+from capella2polarion import elements
 
 
 def prepare_cli_test(

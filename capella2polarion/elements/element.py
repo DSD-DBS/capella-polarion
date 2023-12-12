@@ -24,49 +24,44 @@ logger = logging.getLogger(__name__)
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 
 
-def create_work_items(
-    elements,
-    diagram_cache_path: pathlib.Path,
-    polarion_type_map,
-    polarion_work_item_map,
-    model,
-    polarion_id_map,
-    descr_references,
-) -> dict[str, serialize.CapellaWorkItem]:
-    """Create a list of work items for Polarion."""
-    objects = chain.from_iterable(elements.values())
-    _work_items = []
-    serializer = serialize.CapellaWorkItemSerializer(
-        diagram_cache_path,
-        polarion_type_map,
-        model,
-        polarion_id_map,
-        descr_references,
-    )
-    for obj in objects:
-        _work_items.append(serializer.serialize(obj))
+# def create_work_items(
+#     elements,
+#     aDiagramCachePath: pathlib.Path,
+#     polarion_type_map,
+#     model,
+#     polarion_id_map,
+#     descr_references,
+# ) -> dict[str, serialize.CapellaWorkItem]:
+#     """Create a list of work items for Polarion."""
+#     objects = chain.from_iterable(elements.values())
+#     _work_items = []
+#     serializer = serialize.CapellaWorkItemSerializer(
+#         aDiagramCachePath,
+#         polarion_type_map,
+#         model,
+#         polarion_id_map,
+#         descr_references,
+#     )
+#     for obj in objects:
+#         _work_items.append(serializer.serialize(obj))
 
-    _work_items = list(filter(None, _work_items))
-    valid_types = set(map(helpers.resolve_element_type, set(elements)))
-    work_items: list[serialize.CapellaWorkItem] = []
-    missing_types: set[str] = set()
-    for work_item in _work_items:
-        assert work_item is not None
-        assert work_item.title is not None
-        assert work_item.type is not None
-        if old := polarion_work_item_map.get(work_item.uuid_capella):
-            work_item.id = old.id
-        if work_item.type in valid_types:
-            work_items.append(work_item)
-        else:
-            missing_types.add(work_item.type)
+#     _work_items = list(filter(None, _work_items))
+#     valid_types = set(map(helpers.resolve_element_type, set(elements)))
+#     work_items: list[serialize.CapellaWorkItem] = []
+#     missing_types: set[str] = set()
+#     for work_item in _work_items:
+#         assert work_item is not None
+#         if work_item.type in valid_types:
+#             work_items.append(work_item)
+#         else:
+#             missing_types.add(work_item.type)
 
-    if missing_types:
-        logger.debug(
-            "%r are missing in the capella2polarion configuration",
-            ", ".join(missing_types),
-        )
-    return {wi.uuid_capella: wi for wi in work_items}
+#     if missing_types:
+#         logger.debug(
+#             "%r are missing in the capella2polarion configuration",
+#             ", ".join(missing_types),
+#         )
+#     return {wi.uuid_capella: wi for wi in work_items}
 
 
 def create_links(
