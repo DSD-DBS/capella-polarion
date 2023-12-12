@@ -6,6 +6,7 @@ from __future__ import annotations
 import collections.abc as cabc
 import functools
 import logging
+import types
 import typing as t
 from collections import defaultdict
 from itertools import chain
@@ -50,6 +51,8 @@ def create_work_items(
     missing_types: set[str] = set()
     for work_item in _work_items:
         assert work_item is not None
+        assert work_item.title is not None
+        assert work_item.type is not None
         if work_item.type in valid_types:
             work_items.append(work_item)
         else:
@@ -60,7 +63,9 @@ def create_work_items(
             "%r are missing in the capella2polarion configuration",
             ", ".join(missing_types),
         )
-    ctx["WORK_ITEMS"] = {wi.uuid_capella: wi for wi in work_items}
+    ctx["WORK_ITEMS"] = types.MappingProxyType(
+        {wi.uuid_capella: wi for wi in work_items}
+    )
     return work_items
 
 

@@ -16,8 +16,6 @@ def patch_work_item(
     api: polarion_api.OpenAPIPolarionProjectClient,
     new: serialize.CapellaWorkItem,
     old: serialize.CapellaWorkItem,
-    name: str,
-    _type: str,
 ):
     """Patch a given WorkItem.
 
@@ -29,16 +27,11 @@ def patch_work_item(
         The updated CapellaWorkItem
     old
         The CapellaWorkItem currently present on polarion
-    name
-        The name of the object, which should be displayed in log
-        messages.
-    _type
-        The type of element, which should be shown in log messages.
     """
     if new == old:
         return
 
-    log_args = (old.id, _type, name)
+    log_args = (old.id, new.type, new.title)
     logger.info("Update work item %r for model %s %r...", *log_args)
     if "uuid_capella" in new.additional_attributes:
         del new.additional_attributes["uuid_capella"]
@@ -52,18 +45,21 @@ def patch_work_item(
         handle_links(
             old.linked_work_items,
             new.linked_work_items,
-            ("Delete", _type, name),
+            ("Delete", *log_args[1:]),
             api.delete_work_item_links,
         )
         handle_links(
             new.linked_work_items,
             old.linked_work_items,
-            ("Create", _type, name),
+            ("Create", *log_args[1:]),
             api.create_work_item_links,
         )
     except polarion_api.PolarionApiException as error:
-        wi = f"{old.id}({_type} {name})"
-        logger.error("Updating work item %r failed. %s", wi, error.args[0])
+        logger.error(
+            "Updating work item %r (%s %s) failed. %s",
+            *log_args,
+            error.args[0],
+        )
 
 
 def handle_links(

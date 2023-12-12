@@ -23,7 +23,9 @@ from lxml import etree
 
 from capella2polarion.elements import helpers
 
-RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">[^<]+<\/a>")
+RE_DESCR_LINK_PATTERN = re.compile(
+    r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
+)
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
@@ -143,8 +145,9 @@ def _get_requirement_types_text(
             continue
 
         if not (req.type and req.text):
+            identifier = req.long_name or req.name or req.summary or req.uuid
             logger.warning(
-                "Requirement without text or type found %r", req.name
+                "Requirement without text or type found %r", identifier
             )
             continue
 
@@ -174,7 +177,7 @@ def _sanitize_description(
 ) -> tuple[list[str], markupsafe.Markup]:
     referenced_uuids: list[str] = []
     replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-        lambda match: replace_markup(match, ctx, referenced_uuids), descr
+        lambda match: replace_markup(match, ctx, referenced_uuids, 2), descr
     )
 
     def repair_images(node: etree._Element) -> None:
@@ -208,7 +211,7 @@ def replace_markup(
     match: re.Match,
     ctx: dict[str, t.Any],
     referenced_uuids: list[str],
-    non_matcher: cabc.Callable[[str], str] = lambda i: i,
+    default_group: int = 1,
 ) -> str:
     """Replace UUID references in a ``match`` with a work item link.
 
@@ -216,10 +219,16 @@ def replace_markup(
     text is returned.
     """
     uuid = match.group(1)
+    try:
+        ctx["MODEL"].by_uuid(uuid)
+    except KeyError:
+        logger.error("Found link to non-existing model element: %r", uuid)
+        return strike_through(match.group(default_group))
     if pid := ctx["POLARION_ID_MAP"].get(uuid):
         referenced_uuids.append(uuid)
         return POLARION_WORK_ITEM_URL.format(pid=pid)
-    return non_matcher(match.group(0))
+    logger.warning("Found reference to non-existing work item: %r", uuid)
+    return match.group(default_group)
 
 
 def include_pre_and_post_condition(
@@ -231,11 +240,6 @@ def include_pre_and_post_condition(
         if not (condition := getattr(cap, name)):
             return ""
         return condition.specification["capella:linkedText"].striptags()
-
-    def strike_through(string: str) -> str:
-        if match := RE_DESCR_DELETED_PATTERN.match(string):
-            string = match.group(1)
-        return f'<span style="text-decoration: line-through;">{string}</span>'
 
     def matcher(match: re.Match) -> str:
         return strike_through(replace_markup(match, ctx, []))
@@ -252,6 +256,13 @@ def include_pre_and_post_condition(
     work_item.postCondition = _condition(True, post_condition)
 
     return work_item
+
+
+def strike_through(string: str) -> str:
+    """Return a striked-through html span from given ``string``."""
+    if match := RE_DESCR_DELETED_PATTERN.match(string):
+        string = match.group(1)
+    return f'<span style="text-decoration: line-through;">{string}</span>'
 
 
 def get_linked_text(
@@ -280,7 +291,7 @@ def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
     return {"type": _type, "value": value}
 
 
-def component_or_actor(
+def _include_actor_in_type(
     obj: cs.Component, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
     """Return attributes for a ``Component``."""
@@ -294,15 +305,15 @@ def component_or_actor(
     return work_item
 
 
-def physical_component(
+def _include_nature_in_type(
     obj: pa.PhysicalComponent, ctx: dict[str, t.Any]
 ) -> CapellaWorkItem:
     """Return attributes for a ``PhysicalComponent``."""
-    work_item = component_or_actor(obj, ctx)
+    work_item = _include_actor_in_type(obj, ctx)
     xtype = work_item.type
-    if obj.nature is not None:
-        # pylint: disable-next=attribute-defined-outside-init
-        work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
+    nature = [obj.nature.name, ""][obj.nature == "UNSET"]
+    # pylint: disable-next=attribute-defined-outside-init
+    work_item.type = f"{xtype}{nature.capitalize()}"
     return work_item
 
 
@@ -311,11 +322,11 @@ Serializer = cabc.Callable[
 ]
 SERIALIZERS: dict[str, Serializer] = {
     "CapabilityRealization": include_pre_and_post_condition,
-    "LogicalComponent": component_or_actor,
+    "LogicalComponent": _include_actor_in_type,
     "OperationalCapability": include_pre_and_post_condition,
-    "PhysicalComponent": physical_component,
+    "PhysicalComponent": _include_nature_in_type,
     "SystemCapability": include_pre_and_post_condition,
-    "SystemComponent": component_or_actor,
+    "SystemComponent": _include_actor_in_type,
     "Scenario": include_pre_and_post_condition,
     "Constraint": constraint,
 }

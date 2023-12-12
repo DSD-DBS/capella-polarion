@@ -33,7 +33,9 @@ ACTOR_TYPES = {
 }
 PHYSICAL_COMPONENT_TYPES = {
     "PhysicalComponentNode": "PhysicalComponent",
+    "PhysicalActorNode": "PhysicalComponent",
     "PhysicalComponentBehavior": "PhysicalComponent",
+    "PhysicalActorBehavior": "PhysicalComponent",
 }
 POL2CAPELLA_TYPES: dict[str, str] = (
     {
@@ -163,13 +165,7 @@ def patch_work_items(ctx: dict[str, t.Any]) -> None:
                 new_work_item, back_links[old_work_item.id]
             )
 
-        api_helper.patch_work_item(
-            ctx["API"],
-            new_work_item,
-            old_work_item,
-            old_work_item.title,
-            "element",
-        )
+        api_helper.patch_work_item(ctx["API"], new_work_item, old_work_item)
 
 
 def get_types(ctx: dict[str, t.Any]) -> set[str]:
@@ -234,25 +230,22 @@ def _fix_components(
         elements[typ] = actors
         elements[xtype] = components
 
-    nodes: list[common.GenericElement] = []
-    behaviors: list[common.GenericElement] = []
-    components = []
+    nature_mapping: dict[str, tuple[list[common.GenericElement], str]] = {
+        "UNSET": ([], "PhysicalComponent"),
+        "NODE": ([], "PhysicalComponentNode"),
+        "BEHAVIOR": ([], "PhysicalComponentBehavior"),
+        "NODE_actor": ([], "PhysicalActorNode"),
+        "BEHAVIOR_actor": ([], "PhysicalActorBehavior"),
+    }
     for obj in elements.get("PhysicalComponent", []):
-        if obj.nature is not None and obj.nature.name == "NODE":
-            nodes.append(obj)
-            type_map[obj.uuid] = "PhysicalComponentNode"
-        elif obj.nature is not None and obj.nature.name == "BEHAVIOR":
-            behaviors.append(obj)
-            type_map[obj.uuid] = "PhysicalComponentBehavior"
-        else:
-            components.append(obj)
+        postfix = "_actor" if obj.is_actor else ""
+        container, xtype = nature_mapping[f"{str(obj.nature)}{postfix}"]
+        container.append(obj)
+        type_map[obj.uuid] = xtype
 
-    if nodes:
-        elements["PhysicalComponentNode"] = nodes
-    if behaviors:
-        elements["PhysicalComponentBehavior"] = behaviors
-    if components:
-        elements["PhysicalComponent"] = components
+    for container, xtype in nature_mapping.values():
+        if container:
+            elements[xtype] = container
 
 
 def make_model_elements_index(ctx: dict[str, t.Any]) -> None:
