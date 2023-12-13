@@ -106,17 +106,17 @@ def synchronize(ctx: click.core.Context) -> None:
     aC2PCli: C2PCli = ctx.obj
     aC2PCli.logger.info(
         f"""
-            Synchronising diagrams from diagram cache at '{str(aC2PCli.getCapellaDiagramCacheIndexFilePath())}'
+            Synchronising diagrams from diagram cache at '{str(aC2PCli.get_capella_diagram_cache_index_file_path())}'
             to Polarion project with id {aC2PCli.ProjectId}...
         """
     )
     # ctx.obj["DIAGRAM_CACHE"] = None # Orignal ... aDiagramCachePath ... None damit es Crashed!
     # ctx.obj["MODEL"] = model
     # ctx.obj["CONFIG"] = yaml.safe_load(config_file)
-    aC2PCli.loadSynchronizeConfig()
+    aC2PCli.load_synchronize_config()
     # ctx.obj["ROLES"] = _get_roles_from_config(ctx.obj)
-    aC2PCli.loadRolesFromSynchronizeConfig()
-    aC2PCli.loadCapellaDiagrammCacheIndex()
+    aC2PCli.load_roles_from_synchronize_config()
+    aC2PCli.load_capella_diagramm_cache_index()
     # (
     #     ctx.obj["ELEMENTS"],
     #     ctx.obj["POLARION_TYPE_MAP"],
@@ -133,7 +133,7 @@ def synchronize(ctx: click.core.Context) -> None:
     lPW = PolarionWorker(
         aC2PCli.PolarionClient, aC2PCli.logger, helpers.resolve_element_type
     )
-    lPW.loadElementsAndTypeMap(
+    lPW.load_elements_and_type_map(
         aC2PCli.SynchronizeConfigContent,
         aC2PCli.CapellaModel,
         aC2PCli.CapellaDiagramCacheIndexContent,
@@ -141,7 +141,7 @@ def synchronize(ctx: click.core.Context) -> None:
     # types = elements.get_types(
     #     ctx.obj["POLARION_TYPE_MAP"], ctx.obj["ELEMENTS"]
     # )
-    lPW.fillXTypes()
+    lPW.fill_xtypes()
     # ctx.obj["POLARION_WI_MAP"] = elements.get_polarion_wi_map(
     #     types, ctx.obj["API"]
     # )
@@ -151,7 +151,7 @@ def synchronize(ctx: click.core.Context) -> None:
     # ctx.obj["POLARION_ID_MAP"] = {
     #     uuid: wi.id for uuid, wi in ctx.obj["POLARION_WI_MAP"].items()
     # }
-    lPW.loadPolarionWorkItemMap()
+    lPW.load_polarion_work_item_map()
     # ctx.obj["DESCR_REFERENCES"] = {}
     # new_work_items = elements.element.create_work_items(
     #     ctx.obj["ELEMENTS"],

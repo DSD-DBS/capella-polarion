@@ -43,7 +43,9 @@ class C2PCli(object):
         self.PolarionUrl = aPolarionUrl
         self.PolarionPat = aPolarionPat
         self.PolarionDeleteWorkItems = aPolarionDeleteWorkItems
-        self.PolarionClient
+        self.PolarionClient: polarion_api.OpenAPIPolarionProjectClient | None = (
+            None
+        )
         self.CapellaDiagramCacheFolderPath = capella_diagram_cache_folder_path
         self.CapellaDiagramCacheIndexContent: list[
             dict[str, typing.Any]
@@ -51,7 +53,7 @@ class C2PCli(object):
         self.CapellaModel: cli_helpers.ModelCLI = capella_model
         self.SynchronizeConfigIO: typing.TextIO = synchronize_config_io
         self.SynchronizeConfigContent: dict[str, typing.Any]
-        self.SynchronizeConfigRoles: dict[str, list[str]]
+        self.SynchronizeConfigRoles: dict[str, list[str]] | None = None
         self.echo = click.echo
         self.logger: logging.Logger
 
@@ -76,7 +78,7 @@ class C2PCli(object):
             if lMyLightedMember[0].isupper():
                 lValue = getattr(self, lMyLightedMember)
                 lType = type(lValue)
-                lConverter = {
+                lConverter: dict[typing.Type, typing.Callable] = {
                     bool: str,
                     int: str,
                     float: str,
@@ -85,14 +87,12 @@ class C2PCli(object):
                     pathlib.PosixPath: str,
                 }
                 if lType in lConverter:
-                    lStringValue = """"""
-                    # @MH hier macht mir der mypy probleme
-                    # (
-                    #    "None" if lValue == None else lConverter[lType](lValue)
-                    # )
+                    lStringValue = (
+                        "None" if lValue is None else lConverter[lType](lValue)
+                    )
                 else:
                     lStringValue = _type(lValue)
-                # lStringValue = self._noneSaveValueString(lStringValue)
+                lStringValue = self._noneSaveValueString(lStringValue)
                 self.echo(f"{lMyLightedMember}: '{lStringValue}'")
         self.echo(
             f"Capella Diagram Cache Index-File exits: {('YES' if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"
@@ -125,8 +125,7 @@ class C2PCli(object):
             custom_work_item=serialize.CapellaWorkItem,
             add_work_item_checksum=True,
         )
-        if self.PolarionClient == None:
-            raise Exception("Polarion invalid Client / None Client")
+        # assert self.PolarionClient is not None
         if self.PolarionClient.project_exists():
             raise Exception(
                 f"Miss Polarion project with id {self._noneSaveValueString(self.ProjectId)}"
@@ -150,7 +149,7 @@ class C2PCli(object):
         GLogger.parent.addHandler(lConsoleHandler)
         self.logger = GLogger
 
-    def loadSynchronizeConfig(self) -> None:
+    def load_synchronize_config(self) -> None:
         """Read the sync config into SynchronizeConfigContent.
 
         - example in /tests/data/model_elements/config.yaml
@@ -164,7 +163,7 @@ class C2PCli(object):
             self.SynchronizeConfigIO
         )
 
-    def loadRolesFromSynchronizeConfig(self) -> None:
+    def load_roles_from_synchronize_config(self) -> None:
         """Fill SynchronizeConfigRoles and correct content."""
         if self.SynchronizeConfigContent == None:
             raise Exception("first call loadSynchronizeConfig")
@@ -240,7 +239,7 @@ class C2PCli(object):
                 roles[typ] = []
         self.SynchronizeConfigRoles = roles
 
-    def getCapellaDiagramCacheIndexFilePath(self) -> pathlib.Path:
+    def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
         """Return index file path."""
         if self.CapellaDiagramCacheFolderPath == None:
             raise Exception("CapellaDiagramCacheFolderPath not filled")
@@ -250,22 +249,22 @@ class C2PCli(object):
         """Test existens of file."""
         return (
             False
-            if self.getCapellaDiagramCacheIndexFilePath() == None
-            else self.getCapellaDiagramCacheIndexFilePath().is_file()
+            if self.get_capella_diagram_cache_index_file_path() == None
+            else self.get_capella_diagram_cache_index_file_path().is_file()
         )
 
-    def loadCapellaDiagrammCacheIndex(self) -> None:
+    def load_capella_diagramm_cache_index(self) -> None:
         """Load to CapellaDiagramCacheIndexContent."""
         if not self.exitsCapellaDiagrammCacheIndexFile():
             raise Exception("capella diagramm cache index file doe not exits")
         self.CapellaDiagramCacheIndexContent = None
-        if self.getCapellaDiagramCacheIndexFilePath() != None:
+        if self.get_capella_diagram_cache_index_file_path() != None:
             l_text_content = (
-                self.getCapellaDiagramCacheIndexFilePath().read_text(
+                self.get_capella_diagram_cache_index_file_path().read_text(
                     encoding="utf8"
                 )
             )
             self.CapellaDiagramCacheIndexContent = json.loads(l_text_content)
 
     def _noneSaveValueString(self, aValue: str | None) -> str | None:
-        return "None" if aValue == None else aValue
+        return "None" if aValue is None else aValue

@@ -61,8 +61,9 @@ class PolarionWorker:
             str, serialize.CapellaWorkItem
         ]  # dict[str, typing.Any] = None
         self.makeTypeId: typing.Any = aMakeTypeId
+        self.Simulation: bool = True
 
-    def loadElementsAndTypeMap(
+    def load_elements_and_type_map(
         self,
         config: dict[str, typing.Any],
         model: capellambse.MelodyModel,
@@ -139,7 +140,7 @@ class PolarionWorker:
         self.PolarionTypeMap = type_map
         self.CapellaUUIDs = set(self.PolarionTypeMap)
 
-    def fillXTypes(self):
+    def fill_xtypes(self):
         """Return a set of Polarion types from the current context."""
         xtypes = set[str]()
         for obj in chain.from_iterable(self.Elements.values()):
@@ -147,18 +148,23 @@ class PolarionWorker:
             xtypes.add(self.makeTypeId(xtype))
         self.XTypes = xtypes
 
-    def loadPolarionWorkItemMap(self):
+    def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
         work_item_types = list(map(self.makeTypeId, self.XTypes))
         _type = " ".join(work_item_types)
-        work_items = self.client.get_all_work_items(
-            f"type:({_type})", {"workitems": "id,uuid_capella,checksum,status"}
-        )
-        self.PolarionWorkItemMap = {
-            wi.uuid_capella: wi
-            for wi in work_items
-            if wi.id and wi.uuid_capella
-        }
+        if self.Simulation:
+            work_items = {"84a64a2d-3491-48af-b55b-823010a3e006": "doppelweck"}
+        else:
+            work_items = self.client.get_all_work_items(
+                f"type:({_type})",
+                {"workitems": "id,uuid_capella,checksum,status"},
+            )
+        # @as
+        # self.PolarionWorkItemMap = {
+        #     wi.uuid_capella: wi
+        #     for wi in work_items
+        #     if wi.id and wi.uuid_capella
+        # }
         self.PolarionIdMap = {
             uuid: wi.id for uuid, wi in self.PolarionWorkItemMap.items()
         }
@@ -223,7 +229,8 @@ class PolarionWorker:
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
-                self.client.delete_work_items(work_item_ids)
+                if not self.Simulation:
+                    self.client.delete_work_items(work_item_ids)
                 for uuid in uuids:
                     del self.PolarionWorkItemMap[uuid]
                     del self.PolarionIdMap[uuid]
@@ -246,7 +253,8 @@ class PolarionWorker:
             self.logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
             try:
-                self.client.create_work_items(missing_work_items)
+                if not self.Simulation:
+                    self.client.create_work_items(missing_work_items)
                 for work_item in missing_work_items:
                     self.PolarionIdMap[work_item.uuid_capella] = work_item.id
                     self.PolarionWorkItemMap[
@@ -302,11 +310,11 @@ class PolarionWorker:
                 element.create_grouped_back_link_fields(
                     new_work_item, back_links[old_work_item.id]
                 )
-
-            api_helper.patch_work_item(
-                self.client,
-                new_work_item,
-                old_work_item,
-                old_work_item.title,
-                "element",
-            )
+            if not self.Simulation:
+                api_helper.patch_work_item(
+                    self.client,
+                    new_work_item,
+                    old_work_item,
+                    old_work_item.title,
+                    "element",
+                )

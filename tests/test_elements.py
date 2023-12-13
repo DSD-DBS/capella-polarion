@@ -123,29 +123,30 @@ HTML_LINK_2 = {
 
 
 class TestDiagramElements:
-    @staticmethod
-    @pytest.fixture
-    def ctx(
-        diagram_cache_index: list[dict[str, typing.Any]],
-        model: capellambse.MelodyModel,
-    ) -> dict[str, typing.Any]:
-        api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-        uuid = diagram_cache_index[0]["uuid"]
-        work_item = serialize.CapellaWorkItem(id="Diag-1", checksum="123")
-        return {
-            "API": api,
-            "PROJECT_ID": "project_id",
-            "CAPELLA_UUIDS": [d["uuid"] for d in diagram_cache_index],
-            "MODEL": model,
-            "POLARION_WI_MAP": {uuid: work_item},
-            "POLARION_ID_MAP": {uuid: "Diag-1"},
-            "DIAGRAM_IDX": diagram_cache_index,
-            "DIAGRAM_CACHE": TEST_DIAGRAM_CACHE,
-            "REST_API_URL": TEST_HOST,
-        }
+    # @staticmethod
+    # @pytest.fixture
+    # def ctx(
+    #     diagram_cache_index: list[dict[str, typing.Any]],
+    #     model: capellambse.MelodyModel,
+    # ) -> dict[str, typing.Any]:
+    #     api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
+    #     uuid = diagram_cache_index[0]["uuid"]
+    #     work_item = serialize.CapellaWorkItem(id="Diag-1", checksum="123")
+    #     return {
+    #         "API": api,
+    #         "PROJECT_ID": "project_id",
+    #         "CAPELLA_UUIDS": [d["uuid"] for d in diagram_cache_index],
+    #         "MODEL": model,
+    #         "POLARION_WI_MAP": {uuid: work_item},
+    #         "POLARION_ID_MAP": {uuid: "Diag-1"},
+    #         "DIAGRAM_IDX": diagram_cache_index,
+    #         "DIAGRAM_CACHE": TEST_DIAGRAM_CACHE,
+    #         "REST_API_URL": TEST_HOST,
+    #     }
 
     @staticmethod
-    def createBaseObjects(
+    @pytest.fixture
+    def baseObjects(
         diagram_cache_index: list[dict[str, typing.Any]],
         model: capellambse.MelodyModel | None,
     ):
@@ -178,7 +179,7 @@ class TestDiagramElements:
         return (c2p_cli, pw)
 
     @staticmethod
-    def test_create_diagrams(ctx: dict[str, typing.Any]):
+    def test_create_diagrams(baseObjects):
         # ctx["ELEMENTS"] = {"Diagram": ctx["MODEL"].diagrams}
         # diagrams = elementyping.create_work_items(
         #     ctx["ELEMENTS"],
@@ -190,9 +191,7 @@ class TestDiagramElements:
         # )
 
         # @ MH - TEST_SER_DIAGRAMM ist falsch
-        c2p_cli, pw = TestDiagramElements.createBaseObjects(
-            [TEST_SER_DIAGRAM], None
-        )
+        c2p_cli, pw = TestDiagramElements.baseObjects([TEST_SER_DIAGRAM], None)
         lDescriptionReference: dict[str, list[str]] = {}
         lNewWorkItems: dict[str, serialize.CapellaWorkItem]
         lNewWorkItems = pw.create_work_items(
@@ -232,9 +231,7 @@ class TestDiagramElements:
         # assert ctx["API"].create_work_items.call_count == 0
 
         # @ MH - TEST_SER_DIAGRAMM ist falsch
-        c2p_cli, pw = TestDiagramElements.createBaseObjects(
-            [TEST_SER_DIAGRAM], None
-        )
+        c2p_cli, pw = TestDiagramElements.baseObjects([TEST_SER_DIAGRAM], None)
         lDescriptionReference: dict[str, list[str]] = {}
         lNewWorkItems: dict[str, serialize.CapellaWorkItem]
         lNewWorkItems = pw.create_work_items(
@@ -245,7 +242,7 @@ class TestDiagramElements:
         assert pw.clientyping.create_work_items.call_count == 0
 
     @staticmethod
-    def test_delete_diagrams(ctx: dict[str, typing.Any]):
+    def test_delete_diagrams(baseObjects):
         # ctx["CAPELLA_UUIDS"] = set()
 
         # elements.delete_work_items(
@@ -259,9 +256,7 @@ class TestDiagramElements:
         # assert ctx["API"].delete_work_items.call_args[0][0] == ["Diag-1"]
 
         # @ MH - TEST_SER_DIAGRAMM ist falsch
-        c2p_cli, pw = TestDiagramElements.createBaseObjects(
-            [TEST_SER_DIAGRAM], None
-        )
+        c2p_cli, pw = TestDiagramElements.baseObjects([TEST_SER_DIAGRAM], None)
         pw.CapellaUUIDs = set()
         lNewWorkItems: dict[str, serialize.CapellaWorkItem]
         lNewWorkItems = pw.delete_work_items()
@@ -368,7 +363,7 @@ class UnsupportedFakeModelObject(FakeModelObject):
 #         assert list(work_items.values()) == [expected, expected1]
 
 #     @staticmethod
-#     def test_create_links_custom_resolver(ctx: dict[str, typing.Any]):
+#     def test_create_links_custom_resolver(baseObjects):
 #         obj = ctx["ELEMENTS"]["FakeModelObject"][1]
 #         ctx["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
 #         ctx["ROLES"] = {"FakeModelObject": ["description_reference"]}
@@ -392,7 +387,7 @@ class UnsupportedFakeModelObject(FakeModelObject):
 #         assert links == [expected]
 
 #     @staticmethod
-#     def test_create_links_custom_exchanges_resolver(ctx: dict[str, typing.Any]):
+#     def test_create_links_custom_exchanges_resolver(baseObjects):
 #         function_uuid = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
 #         obj = ctx["MODEL"].by_uuid(function_uuid)
 #         ctx["POLARION_ID_MAP"][function_uuid] = "Obj-1"
@@ -443,7 +438,7 @@ class UnsupportedFakeModelObject(FakeModelObject):
 #         assert caplog.messages[0] == expected
 
 #     @staticmethod
-#     def test_create_links_from_ElementList(ctx: dict[str, typing.Any]):
+#     def test_create_links_from_ElementList(baseObjects):
 #         fake = FakeModelObject("uuid4", name="Fake 4")
 #         fake1 = FakeModelObject("uuid5", name="Fake 5")
 #         obj = FakeModelObject(
@@ -481,7 +476,7 @@ class UnsupportedFakeModelObject(FakeModelObject):
 #         assert expected_link1 in links
 
 #     @staticmethod
-#     def test_create_link_from_single_attribute(ctx: dict[str, typing.Any]):
+#     def test_create_link_from_single_attribute(baseObjects):
 #         obj = ctx["ELEMENTS"]["FakeModelObject"][1]
 #         ctx["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
 #         expected = polarion_api.WorkItemLink(
@@ -580,7 +575,7 @@ class UnsupportedFakeModelObject(FakeModelObject):
 #         assert ctx["API"].update_work_item.call_count == 0
 
 #     @staticmethod
-#     def test_update_links_with_no_elements(ctx: dict[str, typing.Any]):
+#     def test_update_links_with_no_elements(baseObjects):
 #         ctx["POLARION_WI_MAP"] = {}
 
 #         elements.patch_work_items(
@@ -838,8 +833,8 @@ class TestSerializers:
         )
 
         serialized_diagram = serializer.serialize(diag)
-        # @MH: wi hat keinen description!
-        # serialized_diagram.description = None
+        if serialized_diagram is not None:
+            serialized_diagram.description = None
 
         assert serialized_diagram == serialize.CapellaWorkItem(
             type="diagram",
@@ -996,9 +991,9 @@ class TestSerializers:
         )
 
         work_item = serializer.serialize(obj)
-        # @MH: wi hat keinen status!
-        # status = work_item.status
-        # work_item.status = None
+        if work_item is not None:
+            status = work_item.status
+            work_item.status = None
 
         assert work_item == serialize.CapellaWorkItem(**expected)
-        # assert status == "open"
+        assert status == "open"
