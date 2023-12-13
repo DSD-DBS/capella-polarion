@@ -153,18 +153,24 @@ class PolarionWorker:
         work_item_types = list(map(self.makeTypeId, self.XTypes))
         _type = " ".join(work_item_types)
         if self.Simulation:
-            work_items = {"84a64a2d-3491-48af-b55b-823010a3e006": "doppelweck"}
+            work_item = serialize.CapellaWorkItem(
+                "84a64a2d-3491-48af-b55b-823010a3e006", "FakeItem"
+            )
+            work_item.uuid_capella = "weck"
+            work_item.checksum = "doppelwegg"
+            work_item.status = "fake"
+            work_items = []
+            work_items.append(work_item)
         else:
             work_items = self.client.get_all_work_items(
                 f"type:({_type})",
                 {"workitems": "id,uuid_capella,checksum,status"},
             )
-        # @as
-        # self.PolarionWorkItemMap = {
-        #     wi.uuid_capella: wi
-        #     for wi in work_items
-        #     if wi.id and wi.uuid_capella
-        # }
+        self.PolarionWorkItemMap = {
+            wi.uuid_capella: wi
+            for wi in work_items
+            if wi.id and wi.uuid_capella
+        }
         self.PolarionIdMap = {
             uuid: wi.id for uuid, wi in self.PolarionWorkItemMap.items()
         }
