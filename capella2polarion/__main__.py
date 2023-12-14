@@ -134,12 +134,12 @@ def synchronize(ctx: click.core.Context) -> None:
         aC2PCli.polarion_params, aC2PCli.logger, helpers.resolve_element_type
     )
     lPW.load_elements_and_type_map(
-        aC2PCli.SynchronizeConfigContent,
-        aC2PCli.CapellaModel,
-        aC2PCli.CapellaDiagramCacheIndexContent,
+        aC2PCli.synchronize_config_content,
+        aC2PCli.capella_model,
+        aC2PCli.capella_diagram_cache_index_content,
     )
     # @MH - DEAKTIVIEREN - ACHTUNG!!!!!! @AS
-    lPW.Simulation = True
+    lPW.simulation = True
     # types = elements.get_types(
     #     ctx.obj["POLARION_TYPE_MAP"], ctx.obj["ELEMENTS"]
     # )
@@ -166,8 +166,8 @@ def synchronize(ctx: click.core.Context) -> None:
     lDescriptionReference: typing.Any = {}
     lNewWorkItems: dict[str, serialize.CapellaWorkItem]
     lNewWorkItems = lPW.create_work_items(
-        aC2PCli.CapellaDiagramCacheFolderPath,
-        aC2PCli.CapellaModel,
+        aC2PCli.capella_diagram_cache_folder_path,
+        aC2PCli.capella_model,
         lDescriptionReference,
     )
     # elements.delete_work_items(
@@ -194,8 +194,8 @@ def synchronize(ctx: click.core.Context) -> None:
     #     ctx.obj["DESCR_REFERENCES"],
     # )
     lNewWorkItems = lPW.create_work_items(
-        aC2PCli.CapellaDiagramCacheFolderPath,
-        aC2PCli.CapellaModel,
+        aC2PCli.capella_diagram_cache_folder_path,
+        aC2PCli.capella_model,
         lDescriptionReference,
     )
     # elements.patch_work_items(
@@ -209,10 +209,10 @@ def synchronize(ctx: click.core.Context) -> None:
     #     ctx.obj["ROLES"],
     # )
     lPW.patch_work_items(
-        aC2PCli.CapellaModel,
+        aC2PCli.capella_model,
         lNewWorkItems,
         lDescriptionReference,
-        aC2PCli.SynchronizeConfigRoles,
+        aC2PCli.synchronize_config_roles,
     )
 
 

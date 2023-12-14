@@ -62,53 +62,53 @@ class PolarionWorker:
         aLogger: logging.Logger,
         aMakeTypeId: typing.Any,
     ) -> None:
-        self.PolarionParams: PolarionWorkerParams = params
+        self.polarion_params: PolarionWorkerParams = params
         self.client: polarion_api.OpenAPIPolarionProjectClient | None = None
         self.logger: logging.Logger = aLogger
-        self.Elements: dict[str, list[common.GenericElement]]
-        self.PolarionTypeMap: dict[str, str] = {}
-        self.CapellaUUIDs: set[str] = set()
-        self.XTypes: set[str] = set()
-        self.PolarionIdMap: dict[str, str] = {}
-        self.PolarionWorkItemMap: dict[
+        self.elements: dict[str, list[common.GenericElement]]
+        self.polarion_type_map: dict[str, str] = {}
+        self.capella_uuid_s: set[str] = set()
+        self.x_types: set[str] = set()
+        self.polarion_id_map: dict[str, str] = {}
+        self.polarion_work_item_map: dict[
             str, serialize.CapellaWorkItem
         ]  # dict[str, typing.Any] = None
         self.makeTypeId: typing.Any = aMakeTypeId
-        self.Simulation: bool = False
+        self.simulation: bool = False
 
     def _noneSaveValueString(self, aValue: str | None) -> str | None:
         return "None" if aValue is None else aValue
 
     def setupPolarionClient(self) -> None:
         """Instantiate the polarion client, move to PolarionWorker Class."""
-        if (self.PolarionParams.project_id == None) or (
-            len(self.PolarionParams.project_id) == 0
+        if (self.polarion_params.project_id == None) or (
+            len(self.polarion_params.project_id) == 0
         ):
             raise Exception(
-                f"""ProjectId invalid. Value '{self._noneSaveValueString(self.PolarionParams.project_id)}'"""
+                f"""ProjectId invalid. Value '{self._noneSaveValueString(self.polarion_params.project_id)}'"""
             )
-        if validators.url(self.PolarionParams.url):
+        if validators.url(self.polarion_params.url):
             raise Exception(
                 f"""Polarion URL parameter is not a valid url.
-                Value {self._noneSaveValueString(self.PolarionParams.url)}"""
+                Value {self._noneSaveValueString(self.polarion_params.url)}"""
             )
-        if self.PolarionParams.private_access_token == None:
+        if self.polarion_params.private_access_token == None:
             raise Exception(
                 f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
-                '{self._noneSaveValueString(self.PolarionParams.private_access_token)}'"""
+                '{self._noneSaveValueString(self.polarion_params.private_access_token)}'"""
             )
         self.PolarionClient = polarion_api.OpenAPIPolarionProjectClient(
-            self.PolarionParams.project_id,
-            self.PolarionParams.delete_work_items,
-            polarion_api_endpoint=f"{self.PolarionParams.url}/rest/v1",
-            polarion_access_token=self.PolarionParams.private_access_token,
+            self.polarion_params.project_id,
+            self.polarion_params.delete_work_items,
+            polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
+            polarion_access_token=self.polarion_params.private_access_token,
             custom_work_item=serialize.CapellaWorkItem,
             add_work_item_checksum=True,
         )
         # assert self.PolarionClient is not None
         if self.PolarionClient.project_exists():
             raise Exception(
-                f"Miss Polarion project with id {self._noneSaveValueString(self.PolarionParams.project_id)}"
+                f"Miss Polarion project with id {self._noneSaveValueString(self.polarion_params.project_id)}"
             )
 
     def load_elements_and_type_map(
@@ -184,23 +184,23 @@ class PolarionWorker:
         ]
         for obj in elements["Diagram"]:
             type_map[obj.uuid] = "Diagram"
-        self.Elements = elements
-        self.PolarionTypeMap = type_map
-        self.CapellaUUIDs = set(self.PolarionTypeMap)
+        self.elements = elements
+        self.polarion_type_map = type_map
+        self.capella_uuid_s = set(self.polarion_type_map)
 
     def fill_xtypes(self):
         """Return a set of Polarion types from the current context."""
         xtypes = set[str]()
-        for obj in chain.from_iterable(self.Elements.values()):
-            xtype = self.PolarionTypeMap.get(obj.uuid, type(obj).__name__)
+        for obj in chain.from_iterable(self.elements.values()):
+            xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
             xtypes.add(self.makeTypeId(xtype))
-        self.XTypes = xtypes
+        self.x_types = xtypes
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        work_item_types = list(map(self.makeTypeId, self.XTypes))
+        work_item_types = list(map(self.makeTypeId, self.x_types))
         _type = " ".join(work_item_types)
-        if self.Simulation:
+        if self.simulation:
             work_item = serialize.CapellaWorkItem(
                 "84a64a2d-3491-48af-b55b-823010a3e006", "FakeItem"
             )
@@ -215,13 +215,13 @@ class PolarionWorker:
                 f"type:({_type})",
                 {"workitems": "id,uuid_capella,checksum,status"},
             )
-        self.PolarionWorkItemMap = {
+        self.polarion_work_item_map = {
             wi.uuid_capella: wi
             for wi in work_items
             if wi.id and wi.uuid_capella
         }
-        self.PolarionIdMap = {
-            uuid: wi.id for uuid, wi in self.PolarionWorkItemMap.items()
+        self.polarion_id_map = {
+            uuid: wi.id for uuid, wi in self.polarion_work_item_map.items()
         }
 
     def create_work_items(
@@ -231,20 +231,20 @@ class PolarionWorker:
         descr_references: dict[str, list[str]],
     ) -> dict[str, serialize.CapellaWorkItem]:
         """Create a list of work items for Polarion."""
-        objects = chain.from_iterable(self.Elements.values())
+        objects = chain.from_iterable(self.elements.values())
         _work_items = []
         serializer = serialize.CapellaWorkItemSerializer(
             aDiagramCachePath,
-            self.PolarionTypeMap,
+            self.polarion_type_map,
             model,
-            self.PolarionIdMap,
+            self.polarion_id_map,
             descr_references,
         )
         for obj in objects:
             _work_items.append(serializer.serialize(obj))
 
         _work_items = list(filter(None, _work_items))
-        valid_types = set(map(self.makeTypeId, set(self.Elements)))
+        valid_types = set(map(self.makeTypeId, set(self.elements)))
         work_items: list[serialize.CapellaWorkItem] = []
         missing_types: set[str] = set()
         for work_item in _work_items:
@@ -271,25 +271,25 @@ class PolarionWorker:
         def serialize_for_delete(uuid: str) -> str:
             self.logger.info(
                 "Delete work item %r...",
-                workitem_id := self.PolarionIdMap[uuid],
+                workitem_id := self.polarion_id_map[uuid],
             )
             return workitem_id
 
         existing_work_items = {
             uuid
-            for uuid, work_item in self.PolarionWorkItemMap.items()
+            for uuid, work_item in self.polarion_work_item_map.items()
             if work_item.status != "deleted"
         }
-        uuids: set[str] = existing_work_items - self.CapellaUUIDs
+        uuids: set[str] = existing_work_items - self.capella_uuid_s
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
-                if not self.Simulation:
+                if not self.simulation:
                     assert self.client is not None
                     self.client.delete_work_items(work_item_ids)
                 for uuid in uuids:
-                    del self.PolarionWorkItemMap[uuid]
-                    del self.PolarionIdMap[uuid]
+                    del self.polarion_work_item_map[uuid]
+                    del self.polarion_id_map[uuid]
             except polarion_api.PolarionApiException as error:
                 self.logger.error(
                     "Deleting work items failed. %s", error.args[0]
@@ -301,7 +301,7 @@ class PolarionWorker:
         """Post work items in a Polarion project."""
         missing_work_items: list[serialize.CapellaWorkItem] = []
         for work_item in new_work_items.values():
-            if work_item.uuid_capella in self.PolarionIdMap:
+            if work_item.uuid_capella in self.polarion_id_map:
                 continue
 
             assert work_item is not None
@@ -309,12 +309,12 @@ class PolarionWorker:
             self.logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
             try:
-                if not self.Simulation:
+                if not self.simulation:
                     assert self.client is not None
                     self.client.create_work_items(missing_work_items)
                 for work_item in missing_work_items:
-                    self.PolarionIdMap[work_item.uuid_capella] = work_item.id
-                    self.PolarionWorkItemMap[
+                    self.polarion_id_map[work_item.uuid_capella] = work_item.id
+                    self.polarion_work_item_map[
                         work_item.uuid_capella
                     ] = work_item
             except polarion_api.PolarionApiException as error:
@@ -330,16 +330,16 @@ class PolarionWorker:
         link_roles,
     ) -> None:
         """Update work items in a Polarion project."""
-        self.PolarionIdMap.update(
+        self.polarion_id_map.update(
             {
                 uuid: wi.id
-                for uuid, wi in self.PolarionWorkItemMap.items()
+                for uuid, wi in self.polarion_work_item_map.items()
                 if wi.status == "open" and wi.uuid_capella and wi.id
             }
         )
 
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
-        for uuid in self.PolarionIdMap:
+        for uuid in self.polarion_id_map:
             objects = model
             if uuid.startswith("_"):
                 objects = model.diagrams
@@ -347,9 +347,9 @@ class PolarionWorker:
 
             links = element.create_links(
                 obj,
-                self.PolarionIdMap,
+                self.polarion_id_map,
                 descr_references,
-                self.PolarionParams.project_id,
+                self.polarion_params.project_id,
                 model,
                 link_roles,
                 TYPES_POL2CAPELLA,
@@ -359,14 +359,14 @@ class PolarionWorker:
 
             element.create_grouped_link_fields(work_item, back_links)
 
-        for uuid in self.PolarionIdMap:
+        for uuid in self.polarion_id_map:
             new_work_item: serialize.CapellaWorkItem = new_work_items[uuid]
-            old_work_item = self.PolarionWorkItemMap[uuid]
+            old_work_item = self.polarion_work_item_map[uuid]
             if old_work_item.id in back_links:
                 element.create_grouped_back_link_fields(
                     new_work_item, back_links[old_work_item.id]
                 )
-            if not self.Simulation:
+            if not self.simulation:
                 api_helper.patch_work_item(
                     self.client,
                     new_work_item,

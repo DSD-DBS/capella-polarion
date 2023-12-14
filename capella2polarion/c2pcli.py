@@ -26,35 +26,37 @@ class C2PCli(object):
 
     def __init__(
         self,
-        aDebug: bool,
-        aPolarionProjectId: str,
-        aPolarionUrl: str,
-        aPolarionPat: str,
-        aPolarionDeleteWorkItems: bool,
+        debug: bool,
+        polarion_project_id: str,
+        polarion_url: str,
+        polarion_pat: str,
+        polarion_delete_work_items: bool,
         capella_diagram_cache_folder_path: pathlib.Path,
         capella_model: cli_helpers.ModelCLI,
         synchronize_config_io: typing.TextIO,
     ) -> None:
-        self.Debug = aDebug
+        self.debug = debug
         self.polarion_params = PolarionWorkerParams(
-            aPolarionProjectId,
-            aPolarionUrl,
-            aPolarionPat,
-            aPolarionDeleteWorkItems,
+            polarion_project_id,
+            polarion_url,
+            polarion_pat,
+            polarion_delete_work_items,
         )
-        self.CapellaDiagramCacheFolderPath = capella_diagram_cache_folder_path
-        self.CapellaDiagramCacheIndexContent: list[
+        self.capella_diagram_cache_folder_path = (
+            capella_diagram_cache_folder_path
+        )
+        self.capella_diagram_cache_index_content: list[
             dict[str, typing.Any]
         ] | None = None
-        self.CapellaModel: capellambse.MelodyModel = capella_model
-        self.SynchronizeConfigIO: typing.TextIO = synchronize_config_io
-        self.SynchronizeConfigContent: dict[str, typing.Any]
-        self.SynchronizeConfigRoles: dict[str, list[str]] | None = None
+        self.capella_model: capellambse.MelodyModel = capella_model
+        self.synchronize_config_io: typing.TextIO = synchronize_config_io
+        self.synchronize_config_content: dict[str, typing.Any]
+        self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.echo = click.echo
         self.logger: logging.Logger
 
-    def _noneSaveValueString(self, aValue: str | None) -> str | None:
-        return "None" if aValue is None else aValue
+    def _noneSaveValueString(self, value: str | None) -> str | None:
+        return "None" if value is None else value
 
     def printState(self) -> None:
         """Print the State of the cli tool."""
@@ -97,12 +99,12 @@ class C2PCli(object):
             f"Capella Diagram Cache Index-File exits: {('YES' if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"
         )
         self.echo(
-            f"Synchronize Config-IO is open: {('YES' if not self.SynchronizeConfigIO.closed else 'NO')}"
+            f"Synchronize Config-IO is open: {('YES' if not self.synchronize_config_io.closed else 'NO')}"
         )
 
     def setupLogger(self) -> None:
         """Set the logger in the right mood."""
-        lMaxLoggingLevel = logging.DEBUG if self.Debug else logging.WARNING
+        lMaxLoggingLevel = logging.DEBUG if self.debug else logging.WARNING
         assert isinstance(GLogger.parent, logging.RootLogger)
         GLogger.parent.setLevel(lMaxLoggingLevel)
         lLogFormatter = logging.Formatter(
@@ -123,21 +125,21 @@ class C2PCli(object):
 
         - example in /tests/data/model_elements/config.yaml
         """
-        if self.SynchronizeConfigIO.closed:
+        if self.synchronize_config_io.closed:
             raise Exception(f"synchronize config io stream is closed ")
-        if not self.SynchronizeConfigIO.readable():
+        if not self.synchronize_config_io.readable():
             raise Exception(f"synchronize config io stream is not readable")
-        self.SynchronizeConfigIO.seek(0)
-        self.SynchronizeConfigContent = yaml.safe_load(
-            self.SynchronizeConfigIO
+        self.synchronize_config_io.seek(0)
+        self.synchronize_config_content = yaml.safe_load(
+            self.synchronize_config_io
         )
 
     def load_roles_from_synchronize_config(self) -> None:
         """Fill SynchronizeConfigRoles and correct content."""
-        if self.SynchronizeConfigContent == None:
+        if self.synchronize_config_content == None:
             raise Exception("first call loadSynchronizeConfig")
         # nächste Zeile würde ich so nicht mahcen
-        if special_config_asterix := self.SynchronizeConfigContent.pop(
+        if special_config_asterix := self.synchronize_config_content.pop(
             "*", []
         ):
             special_config: dict[str, typing.Any] = {}
@@ -148,7 +150,7 @@ class C2PCli(object):
                     special_config.update(typ)
 
             lookup: dict[str, dict[str, list[str]]] = {}
-            for layer, xtypes in self.SynchronizeConfigContent.items():
+            for layer, xtypes in self.synchronize_config_content.items():
                 for xt in xtypes:
                     if isinstance(xt, str):
                         item: dict[str, list[str]] = {xt: []}
@@ -158,7 +160,7 @@ class C2PCli(object):
                     lookup.setdefault(layer, {}).update(item)
 
             new_config: dict[str, typing.Any] = {}
-            for layer, xtypes in self.SynchronizeConfigContent.items():
+            for layer, xtypes in self.synchronize_config_content.items():
                 new_entries: list[str | dict[str, typing.Any]] = []
                 for xtype in xtypes:
                     if isinstance(xtype, dict):
@@ -197,22 +199,24 @@ class C2PCli(object):
                     ]:
                         new_entries.append({key: wildcard_values})
                 new_config[layer] = new_entries
-            self.SynchronizeConfigContent = new_config
+            self.synchronize_config_content = new_config
 
         roles: dict[str, list[str]] = {}
-        for typ in chain.from_iterable(self.SynchronizeConfigContent.values()):
+        for typ in chain.from_iterable(
+            self.synchronize_config_content.values()
+        ):
             if isinstance(typ, dict):
                 for key, role_ids in typ.items():
                     roles[key] = list(role_ids)
             else:
                 roles[typ] = []
-        self.SynchronizeConfigRoles = roles
+        self.synchronize_config_roles = roles
 
     def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
         """Return index file path."""
-        if self.CapellaDiagramCacheFolderPath == None:
+        if self.capella_diagram_cache_folder_path == None:
             raise Exception("CapellaDiagramCacheFolderPath not filled")
-        return self.CapellaDiagramCacheFolderPath / "index.json"
+        return self.capella_diagram_cache_folder_path / "index.json"
 
     def exitsCapellaDiagrammCacheIndexFile(self) -> bool:
         """Test existens of file."""
@@ -226,11 +230,13 @@ class C2PCli(object):
         """Load to CapellaDiagramCacheIndexContent."""
         if not self.exitsCapellaDiagrammCacheIndexFile():
             raise Exception("capella diagramm cache index file doe not exits")
-        self.CapellaDiagramCacheIndexContent = None
+        self.capella_diagram_cache_index_content = None
         if self.get_capella_diagram_cache_index_file_path() != None:
             l_text_content = (
                 self.get_capella_diagram_cache_index_file_path().read_text(
                     encoding="utf8"
                 )
             )
-            self.CapellaDiagramCacheIndexContent = json.loads(l_text_content)
+            self.capella_diagram_cache_index_content = json.loads(
+                l_text_content
+            )
