@@ -50,7 +50,7 @@ class C2PCli(object):
         self.CapellaDiagramCacheIndexContent: list[
             dict[str, typing.Any]
         ] | None = None
-        self.CapellaModel: cli_helpers.ModelCLI = capella_model
+        self.CapellaModel: capellambse.MelodyModel = capella_model
         self.SynchronizeConfigIO: typing.TextIO = synchronize_config_io
         self.SynchronizeConfigContent: dict[str, typing.Any]
         self.SynchronizeConfigRoles: dict[str, list[str]] | None = None

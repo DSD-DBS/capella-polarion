@@ -61,7 +61,7 @@ class PolarionWorker:
             str, serialize.CapellaWorkItem
         ]  # dict[str, typing.Any] = None
         self.makeTypeId: typing.Any = aMakeTypeId
-        self.Simulation: bool = True
+        self.Simulation: bool = False
 
     def load_elements_and_type_map(
         self,

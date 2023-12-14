@@ -138,6 +138,8 @@ def synchronize(ctx: click.core.Context) -> None:
         aC2PCli.CapellaModel,
         aC2PCli.CapellaDiagramCacheIndexContent,
     )
+    # @MH - DEAKTIVIEREN - ACHTUNG!!!!!! @AS
+    lPW.Simulation = True
     # types = elements.get_types(
     #     ctx.obj["POLARION_TYPE_MAP"], ctx.obj["ELEMENTS"]
     # )
