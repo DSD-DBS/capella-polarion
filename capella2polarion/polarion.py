@@ -53,10 +53,10 @@ class PolarionWorker:
         )
         self.logger: logging.Logger = aLogger
         self.Elements: dict[str, list[common.GenericElement]]
-        self.PolarionTypeMap: dict[str, str]
-        self.CapellaUUIDs: set[str]
-        self.XTypes: set[str]
-        self.PolarionIdMap: dict[str, str]
+        self.PolarionTypeMap: dict[str, str] = {}
+        self.CapellaUUIDs: set[str] = set()
+        self.XTypes: set[str] = set()
+        self.PolarionIdMap: dict[str, str] = {}
         self.PolarionWorkItemMap: dict[
             str, serialize.CapellaWorkItem
         ]  # dict[str, typing.Any] = None
