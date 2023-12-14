@@ -13,13 +13,10 @@ from itertools import chain
 
 import capellambse
 import click
-import polarion_rest_api_client as polarion_api
-import validators
 import yaml
 from capellambse import cli_helpers
 
-from capella2polarion import elements
-from capella2polarion.elements import serialize
+from capella2polarion.polarion import PolarionWorkerParams
 
 GLogger = logging.getLogger(__name__)
 
@@ -30,7 +27,7 @@ class C2PCli(object):
     def __init__(
         self,
         aDebug: bool,
-        aProjectId: str,
+        aPolarionProjectId: str,
         aPolarionUrl: str,
         aPolarionPat: str,
         aPolarionDeleteWorkItems: bool,
@@ -39,12 +36,11 @@ class C2PCli(object):
         synchronize_config_io: typing.TextIO,
     ) -> None:
         self.Debug = aDebug
-        self.ProjectId = aProjectId
-        self.PolarionUrl = aPolarionUrl
-        self.PolarionPat = aPolarionPat
-        self.PolarionDeleteWorkItems = aPolarionDeleteWorkItems
-        self.PolarionClient: polarion_api.OpenAPIPolarionProjectClient | None = (
-            None
+        self.polarion_params = PolarionWorkerParams(
+            aPolarionProjectId,
+            aPolarionUrl,
+            aPolarionPat,
+            aPolarionDeleteWorkItems,
         )
         self.CapellaDiagramCacheFolderPath = capella_diagram_cache_folder_path
         self.CapellaDiagramCacheIndexContent: list[
@@ -56,6 +52,9 @@ class C2PCli(object):
         self.SynchronizeConfigRoles: dict[str, list[str]] | None = None
         self.echo = click.echo
         self.logger: logging.Logger
+
+    def _noneSaveValueString(self, aValue: str | None) -> str | None:
+        return "None" if aValue is None else aValue
 
     def printState(self) -> None:
         """Print the State of the cli tool."""
@@ -100,36 +99,6 @@ class C2PCli(object):
         self.echo(
             f"Synchronize Config-IO is open: {('YES' if not self.SynchronizeConfigIO.closed else 'NO')}"
         )
-
-    def setupPolarionClient(self) -> None:
-        """Instantiate the polarion client, move to PolarionWorker Class."""
-        if (self.ProjectId == None) or (len(self.ProjectId) == 0):
-            raise Exception(
-                f"""ProjectId invalid. Value '{self._noneSaveValueString(self.ProjectId)}'"""
-            )
-        if validators.url(self.PolarionUrl):
-            raise Exception(
-                f"""Polarion URL parameter is not a valid url.
-                Value {self._noneSaveValueString(self.PolarionUrl)}"""
-            )
-        if self.PolarionPat == None:
-            raise Exception(
-                f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
-                '{self._noneSaveValueString(self.PolarionPat)}'"""
-            )
-        self.PolarionClient = polarion_api.OpenAPIPolarionProjectClient(
-            self.ProjectId,
-            self.PolarionDeleteWorkItems,
-            polarion_api_endpoint=f"{self.PolarionUrl}/rest/v1",
-            polarion_access_token=self.PolarionPat,
-            custom_work_item=serialize.CapellaWorkItem,
-            add_work_item_checksum=True,
-        )
-        # assert self.PolarionClient is not None
-        if self.PolarionClient.project_exists():
-            raise Exception(
-                f"Miss Polarion project with id {self._noneSaveValueString(self.ProjectId)}"
-            )
 
     def setupLogger(self) -> None:
         """Set the logger in the right mood."""
@@ -265,6 +234,3 @@ class C2PCli(object):
                 )
             )
             self.CapellaDiagramCacheIndexContent = json.loads(l_text_content)
-
-    def _noneSaveValueString(self, aValue: str | None) -> str | None:
-        return "None" if aValue is None else aValue

@@ -1,6 +1,8 @@
 # Copyright DB Netz AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module for polarion API client work."""
+from __future__ import annotations
+
 import logging
 import pathlib
 import typing
@@ -8,9 +10,9 @@ from itertools import chain
 
 import capellambse
 import polarion_rest_api_client as polarion_api
+import validators
 from capellambse.model import common
 
-import capella2polarion
 from capella2polarion.elements import api_helper, element, serialize
 
 GLogger = logging.getLogger(__name__)
@@ -39,18 +41,29 @@ TYPES_POL2CAPELLA = {
 }
 
 
+class PolarionWorkerParams:
+    """Container for Polarion Params."""
+
+    def __init__(
+        self, project_id: str, url: str, pat: str, delete_work_items: bool
+    ) -> None:
+        self.project_id = project_id
+        self.url = url
+        self.private_access_token = pat
+        self.delete_work_items = delete_work_items
+
+
 class PolarionWorker:
     """PolarionWorker encapsulate the Polarion API Client work."""
 
     def __init__(
         self,
-        aPolarionClient: polarion_api.OpenAPIPolarionProjectClient,
+        params: PolarionWorkerParams,
         aLogger: logging.Logger,
         aMakeTypeId: typing.Any,
     ) -> None:
-        self.client: polarion_api.OpenAPIPolarionProjectClient = (
-            aPolarionClient
-        )
+        self.PolarionParams: PolarionWorkerParams = params
+        self.client: polarion_api.OpenAPIPolarionProjectClient | None = None
         self.logger: logging.Logger = aLogger
         self.Elements: dict[str, list[common.GenericElement]]
         self.PolarionTypeMap: dict[str, str] = {}
@@ -62,6 +75,41 @@ class PolarionWorker:
         ]  # dict[str, typing.Any] = None
         self.makeTypeId: typing.Any = aMakeTypeId
         self.Simulation: bool = False
+
+    def _noneSaveValueString(self, aValue: str | None) -> str | None:
+        return "None" if aValue is None else aValue
+
+    def setupPolarionClient(self) -> None:
+        """Instantiate the polarion client, move to PolarionWorker Class."""
+        if (self.PolarionParams.project_id == None) or (
+            len(self.PolarionParams.project_id) == 0
+        ):
+            raise Exception(
+                f"""ProjectId invalid. Value '{self._noneSaveValueString(self.PolarionParams.project_id)}'"""
+            )
+        if validators.url(self.PolarionParams.url):
+            raise Exception(
+                f"""Polarion URL parameter is not a valid url.
+                Value {self._noneSaveValueString(self.PolarionParams.url)}"""
+            )
+        if self.PolarionParams.private_access_token == None:
+            raise Exception(
+                f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
+                '{self._noneSaveValueString(self.PolarionParams.private_access_token)}'"""
+            )
+        self.PolarionClient = polarion_api.OpenAPIPolarionProjectClient(
+            self.PolarionParams.project_id,
+            self.PolarionParams.delete_work_items,
+            polarion_api_endpoint=f"{self.PolarionParams.url}/rest/v1",
+            polarion_access_token=self.PolarionParams.private_access_token,
+            custom_work_item=serialize.CapellaWorkItem,
+            add_work_item_checksum=True,
+        )
+        # assert self.PolarionClient is not None
+        if self.PolarionClient.project_exists():
+            raise Exception(
+                f"Miss Polarion project with id {self._noneSaveValueString(self.PolarionParams.project_id)}"
+            )
 
     def load_elements_and_type_map(
         self,
@@ -162,6 +210,7 @@ class PolarionWorker:
             work_items = []
             work_items.append(work_item)
         else:
+            assert self.client is not None
             work_items = self.client.get_all_work_items(
                 f"type:({_type})",
                 {"workitems": "id,uuid_capella,checksum,status"},
@@ -236,6 +285,7 @@ class PolarionWorker:
         if work_item_ids:
             try:
                 if not self.Simulation:
+                    assert self.client is not None
                     self.client.delete_work_items(work_item_ids)
                 for uuid in uuids:
                     del self.PolarionWorkItemMap[uuid]
@@ -260,6 +310,7 @@ class PolarionWorker:
         if missing_work_items:
             try:
                 if not self.Simulation:
+                    assert self.client is not None
                     self.client.create_work_items(missing_work_items)
                 for work_item in missing_work_items:
                     self.PolarionIdMap[work_item.uuid_capella] = work_item.id
@@ -276,7 +327,6 @@ class PolarionWorker:
         model: capellambse.MelodyModel,
         new_work_items: dict[str, serialize.CapellaWorkItem],
         descr_references,
-        project_id,
         link_roles,
     ) -> None:
         """Update work items in a Polarion project."""
@@ -299,7 +349,7 @@ class PolarionWorker:
                 obj,
                 self.PolarionIdMap,
                 descr_references,
-                project_id,
+                self.PolarionParams.project_id,
                 model,
                 link_roles,
                 TYPES_POL2CAPELLA,

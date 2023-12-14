@@ -26,7 +26,7 @@ from capella2polarion.elements import helpers, serialize
 @click.group()
 @click.option("--debug", is_flag=True, default=False)
 @click.option(
-    "--project-id",
+    "--polarion-project-id",
     type=str,
     required=False,
     default=None,
@@ -62,7 +62,7 @@ from capella2polarion.elements import helpers, serialize
 def cli(
     ctx: click.core.Context,
     debug: bool,
-    project_id: str,
+    polarion_project_id: str,
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
@@ -74,7 +74,7 @@ def cli(
     """Synchronise data from Capella to Polarion."""
     lC2PCli = C2PCli(
         debug,
-        project_id,
+        polarion_project_id,
         polarion_url,
         polarion_pat,
         polarion_delete_work_items,
@@ -107,7 +107,7 @@ def synchronize(ctx: click.core.Context) -> None:
     aC2PCli.logger.info(
         f"""
             Synchronising diagrams from diagram cache at '{str(aC2PCli.get_capella_diagram_cache_index_file_path())}'
-            to Polarion project with id {aC2PCli.ProjectId}...
+            to Polarion project with id {aC2PCli.polarion_params.project_id}...
         """
     )
     # ctx.obj["DIAGRAM_CACHE"] = None # Orignal ... aDiagramCachePath ... None damit es Crashed!
@@ -131,7 +131,7 @@ def synchronize(ctx: click.core.Context) -> None:
     from polarion import PolarionWorker
 
     lPW = PolarionWorker(
-        aC2PCli.PolarionClient, aC2PCli.logger, helpers.resolve_element_type
+        aC2PCli.polarion_params, aC2PCli.logger, helpers.resolve_element_type
     )
     lPW.load_elements_and_type_map(
         aC2PCli.SynchronizeConfigContent,
@@ -212,7 +212,6 @@ def synchronize(ctx: click.core.Context) -> None:
         aC2PCli.CapellaModel,
         lNewWorkItems,
         lDescriptionReference,
-        aC2PCli.ProjectId,
         aC2PCli.SynchronizeConfigRoles,
     )
 
