@@ -75,9 +75,10 @@ def create_links(
     else:
         repres = obj._short_repr_()
 
-    wid = ctx["POLARION_ID_MAP"][obj.uuid]
+    workitem = ctx["POLARION_WI_MAP"][obj.uuid]
     new_links: list[polarion_api.WorkItemLink] = []
-    for role_id in ctx["ROLES"].get(type(obj).__name__, []):
+    typ = workitem.type[0].upper() + workitem.type[1:]
+    for role_id in ctx["ROLES"].get(typ, []):
         if resolver := custom_link_resolvers.get(role_id):
             new_links.extend(resolver(ctx, obj, role_id, {}))
             continue
@@ -87,7 +88,7 @@ def create_links(
                 "Unable to create work item link %r for [%s]. "
                 "There is no %r attribute on %s",
                 role_id,
-                wid,
+                workitem.id,
                 role_id,
                 repres,
             )
@@ -99,8 +100,8 @@ def create_links(
             assert hasattr(refs, "uuid")
             new = [refs.uuid]
 
-        new = set(_get_work_item_ids(ctx, wid, new, role_id))
-        new_links.extend(_create(ctx, wid, role_id, new, {}))
+        new = set(_get_work_item_ids(ctx, workitem.id, new, role_id))
+        new_links.extend(_create(ctx, workitem.id, role_id, new, {}))
     return new_links
 
 
