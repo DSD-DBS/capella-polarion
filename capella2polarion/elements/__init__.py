@@ -8,7 +8,6 @@ __all__ = [
     "delete_work_items",
     "get_types",
     "get_elements_and_type_map",
-    "make_model_elements_index",
     "STATUS_DELETE",
 ]
 
