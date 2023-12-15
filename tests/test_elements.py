@@ -221,10 +221,7 @@ class TestModelElements:
         api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
         fake = FakeModelObject("uuid1", name="Fake 1")
         work_item = serialize.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            status="open",
-            type="fakeModelObject",
+            id="Obj-1", uuid_capella="uuid1", status="open"
         )
         return {
             "API": api,
@@ -320,7 +317,7 @@ class TestModelElements:
     def test_create_links_custom_resolver(context: dict[str, t.Any]):
         obj = context["ELEMENTS"]["FakeModelObject"][1]
         context["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
-        context["POLARION_WI_MAP"]["uuid2"] = serialize.CapellaWorkItem(
+        context["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -347,7 +344,7 @@ class TestModelElements:
         uuid = "1a414995-f4cd-488c-8152-486e459fb9de"
         obj = context["MODEL"].by_uuid(function_uuid)
         context["POLARION_ID_MAP"][function_uuid] = "Obj-1"
-        context["POLARION_WI_MAP"][function_uuid] = serialize.CapellaWorkItem(
+        context["WORK_ITEMS"][function_uuid] = serialize.CapellaWorkItem(
             id="Obj-1",
             uuid_capella=function_uuid,
             type=type(obj).__name__,
@@ -356,7 +353,7 @@ class TestModelElements:
             status="open",
         )
         context["POLARION_ID_MAP"][uuid] = "Obj-2"
-        context["POLARION_WI_MAP"][uuid] = serialize.CapellaWorkItem(
+        context["WORK_ITEMS"][uuid] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella=uuid,
             type="functionalExchange",
@@ -386,6 +383,16 @@ class TestModelElements:
             "There is no 'attribute' attribute on "
             "<FakeModelObject 'Fake 1' (uuid1)>"
         )
+        context["WORK_ITEMS"] = {
+            "uuid1": serialize.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                title="Fake 1",
+                description_type="text/html",
+                description=markupsafe.Markup(""),
+                type="fakeModelObject",
+            )
+        }
 
         with caplog.at_level(logging.DEBUG):
             links = element.create_links(obj, context)
@@ -409,7 +416,7 @@ class TestModelElements:
         context["POLARION_ID_MAP"] |= {
             f"uuid{i}": f"Obj-{i}" for i in range(4, 7)
         }
-        context["POLARION_WI_MAP"] |= {
+        context["WORK_ITEMS"] |= {
             f"uuid{i}": serialize.CapellaWorkItem(
                 id=f"Obj-{i}",
                 uuid_capella=f"uuid{i}",
@@ -442,7 +449,7 @@ class TestModelElements:
     def test_create_link_from_single_attribute(context: dict[str, t.Any]):
         obj = context["ELEMENTS"]["FakeModelObject"][1]
         context["POLARION_ID_MAP"]["uuid2"] = "Obj-2"
-        context["POLARION_WI_MAP"]["uuid2"] = serialize.CapellaWorkItem(
+        context["WORK_ITEMS"]["uuid2"] = serialize.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -487,6 +494,7 @@ class TestModelElements:
                 title="Fake 1",
                 description_type="text/html",
                 description=markupsafe.Markup(""),
+                type="fakeModelObject",
             )
         }
         context["MODEL"] = mock_model = mock.MagicMock()
@@ -539,10 +547,7 @@ class TestModelElements:
         )
         context["POLARION_WI_MAP"]["uuid1"].linked_work_items = [link]
         context["POLARION_WI_MAP"]["uuid2"] = serialize.CapellaWorkItem(
-            id="Obj-2",
-            uuid_capella="uuid2",
-            status="open",
-            type="fakeModelObject",
+            id="Obj-2", uuid_capella="uuid2", status="open"
         )
         context["WORK_ITEMS"] = {
             "uuid1": serialize.CapellaWorkItem(

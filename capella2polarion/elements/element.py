@@ -75,7 +75,7 @@ def create_links(
     else:
         repres = obj._short_repr_()
 
-    workitem = ctx["POLARION_WI_MAP"][obj.uuid]
+    workitem = ctx["WORK_ITEMS"][obj.uuid]
     new_links: list[polarion_api.WorkItemLink] = []
     typ = workitem.type[0].upper() + workitem.type[1:]
     for role_id in ctx["ROLES"].get(typ, []):
