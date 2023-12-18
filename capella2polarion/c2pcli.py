@@ -68,18 +68,18 @@ class C2PCli(object):
             return aValue
 
         self.echo("---------------------------------------")
-        lMyLigthedMembers = [
+        lighted_member_vars = [
             lAttribute
             for lAttribute in dir(self)
             if not (
                 lAttribute.startswith("__") or (lAttribute.startswith("__"))
             )
         ]
-        for lMyLightedMember in lMyLigthedMembers:
-            if lMyLightedMember[0].isupper():
-                lValue = getattr(self, lMyLightedMember)
-                lType = type(lValue)
-                lConverter: dict[typing.Type, typing.Callable] = {
+        for lighted_member_var in lighted_member_vars:
+            if lighted_member_var[0].isupper():
+                member_value = getattr(self, lighted_member_var)
+                member_type = type(member_value)
+                converters: dict[typing.Type, typing.Callable] = {
                     bool: str,
                     int: str,
                     float: str,
@@ -87,14 +87,16 @@ class C2PCli(object):
                     type: _type,
                     pathlib.PosixPath: str,
                 }
-                if lType in lConverter:
-                    lStringValue = (
-                        "None" if lValue is None else lConverter[lType](lValue)
+                if member_type in converters:
+                    string_value = (
+                        "None"
+                        if member_value is None
+                        else converters[member_type](member_value)
                     )
                 else:
-                    lStringValue = _type(lValue)
-                lStringValue = self._noneSaveValueString(lStringValue)
-                self.echo(f"{lMyLightedMember}: '{lStringValue}'")
+                    string_value = _type(member_value)
+                string_value = self._noneSaveValueString(string_value)
+                self.echo(f"{lighted_member_var}: '{string_value}'")
         self.echo(
             f"Capella Diagram Cache Index-File exits: {('YES' if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"
         )
@@ -104,20 +106,20 @@ class C2PCli(object):
 
     def setupLogger(self) -> None:
         """Set the logger in the right mood."""
-        lMaxLoggingLevel = logging.DEBUG if self.debug else logging.WARNING
+        max_logging_level = logging.DEBUG if self.debug else logging.WARNING
         assert isinstance(GLogger.parent, logging.RootLogger)
-        GLogger.parent.setLevel(lMaxLoggingLevel)
-        lLogFormatter = logging.Formatter(
+        GLogger.parent.setLevel(max_logging_level)
+        log_formatter = logging.Formatter(
             "%(asctime)-15s - %(levelname)-8s %(message)s"
         )
-        lConsoleHandler = logging.StreamHandler()
-        lConsoleHandler.setLevel(lMaxLoggingLevel)
-        lConsoleHandler.setFormatter(lLogFormatter)
-        lConsoleHandler.addFilter(
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(max_logging_level)
+        console_handler.setFormatter(log_formatter)
+        console_handler.addFilter(
             lambda record: record.name.startswith("capella2polarion")
             or (record.name == "httpx" and record.levelname == "INFO")
         )
-        GLogger.parent.addHandler(lConsoleHandler)
+        GLogger.parent.addHandler(console_handler)
         self.logger = GLogger
 
     def load_synchronize_config(self) -> None:

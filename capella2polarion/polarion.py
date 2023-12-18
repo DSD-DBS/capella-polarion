@@ -59,12 +59,12 @@ class PolarionWorker:
     def __init__(
         self,
         params: PolarionWorkerParams,
-        aLogger: logging.Logger,
-        aMakeTypeId: typing.Any,
+        logger: logging.Logger,
+        make_type_id: typing.Any,
     ) -> None:
         self.polarion_params: PolarionWorkerParams = params
         self.client: polarion_api.OpenAPIPolarionProjectClient | None = None
-        self.logger: logging.Logger = aLogger
+        self.logger: logging.Logger = logger
         self.elements: dict[str, list[common.GenericElement]]
         self.polarion_type_map: dict[str, str] = {}
         self.capella_uuid_s: set[str] = set()
@@ -73,13 +73,13 @@ class PolarionWorker:
         self.polarion_work_item_map: dict[
             str, serialize.CapellaWorkItem
         ]  # dict[str, typing.Any] = None
-        self.makeTypeId: typing.Any = aMakeTypeId
+        self.make_type_id: typing.Any = make_type_id
         self.simulation: bool = False
 
     def _noneSaveValueString(self, aValue: str | None) -> str | None:
         return "None" if aValue is None else aValue
 
-    def setupPolarionClient(self) -> None:
+    def setup_polarion_client(self) -> None:
         """Instantiate the polarion client, move to PolarionWorker Class."""
         if (self.polarion_params.project_id == None) or (
             len(self.polarion_params.project_id) == 0
@@ -97,7 +97,7 @@ class PolarionWorker:
                 f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
                 '{self._noneSaveValueString(self.polarion_params.private_access_token)}'"""
             )
-        self.PolarionClient = polarion_api.OpenAPIPolarionProjectClient(
+        self.polarion_client = polarion_api.OpenAPIPolarionProjectClient(
             self.polarion_params.project_id,
             self.polarion_params.delete_work_items,
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
@@ -106,7 +106,7 @@ class PolarionWorker:
             add_work_item_checksum=True,
         )
         # assert self.PolarionClient is not None
-        if self.PolarionClient.project_exists():
+        if self.polarion_client.project_exists():
             raise Exception(
                 f"Miss Polarion project with id {self._noneSaveValueString(self.polarion_params.project_id)}"
             )
@@ -193,12 +193,12 @@ class PolarionWorker:
         xtypes = set[str]()
         for obj in chain.from_iterable(self.elements.values()):
             xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
-            xtypes.add(self.makeTypeId(xtype))
+            xtypes.add(self.make_type_id(xtype))
         self.x_types = xtypes
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        work_item_types = list(map(self.makeTypeId, self.x_types))
+        work_item_types = list(map(self.make_type_id, self.x_types))
         _type = " ".join(work_item_types)
         if self.simulation:
             work_item = serialize.CapellaWorkItem(
@@ -226,7 +226,7 @@ class PolarionWorker:
 
     def create_work_items(
         self,
-        aDiagramCachePath: pathlib.Path,
+        diagram_cache_path: pathlib.Path,
         model,
         descr_references: dict[str, list[str]],
     ) -> dict[str, serialize.CapellaWorkItem]:
@@ -234,7 +234,7 @@ class PolarionWorker:
         objects = chain.from_iterable(self.elements.values())
         _work_items = []
         serializer = serialize.CapellaWorkItemSerializer(
-            aDiagramCachePath,
+            diagram_cache_path,
             self.polarion_type_map,
             model,
             self.polarion_id_map,
@@ -244,7 +244,7 @@ class PolarionWorker:
             _work_items.append(serializer.serialize(obj))
 
         _work_items = list(filter(None, _work_items))
-        valid_types = set(map(self.makeTypeId, set(self.elements)))
+        valid_types = set(map(self.make_type_id, set(self.elements)))
         work_items: list[serialize.CapellaWorkItem] = []
         missing_types: set[str] = set()
         for work_item in _work_items:
