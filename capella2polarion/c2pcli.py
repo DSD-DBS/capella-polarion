@@ -21,7 +21,7 @@ from capella2polarion.polarion import PolarionWorkerParams
 GLogger = logging.getLogger(__name__)
 
 
-class C2PCli(object):
+class C2PCli:
     """Call todo @AS."""
 
     def __init__(
@@ -98,10 +98,12 @@ class C2PCli(object):
                 string_value = self._noneSaveValueString(string_value)
                 self.echo(f"{lighted_member_var}: '{string_value}'")
         self.echo(
-            f"Capella Diagram Cache Index-File exits: {('YES' if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"
+            f"""Capella Diagram Cache Index-File exits: {('YES'
+            if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"""
         )
         self.echo(
-            f"Synchronize Config-IO is open: {('YES' if not self.synchronize_config_io.closed else 'NO')}"
+            f"""Synchronize Config-IO is open: {('YES'
+            if not self.synchronize_config_io.closed else 'NO')}"""
         )
 
     def setupLogger(self) -> None:
