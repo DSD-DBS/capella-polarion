@@ -39,7 +39,7 @@ def patch_work_item(
     old.linked_work_items = api.get_all_work_item_links(old.id)
     new.type = None
     new.status = "open"
-    new.id = old.id
+    assert new.id is not None
     try:
         api.update_work_item(new)
         handle_links(

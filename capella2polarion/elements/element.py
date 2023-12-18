@@ -49,6 +49,8 @@ def create_work_items(
         assert work_item is not None
         assert work_item.title is not None
         assert work_item.type is not None
+        if old := ctx["POLARION_WI_MAP"].get(work_item.uuid_capella):
+            work_item.id = old.id
         if work_item.type in valid_types:
             work_items.append(work_item)
         else:

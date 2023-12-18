@@ -49,7 +49,7 @@ TEST_DIAG_DESCR = (
     '<html><p><img style="max-width: 100%" src="data:image/svg+xml;base64,'
 )
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
-    "id": None,
+    "id": "Diag-1",
     "title": "[CC] Capability",
     "description_type": "text/html",
     "type": "diagram",
