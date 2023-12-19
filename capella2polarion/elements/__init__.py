@@ -183,7 +183,9 @@
 #     """Return an elements and UUID to Polarion type map."""
 
 #     def _fix_components(
-#         elements: dict[str, list[common.GenericElement]], type_map: dict[str, str]
+#         elements: dict[str,
+#                     list[common.GenericElement]],
+#                     type_map: dict[str, str]
 #     ) -> None:
 #         for typ, xtype in ACTOR_TYPES.items():
 #             if typ not in elements:

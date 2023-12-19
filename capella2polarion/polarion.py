@@ -84,20 +84,20 @@ class PolarionWorker:
         if (self.polarion_params.project_id == None) or (
             len(self.polarion_params.project_id) == 0
         ):
-            raise Exception(
+            raise ValueError(
                 f"""ProjectId invalid. Value '{self._noneSaveValueString(self.polarion_params.project_id)}'"""
             )
         if validators.url(self.polarion_params.url):
-            raise Exception(
+            raise ValueError(
                 f"""Polarion URL parameter is not a valid url.
                 Value {self._noneSaveValueString(self.polarion_params.url)}"""
             )
         if self.polarion_params.private_access_token == None:
-            raise Exception(
+            raise ValueError(
                 f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
                 '{self._noneSaveValueString(self.polarion_params.private_access_token)}'"""
             )
-        self.polarion_client = polarion_api.OpenAPIPolarionProjectClient(
+        self.client = polarion_api.OpenAPIPolarionProjectClient(
             self.polarion_params.project_id,
             self.polarion_params.delete_work_items,
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
@@ -106,7 +106,7 @@ class PolarionWorker:
             add_work_item_checksum=True,
         )
         # assert self.PolarionClient is not None
-        if self.polarion_client.project_exists():
+        if self.client.project_exists():
             raise Exception(
                 f"Miss Polarion project with id {self._noneSaveValueString(self.polarion_params.project_id)}"
             )

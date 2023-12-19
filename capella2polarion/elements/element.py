@@ -4,19 +4,18 @@
 from __future__ import annotations
 
 import collections.abc as cabc
-import functools
 import logging
 import pathlib
 import types
 import typing as t
 from collections import defaultdict
-from itertools import chain
 
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
+from capella2polarion.elements import serialize
 from capella2polarion.elements import helpers, serialize
 
 logger = logging.getLogger(__name__)
