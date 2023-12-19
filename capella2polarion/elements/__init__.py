@@ -2,32 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Objects for synchronization of capella objects to polarion workitems."""
 
-from __future__ import annotations
+# from __future__ import annotations
 
-__all__ = [
-    "delete_work_items",
-    "get_types",
-    "get_elements_and_type_map",
-    "STATUS_DELETE",
-]
+# __all__ = [
+#     "delete_work_items",
+#     "get_types",
+#     "get_elements_and_type_map",
+#     "STATUS_DELETE",
+# ]
 
-import logging
-import pathlib
-import typing
-from itertools import chain
-
-import capellambse
-import polarion_rest_api_client as polarion_api
-import yaml
-from capellambse.model import common
-from capellambse.model import diagram as diag
-
-from . import (  # pylint: disable=cyclic-import
-    api_helper,
-    element,
-    helpers,
-    serialize,
-)
 
 # logger = logging.getLogger(__name__)
 
