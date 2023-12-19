@@ -47,7 +47,7 @@ class C2PCli:
         )
         self.capella_diagram_cache_index_content: list[
             dict[str, typing.Any]
-        ] | None = None
+        ] = []
         self.capella_model: capellambse.MelodyModel = capella_model
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
         self.synchronize_config_content: dict[str, typing.Any]
@@ -234,7 +234,7 @@ class C2PCli:
         """Load to CapellaDiagramCacheIndexContent."""
         if not self.exitsCapellaDiagrammCacheIndexFile():
             raise Exception("capella diagramm cache index file doe not exits")
-        self.capella_diagram_cache_index_content = None
+        self.capella_diagram_cache_index_content = []
         if self.get_capella_diagram_cache_index_file_path() != None:
             l_text_content = (
                 self.get_capella_diagram_cache_index_file_path().read_text(

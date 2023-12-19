@@ -21,6 +21,7 @@ from capellambse import cli_helpers
 from capella2polarion import elements
 from capella2polarion.c2pcli import C2PCli
 from capella2polarion.elements import helpers, serialize
+from capella2polarion.polarion import PolarionWorker
 
 
 @click.group()
@@ -82,16 +83,17 @@ def cli(
         capella_model,
         synchronize_config,
     )
-    lC2PCli.setupLogger()
+    lC2PCli.setup_logger()
     ctx.obj = lC2PCli
     lC2PCli.echo = click.echo
+    lC2PCli.echo("Start")
 
 
 @cli.command()
 @click.pass_obj
 def printCliState(aC2PCli: C2PCli) -> None:
     """Print the CLI State."""
-    aC2PCli.setupLogger()
+    aC2PCli.setup_logger()
     aC2PCli.printState()
 
 
@@ -128,11 +130,10 @@ def synchronize(ctx: click.core.Context) -> None:
     # ctx.obj["CAPELLA_UUIDS"] = set(ctx.obj["POLARION_TYPE_MAP"])
     # ctx.obj["CAPELLA_UUIDS"] = set(lPW.PolarionTypeMap)
     # lPW.CapellaUUIDs = set(lPW.PolarionTypeMap)
-    from polarion import PolarionWorker
-
     lPW = PolarionWorker(
         aC2PCli.polarion_params, aC2PCli.logger, helpers.resolve_element_type
     )
+    assert aC2PCli.capella_diagram_cache_index_content != None
     lPW.load_elements_and_type_map(
         aC2PCli.synchronize_config_content,
         aC2PCli.capella_model,

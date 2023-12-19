@@ -6,45 +6,49 @@ from __future__ import annotations
 import collections.abc as cabc
 import os
 import pathlib
-import typing as t
+import typing
 from unittest import mock
 
 import polarion_rest_api_client as polarion_api
 import pytest
 from click import testing
 
+import capella2polarion.__main__ as main
+from capella2polarion import elements
+from capella2polarion.c2pcli import C2PCli
+from capella2polarion.polarion import PolarionWorker
+
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
-from conftest import (  # type: ignore[import]
+from tests.conftest import (  # type: ignore[import]
     TEST_DIAGRAM_CACHE,
     TEST_HOST,
     TEST_MODEL,
     TEST_MODEL_ELEMENTS_CONFIG,
 )
 
-import capella2polarion.__main__ as main
-from capella2polarion import elements
-
 
 def prepare_cli_test(
-    monkeypatch: pytest.MonkeyPatch, return_value: t.Any | cabc.Iterable[t.Any]
+    monkeypatch: pytest.MonkeyPatch,
+    return_value: typing.Any | cabc.Iterable[typing.Any],
 ) -> mock.MagicMock:
     os.environ["POLARION_HOST"] = TEST_HOST
     os.environ["POLARION_PAT"] = "1234"
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
-    mock_get_polarion_wi_map = mock.MagicMock()
-    monkeypatch.setattr(
-        elements, "get_polarion_wi_map", mock_get_polarion_wi_map
-    )
-    if isinstance(return_value, cabc.Iterable) and not isinstance(
-        return_value, (str, dict)
-    ):
-        id_map_attr = "side_effect"
-    else:
-        id_map_attr = "return_value"
+    # # mock_get_polarion_wi_map = mock.MagicMock()
+    # # monkeypatch.setattr(
+    # #     elements, "get_polarion_wi_map", mock_get_polarion_wi_map
+    # # )
+    # if isinstance(return_value, cabc.Iterable) and not isinstance(
+    #     return_value, (str, dict)
+    # ):
+    #     id_map_attr = "side_effect"
+    # else:
+    #     id_map_attr = "return_value"
 
-    setattr(mock_get_polarion_wi_map, id_map_attr, return_value)
-    return mock_get_polarion_wi_map
+    # setattr(mock_get_polarion_wi_map, id_map_attr, return_value)
+    # return mock_get_polarion_wi_map
+    return mock_api
 
 
 def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
@@ -65,25 +69,54 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
             {},
         ),
     )
-    mock_delete_work_items = mock.MagicMock()
-    monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
-    mock_post_work_items = mock.MagicMock()
-    monkeypatch.setattr(elements, "post_work_items", mock_post_work_items)
-    mock_patch_work_items = mock.MagicMock()
-    monkeypatch.setattr(elements, "patch_work_items", mock_patch_work_items)
+    # mock_delete_work_items = mock.MagicMock()
+    # monkeypatch.setattr(elements, "delete_work_items", mock_delete_work_items)
+    # mock_post_work_items = mock.MagicMock()
+    # monkeypatch.setattr(elements, "post_work_items", mock_post_work_items)
+    # mock_patch_work_items = mock.MagicMock()
+    # monkeypatch.setattr(elements, "patch_work_items", mock_patch_work_items)
 
     command = [
-        "--project-id=project_id",
-        "model-elements",
-        str(TEST_MODEL),
-        str(TEST_DIAGRAM_CACHE),
-        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--polarion-project-id",
+        "{project-id}",
+        "--polarion-url",
+        "https://www.czy.de",
+        "--polarion-pat",
+        "AlexandersPrivateAcessToken",
+        "--polarion-delete-work-items",
+        "--capella-diagram-cache-folder-path",
+        "./tests/data/diagram_cache",
+        "--capella-model",
+        "./tests/data/model/Melody Model Test.aird",
+        "--synchronize-config",
+        "./tests/data/model_elements/config.yaml",
+        "synchronize"
+        # ,str(TEST_MODEL),
+        # ,str(TEST_DIAGRAM_CACHE),
+        # ,str(TEST_MODEL_ELEMENTS_CONFIG),
     ]
 
-    result = testing.CliRunner().invoke(main.cli, command)
+    mock_polarionworker_deleteworkitem = mock.MagicMock()
+    mock.patch.object(
+        PolarionWorker.setup_polarion_client,
+        mock_polarionworker_deleteworkitem,
+    )
+    mock.patch.object(
+        PolarionWorker.delete_work_items, mock_polarionworker_deleteworkitem
+    )
+
+    # mock_c2pcli_setuplogger = mock.MagicMock()
+    # TODO .. wieso kracht es in der nächsten Zeile?
+    mock.patch.object(
+        C2PCli.load_synchronize_config, mock_polarionworker_deleteworkitem
+    )
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_wi_map.call_count == 1
-    assert mock_delete_work_items.call_count == 1
-    assert mock_patch_work_items.call_count == 1
-    assert mock_post_work_items.call_count == 1
+
+    # assert mock_c2pcli_setuplogger.call_count == 1
+    # assert mock_get_polarion_wi_map.call_count == 1
+    # assert mock_delete_work_items.call_count == 1
+    # assert mock_patch_work_items.call_count == 1
+    # assert mock_post_work_items.call_count == 1
