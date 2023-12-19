@@ -24,8 +24,6 @@ from .conftest import (  # type: ignore[import]
     TEST_MODEL_ELEMENTS_CONFIG,
 )
 
-ELEMENTS_IDX_PATH = pathlib.Path("elements_index.yaml")
-
 
 def prepare_cli_test(
     monkeypatch: pytest.MonkeyPatch, return_value: t.Any | cabc.Iterable[t.Any]
@@ -89,4 +87,3 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     assert mock_delete_work_items.call_count == 1
     assert mock_patch_work_items.call_count == 1
     assert mock_post_work_items.call_count == 1
-    assert ELEMENTS_IDX_PATH.exists()

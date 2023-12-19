@@ -16,15 +16,11 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
-from capella2polarion import elements
 from capella2polarion.elements import helpers, serialize
 
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
-TYPES_POL2CAPELLA = {
-    ctype: ptype for ptype, ctype in elements.POL2CAPELLA_TYPES.items()
-}
 
 
 def create_work_items(
@@ -53,6 +49,8 @@ def create_work_items(
         assert work_item is not None
         assert work_item.title is not None
         assert work_item.type is not None
+        if old := ctx["POLARION_WI_MAP"].get(work_item.uuid_capella):
+            work_item.id = old.id
         if work_item.type in valid_types:
             work_items.append(work_item)
         else:
@@ -74,16 +72,15 @@ def create_links(
 ) -> list[polarion_api.WorkItemLink]:
     """Create work item links for a given Capella object."""
     custom_link_resolvers = CUSTOM_LINKS
-    reverse_type_map = TYPES_POL2CAPELLA
     if isinstance(obj, diag.Diagram):
         repres = f"<Diagram {obj.name!r}>"
     else:
         repres = obj._short_repr_()
 
-    wid = ctx["POLARION_ID_MAP"][obj.uuid]
-    ptype = reverse_type_map.get(type(obj).__name__, type(obj).__name__)
+    workitem = ctx["WORK_ITEMS"][obj.uuid]
     new_links: list[polarion_api.WorkItemLink] = []
-    for role_id in ctx["ROLES"].get(ptype, []):
+    typ = workitem.type[0].upper() + workitem.type[1:]
+    for role_id in ctx["ROLES"].get(typ, []):
         if resolver := custom_link_resolvers.get(role_id):
             new_links.extend(resolver(ctx, obj, role_id, {}))
             continue
@@ -93,7 +90,7 @@ def create_links(
                 "Unable to create work item link %r for [%s]. "
                 "There is no %r attribute on %s",
                 role_id,
-                wid,
+                workitem.id,
                 role_id,
                 repres,
             )
@@ -105,8 +102,8 @@ def create_links(
             assert hasattr(refs, "uuid")
             new = [refs.uuid]
 
-        new = set(_get_work_item_ids(ctx, wid, new, role_id))
-        new_links.extend(_create(ctx, wid, role_id, new, {}))
+        new = set(_get_work_item_ids(ctx, workitem.id, new, role_id))
+        new_links.extend(_create(ctx, workitem.id, role_id, new, {}))
     return new_links
 
 

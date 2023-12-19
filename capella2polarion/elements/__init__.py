@@ -8,7 +8,6 @@ __all__ = [
     "delete_work_items",
     "get_types",
     "get_elements_and_type_map",
-    "make_model_elements_index",
     "STATUS_DELETE",
 ]
 
@@ -246,34 +245,6 @@ def _fix_components(
     for container, xtype in nature_mapping.values():
         if container:
             elements[xtype] = container
-
-
-def make_model_elements_index(ctx: dict[str, t.Any]) -> None:
-    """Create an elements index file for all migrated elements."""
-    elements: list[dict[str, t.Any]] = []
-    for obj in chain.from_iterable(ctx["ELEMENTS"].values()):
-        element_ = {"uuid": obj.uuid, "name": obj.name}
-        if pid := ctx["POLARION_ID_MAP"].get(obj.uuid):
-            element_["id"] = pid
-
-        for role_id in ctx["ROLES"].get(type(obj).__name__, []):
-            attribute = getattr(obj, role_id, None)
-            if attribute is None:
-                continue
-            elif isinstance(attribute, common.ElementList):
-                refs = [
-                    ctx["POLARION_ID_MAP"].get(a.uuid, a.uuid)
-                    for a in attribute
-                ]
-                if refs:
-                    element_[role_id] = refs
-            else:
-                element_[role_id] = ctx["POLARION_ID_MAP"].get(
-                    attribute.uuid, attribute.uuid
-                )
-        elements.append(element_)
-
-    ELEMENTS_IDX_PATH.write_text(yaml.dump(elements), encoding="utf8")
 
 
 from . import (  # pylint: disable=cyclic-import

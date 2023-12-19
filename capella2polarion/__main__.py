@@ -241,8 +241,6 @@ def model_elements(
     elements.element.create_work_items(ctx.obj)
     elements.patch_work_items(ctx.obj)
 
-    elements.make_model_elements_index(ctx.obj)
-
 
 if __name__ == "__main__":
     cli(obj={})
