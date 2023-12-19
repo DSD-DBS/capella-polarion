@@ -178,7 +178,7 @@ class TestDiagramElements:
             capella_model=model,
             synchronize_config_io=MyIO(),
         )
-        c2p_cli.setupLogger()
+        c2p_cli.setup_logger()
         pw = PolarionWorker(
             c2p_cli.polarion_params,
             c2p_cli.logger,
@@ -330,7 +330,7 @@ class TestModelElements:
             synchronize_config_io=MyIO(),
         )
         c2p_cli.synchronize_config_roles = {"FakeModelObject": ["attribute"]}
-        c2p_cli.setupLogger()
+        c2p_cli.setup_logger()
         pw = PolarionWorker(
             c2p_cli.polarion_params,
             c2p_cli.logger,

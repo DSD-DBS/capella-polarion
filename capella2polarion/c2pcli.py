@@ -106,7 +106,7 @@ class C2PCli:
             if not self.synchronize_config_io.closed else 'NO')}"""
         )
 
-    def setupLogger(self) -> None:
+    def setup_logger(self) -> None:
         """Set the logger in the right mood."""
         max_logging_level = logging.DEBUG if self.debug else logging.WARNING
         assert isinstance(GLogger.parent, logging.RootLogger)
