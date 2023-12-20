@@ -93,8 +93,10 @@ def synchronize(ctx: click.core.Context) -> None:
     capella_to_polarion_cli: C2PCli = ctx.obj
     capella_to_polarion_cli.logger.info(
         f"""
-            Synchronising diagrams from diagram cache at '{str(capella_to_polarion_cli.get_capella_diagram_cache_index_file_path())}'
-            to Polarion project with id {capella_to_polarion_cli.polarion_params.project_id}...
+Synchronising diagrams from diagram cache at
+'{str(capella_to_polarion_cli.get_capella_diagram_cache_index_file_path())}'
+to Polarion project with id
+{capella_to_polarion_cli.polarion_params.project_id}...
         """
     )
     capella_to_polarion_cli.load_synchronize_config()
