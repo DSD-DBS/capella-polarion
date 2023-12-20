@@ -107,7 +107,7 @@ add-ignore = [
 extension-pkg-allow-list = [
   "lxml.etree",
 ]
-max-line-length = 79
+max-line-length = 120
 
 [tool.pylint.messages_control]
 disable = [
