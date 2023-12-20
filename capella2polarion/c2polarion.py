@@ -87,14 +87,9 @@ class PolarionWorker:
             raise ValueError(
                 f"""ProjectId invalid. Value '{self._save_value_string(self.polarion_params.project_id)}'"""
             )
-        lValidUrl = False
-        try:
-            result = parse.urlparse(self.polarion_params.url)
-            if all([result.scheme, result.netloc]):
-                lValidUrl = True
-        except:
-            pass
-        if lValidUrl:
+
+        result_url = parse.urlparse(self.polarion_params.url)
+        if not all([result_url.scheme, result_url.netloc]):
             raise ValueError(
                 f"""Polarion URL parameter is not a valid url.
                 Value {self._save_value_string(self.polarion_params.url)}"""
