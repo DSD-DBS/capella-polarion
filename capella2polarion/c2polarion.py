@@ -81,7 +81,7 @@ class PolarionWorker:
 
     def setup_client(self) -> None:
         """Instantiate the polarion client, move to PolarionWorker Class."""
-        if (self.polarion_params.project_id == None) or (
+        if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
         ):
             raise ValueError(
