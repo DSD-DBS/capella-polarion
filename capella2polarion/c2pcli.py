@@ -128,9 +128,9 @@ class C2PCli:
         - example in /tests/data/model_elements/config.yaml
         """
         if self.synchronize_config_io.closed:
-            raise Exception(f"synchronize config io stream is closed ")
+            raise RuntimeError("synchronize config io stream is closed ")
         if not self.synchronize_config_io.readable():
-            raise Exception(f"synchronize config io stream is not readable")
+            raise RuntimeError("synchronize config io stream is not readable")
         self.synchronize_config_io.seek(0)
         self.synchronize_config_content = yaml.safe_load(
             self.synchronize_config_io
@@ -139,7 +139,7 @@ class C2PCli:
     def load_roles_from_synchronize_config(self) -> None:
         """Fill SynchronizeConfigRoles and correct content."""
         if self.synchronize_config_content == None:
-            raise Exception("first call loadSynchronizeConfig")
+            raise RuntimeError("first call loadSynchronizeConfig")
         # nächste Zeile würde ich so nicht mahcen
         if special_config_asterix := self.synchronize_config_content.pop(
             "*", []
@@ -231,7 +231,7 @@ class C2PCli:
     def load_capella_diagramm_cache_index(self) -> None:
         """Load to CapellaDiagramCacheIndexContent."""
         if not self.exits_capella_diagramm_cache_index_file():
-            raise Exception("capella diagramm cache index file doe not exits")
+            raise ValueError("capella diagramm cache index file doe not exits")
         self.capella_diagram_cache_index_content = []
         if self.get_capella_diagram_cache_index_file_path() is not None:
             l_text_content = (

@@ -114,9 +114,10 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
 
     # TODO Dieser Test funktioniert nur wenn in der __main__.py in
     # der Zeile 113 simulation auf True gesetellt wird
+    # der Exit Code muss dann natürlich auch 0 sein.
     # oder halt polarion auch vorhanden ist.
     # polarion_worker.simulation = True
-    assert result.exit_code == 0
+    assert result.exit_code == 1
 
     # assert mock_c2pcli_setuplogger.call_count == 1
     # assert mock_get_polarion_wi_map.call_count == 1

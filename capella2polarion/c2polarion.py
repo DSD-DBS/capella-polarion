@@ -76,7 +76,7 @@ class PolarionWorker:
         self.make_type_id: typing.Any = make_type_id
         self.simulation: bool = False
 
-    def _none_save_value_string(self, aValue: str | None) -> str | None:
+    def _save_value_string(self, aValue: str | None) -> str | None:
         return "None" if aValue is None else aValue
 
     def setup_client(self) -> None:
@@ -85,7 +85,7 @@ class PolarionWorker:
             len(self.polarion_params.project_id) == 0
         ):
             raise ValueError(
-                f"""ProjectId invalid. Value '{self._none_save_value_string(self.polarion_params.project_id)}'"""
+                f"""ProjectId invalid. Value '{self._save_value_string(self.polarion_params.project_id)}'"""
             )
         lValidUrl = False
         try:
@@ -97,12 +97,12 @@ class PolarionWorker:
         if lValidUrl:
             raise ValueError(
                 f"""Polarion URL parameter is not a valid url.
-                Value {self._none_save_value_string(self.polarion_params.url)}"""
+                Value {self._save_value_string(self.polarion_params.url)}"""
             )
-        if self.polarion_params.private_access_token == None:
+        if self.polarion_params.private_access_token is None:
             raise ValueError(
                 f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
-                '{self._none_save_value_string(self.polarion_params.private_access_token)}'"""
+                '{self._save_value_string(self.polarion_params.private_access_token)}'"""
             )
         self.client = polarion_api.OpenAPIPolarionProjectClient(
             self.polarion_params.project_id,
@@ -114,7 +114,7 @@ class PolarionWorker:
         )
         if self.client.project_exists():
             raise KeyError(
-                f"Miss Polarion project with id {self._none_save_value_string(self.polarion_params.project_id)}"
+                f"Miss Polarion project with id {self._save_value_string(self.polarion_params.project_id)}"
             )
 
     def load_elements_and_type_map(
