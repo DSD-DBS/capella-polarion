@@ -138,7 +138,7 @@ class C2PCli:
 
     def load_roles_from_synchronize_config(self) -> None:
         """Fill SynchronizeConfigRoles and correct content."""
-        if self.synchronize_config_content == None:
+        if self.synchronize_config_content is None:
             raise RuntimeError("first call loadSynchronizeConfig")
         # nächste Zeile würde ich so nicht mahcen
         if special_config_asterix := self.synchronize_config_content.pop(
@@ -224,7 +224,7 @@ class C2PCli:
         """Test existens of file."""
         return (
             False
-            if self.get_capella_diagram_cache_index_file_path() == None
+            if self.get_capella_diagram_cache_index_file_path() is None
             else self.get_capella_diagram_cache_index_file_path().is_file()
         )
 
