@@ -7,10 +7,10 @@ import logging
 import pathlib
 import typing
 from itertools import chain
+from urllib import parse
 
 import capellambse
 import polarion_rest_api_client as polarion_api
-import validators
 from capellambse.model import common
 
 from capella2polarion.elements import api_helper, element, serialize
@@ -76,26 +76,33 @@ class PolarionWorker:
         self.make_type_id: typing.Any = make_type_id
         self.simulation: bool = False
 
-    def _noneSaveValueString(self, aValue: str | None) -> str | None:
+    def _none_save_value_string(self, aValue: str | None) -> str | None:
         return "None" if aValue is None else aValue
 
-    def setup_polarion_client(self) -> None:
+    def setup_client(self) -> None:
         """Instantiate the polarion client, move to PolarionWorker Class."""
         if (self.polarion_params.project_id == None) or (
             len(self.polarion_params.project_id) == 0
         ):
             raise ValueError(
-                f"""ProjectId invalid. Value '{self._noneSaveValueString(self.polarion_params.project_id)}'"""
+                f"""ProjectId invalid. Value '{self._none_save_value_string(self.polarion_params.project_id)}'"""
             )
-        if validators.url(self.polarion_params.url):
+        lValidUrl = False
+        try:
+            result = parse.urlparse(self.polarion_params.url)
+            if all([result.scheme, result.netloc]):
+                lValidUrl = True
+        except:
+            pass
+        if lValidUrl:
             raise ValueError(
                 f"""Polarion URL parameter is not a valid url.
-                Value {self._noneSaveValueString(self.polarion_params.url)}"""
+                Value {self._none_save_value_string(self.polarion_params.url)}"""
             )
         if self.polarion_params.private_access_token == None:
             raise ValueError(
                 f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
-                '{self._noneSaveValueString(self.polarion_params.private_access_token)}'"""
+                '{self._none_save_value_string(self.polarion_params.private_access_token)}'"""
             )
         self.client = polarion_api.OpenAPIPolarionProjectClient(
             self.polarion_params.project_id,
@@ -105,10 +112,9 @@ class PolarionWorker:
             custom_work_item=serialize.CapellaWorkItem,
             add_work_item_checksum=True,
         )
-        # assert self.PolarionClient is not None
         if self.client.project_exists():
-            raise Exception(
-                f"Miss Polarion project with id {self._noneSaveValueString(self.polarion_params.project_id)}"
+            raise KeyError(
+                f"Miss Polarion project with id {self._none_save_value_string(self.polarion_params.project_id)}"
             )
 
     def load_elements_and_type_map(

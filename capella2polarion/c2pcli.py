@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import pathlib
-import sys
 import typing
 from itertools import chain
 
@@ -16,13 +14,13 @@ import click
 import yaml
 from capellambse import cli_helpers
 
-from capella2polarion.polarion import PolarionWorkerParams
+from capella2polarion.c2polarion import PolarionWorkerParams
 
 GLogger = logging.getLogger(__name__)
 
 
 class C2PCli:
-    """Call todo @AS."""
+    """Call Level Interface."""
 
     def __init__(
         self,
@@ -55,10 +53,10 @@ class C2PCli:
         self.echo = click.echo
         self.logger: logging.Logger
 
-    def _noneSaveValueString(self, value: str | None) -> str | None:
+    def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
 
-    def printState(self) -> None:
+    def print_state(self) -> None:
         """Print the State of the cli tool."""
 
         def _type(aValue):
@@ -95,11 +93,11 @@ class C2PCli:
                     )
                 else:
                     string_value = _type(member_value)
-                string_value = self._noneSaveValueString(string_value)
+                string_value = self._none_save_value_string(string_value)
                 self.echo(f"{lighted_member_var}: '{string_value}'")
         self.echo(
             f"""Capella Diagram Cache Index-File exits: {('YES'
-            if self.exitsCapellaDiagrammCacheIndexFile() else 'NO')}"""
+            if self.exits_capella_diagramm_cache_index_file() else 'NO')}"""
         )
         self.echo(
             f"""Synchronize Config-IO is open: {('YES'
@@ -218,11 +216,11 @@ class C2PCli:
 
     def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
         """Return index file path."""
-        if self.capella_diagram_cache_folder_path == None:
+        if self.capella_diagram_cache_folder_path is None:
             raise Exception("CapellaDiagramCacheFolderPath not filled")
         return self.capella_diagram_cache_folder_path / "index.json"
 
-    def exitsCapellaDiagrammCacheIndexFile(self) -> bool:
+    def exits_capella_diagramm_cache_index_file(self) -> bool:
         """Test existens of file."""
         return (
             False
@@ -232,10 +230,10 @@ class C2PCli:
 
     def load_capella_diagramm_cache_index(self) -> None:
         """Load to CapellaDiagramCacheIndexContent."""
-        if not self.exitsCapellaDiagrammCacheIndexFile():
+        if not self.exits_capella_diagramm_cache_index_file():
             raise Exception("capella diagramm cache index file doe not exits")
         self.capella_diagram_cache_index_content = []
-        if self.get_capella_diagram_cache_index_file_path() != None:
+        if self.get_capella_diagram_cache_index_file_path() is not None:
             l_text_content = (
                 self.get_capella_diagram_cache_index_file_path().read_text(
                     encoding="utf8"

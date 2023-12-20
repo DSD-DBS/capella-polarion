@@ -16,7 +16,7 @@ from click import testing
 import capella2polarion.__main__ as main
 from capella2polarion import elements
 from capella2polarion.c2pcli import C2PCli
-from capella2polarion.polarion import PolarionWorker
+from capella2polarion.c2polarion import PolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from tests.conftest import (  # type: ignore[import]
@@ -98,7 +98,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
 
     mock_polarionworker_deleteworkitem = mock.MagicMock()
     mock.patch.object(
-        PolarionWorker.setup_polarion_client,
+        PolarionWorker.setup_client,
         mock_polarionworker_deleteworkitem,
     )
     mock.patch.object(
@@ -106,13 +106,16 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     )
 
     # mock_c2pcli_setuplogger = mock.MagicMock()
-    # TODO .. wieso kracht es in der nächsten Zeile?
     mock.patch.object(
         C2PCli.load_synchronize_config, mock_polarionworker_deleteworkitem
     )
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
 
+    # TODO Dieser Test funktioniert nur wenn in der __main__.py in
+    # der Zeile 113 simulation auf True gesetellt wird
+    # oder halt polarion auch vorhanden ist.
+    # polarion_worker.simulation = True
     assert result.exit_code == 0
 
     # assert mock_c2pcli_setuplogger.call_count == 1
