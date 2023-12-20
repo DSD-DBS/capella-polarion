@@ -217,7 +217,7 @@ class C2PCli:
     def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
         """Return index file path."""
         if self.capella_diagram_cache_folder_path is None:
-            raise Exception("CapellaDiagramCacheFolderPath not filled")
+            raise ValueError("CapellaDiagramCacheFolderPath not filled")
         return self.capella_diagram_cache_folder_path / "index.json"
 
     def exits_capella_diagramm_cache_index_file(self) -> bool:
