@@ -207,7 +207,7 @@ class TestDiagramElements:
         c2p_cli = base_object.c2pcli
         pw = base_object.pw
         description_reference: dict[str, list[str]] = {}
-        new_work_items = pw.create_work_items(
+        pw.create_work_items(
             c2p_cli.capella_diagram_cache_folder_path,
             c2p_cli.capella_model,
             description_reference,
@@ -545,9 +545,8 @@ class TestModelElements:
         assert work_item.description_type == "text/html"
         assert work_item.description == markupsafe.Markup("")
         assert work_item.type is None
+        assert work_item.status == "open"
         assert work_item.uuid_capella is None
-
-    #        assert work_item.status == "open"
 
     @staticmethod
     def test_update_work_items_filters_work_items_with_same_checksum(
@@ -615,9 +614,7 @@ class TestModelElements:
             pass
 
     @staticmethod
-    def test_update_links(
-        monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
-    ):
+    def test_update_links(base_object: BaseObjectContainer):
         link = polarion_api.WorkItemLink(
             "Obj-1", "Obj-2", "attribute", True, "project_id"
         )
@@ -982,7 +979,7 @@ class TestSerializers:
                     "uuid_capella": TEST_CONSTRAINT,
                     "description_type": "text/html",
                     "description": markupsafe.Markup(
-                        "This is a test contextyping.Make Food"
+                        "This is a test context.Make Food"
                     ),
                 },
                 id="constraint",
@@ -1001,10 +998,9 @@ class TestSerializers:
         )
 
         work_item = serializer.serialize(obj)
-        if work_item is not None:
-            status = work_item.status
-            work_item.status = None
+        assert work_item is not None
+        status = work_item.status
+        work_item.status = None
 
-        # @MH Hier klemmt es noch
-        # assert work_item == serialize.CapellaWorkItem(expected)
+        assert work_item == serialize.CapellaWorkItem(**expected)
         assert status == "open"
