@@ -15,7 +15,7 @@ from capellambse.model import common
 
 from capella2polarion.elements import api_helper, element, serialize
 
-GLogger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # STATUS_DELETE = "deleted"
 ACTOR_TYPES = {
@@ -59,28 +59,16 @@ class PolarionWorker:
     def __init__(
         self,
         params: PolarionWorkerParams,
-        logger: logging.Logger,
         make_type_id: typing.Any,
     ) -> None:
         self.polarion_params: PolarionWorkerParams = params
-        self.client: polarion_api.OpenAPIPolarionProjectClient | None = None
-        self.logger: logging.Logger = logger
-        self.elements: dict[str, list[common.GenericElement]]
+        self.elements: dict[str, list[common.GenericElement]] = {}
         self.polarion_type_map: dict[str, str] = {}
         self.capella_uuid_s: set[str] = set()
         self.x_types: set[str] = set()
         self.polarion_id_map: dict[str, str] = {}
-        self.polarion_work_item_map: dict[
-            str, serialize.CapellaWorkItem
-        ]  # dict[str, typing.Any] = None
+        self.polarion_work_item_map: dict[str, serialize.CapellaWorkItem] = {}
         self.make_type_id: typing.Any = make_type_id
-        self.simulation: bool = False
-
-    def _save_value_string(self, aValue: str | None) -> str | None:
-        return "None" if aValue is None else aValue
-
-    def setup_client(self) -> None:
-        """Instantiate the polarion client, move to PolarionWorker Class."""
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
         ):
@@ -107,7 +95,15 @@ class PolarionWorker:
             custom_work_item=serialize.CapellaWorkItem,
             add_work_item_checksum=True,
         )
-        if self.client.project_exists():
+        self.check_client()
+
+    def _save_value_string(self, value: str | None) -> str | None:
+        return "None" if value is None else value
+
+    def check_client(self) -> None:
+        """Instantiate the polarion client, move to PolarionWorker Class."""
+
+        if not self.client.project_exists():
             raise KeyError(
                 f"Miss Polarion project with id {self._save_value_string(self.polarion_params.project_id)}"
             )
@@ -119,47 +115,6 @@ class PolarionWorker:
         diagram_idx: list[dict[str, typing.Any]],
     ) -> None:
         """Return an elements and UUID to Polarion type map."""
-
-        def _fix_components(
-            elements: dict[str, list[common.GenericElement]],
-            type_map: dict[str, str],
-        ) -> None:
-            for typ, xtype in ACTOR_TYPES.items():
-                if typ not in elements:
-                    continue
-
-                actors: list[common.GenericElement] = []
-                components: list[common.GenericElement] = []
-                for obj in elements[typ]:
-                    if obj.is_actor:
-                        actors.append(obj)
-                    else:
-                        components.append(obj)
-                        type_map[obj.uuid] = xtype
-
-                elements[typ] = actors
-                elements[xtype] = components
-
-            nodes: list[common.GenericElement] = []
-            behaviors: list[common.GenericElement] = []
-            components = []
-            for obj in elements.get("PhysicalComponent", []):
-                if obj.nature is not None and obj.nature.name == "NODE":
-                    nodes.append(obj)
-                    type_map[obj.uuid] = "PhysicalComponentNode"
-                elif obj.nature is not None and obj.nature.name == "BEHAVIOR":
-                    behaviors.append(obj)
-                    type_map[obj.uuid] = "PhysicalComponentBehavior"
-                else:
-                    components.append(obj)
-
-            if nodes:
-                elements["PhysicalComponentNode"] = nodes
-            if behaviors:
-                elements["PhysicalComponentBehavior"] = behaviors
-            if components:
-                elements["PhysicalComponent"] = components
-
         convert_type = POL2CAPELLA_TYPES
         type_map: dict[str, str] = {}
         elements: dict[str, list[common.GenericElement]] = {}
@@ -178,7 +133,42 @@ class PolarionWorker:
                 for obj in objects:
                     type_map[obj.uuid] = typ
 
-        _fix_components(elements, type_map)
+        for typ, xtype in ACTOR_TYPES.items():
+            if typ not in elements:
+                continue
+
+            actors: list[common.GenericElement] = []
+            components: list[common.GenericElement] = []
+            for obj in elements[typ]:
+                if obj.is_actor:
+                    actors.append(obj)
+                else:
+                    components.append(obj)
+                    type_map[obj.uuid] = xtype
+
+            elements[typ] = actors
+            elements[xtype] = components
+
+        nodes: list[common.GenericElement] = []
+        behaviors: list[common.GenericElement] = []
+        components = []
+        for obj in elements.get("PhysicalComponent", []):
+            if obj.nature is not None and obj.nature.name == "NODE":
+                nodes.append(obj)
+                type_map[obj.uuid] = "PhysicalComponentNode"
+            elif obj.nature is not None and obj.nature.name == "BEHAVIOR":
+                behaviors.append(obj)
+                type_map[obj.uuid] = "PhysicalComponentBehavior"
+            else:
+                components.append(obj)
+
+        if nodes:
+            elements["PhysicalComponentNode"] = nodes
+        if behaviors:
+            elements["PhysicalComponentBehavior"] = behaviors
+        if components:
+            elements["PhysicalComponent"] = components
+
         diagrams_from_cache = {d["uuid"] for d in diagram_idx if d["success"]}
         elements["Diagram"] = [
             d for d in model.diagrams if d.uuid in diagrams_from_cache
@@ -201,21 +191,12 @@ class PolarionWorker:
         """Return a map from Capella UUIDs to Polarion work items."""
         work_item_types = list(map(self.make_type_id, self.x_types))
         _type = " ".join(work_item_types)
-        if self.simulation:
-            work_item = serialize.CapellaWorkItem(
-                "84a64a2d-3491-48af-b55b-823010a3e006", "FakeItem"
-            )
-            work_item.uuid_capella = "weck"
-            work_item.checksum = "doppelwegg"
-            work_item.status = "fake"
-            work_items = []
-            work_items.append(work_item)
-        else:
-            assert self.client is not None
-            work_items = self.client.get_all_work_items(
-                f"type:({_type})",
-                {"workitems": "id,uuid_capella,checksum,status"},
-            )
+
+        work_items = self.client.get_all_work_items(
+            f"type:({_type})",
+            {"workitems": "id,uuid_capella,checksum,status"},
+        )
+
         self.polarion_work_item_map = {
             wi.uuid_capella: wi
             for wi in work_items
@@ -256,7 +237,7 @@ class PolarionWorker:
                 missing_types.add(work_item.type)
 
         if missing_types:
-            self.logger.debug(
+            logger.debug(
                 "%r are missing in the capella2polarion configuration",
                 ", ".join(missing_types),
             )
@@ -270,7 +251,7 @@ class PolarionWorker:
         """
 
         def serialize_for_delete(uuid: str) -> str:
-            self.logger.info(
+            logger.info(
                 "Delete work item %r...",
                 workitem_id := self.polarion_id_map[uuid],
             )
@@ -285,16 +266,12 @@ class PolarionWorker:
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
-                if not self.simulation:
-                    assert self.client is not None
-                    self.client.delete_work_items(work_item_ids)
+                self.client.delete_work_items(work_item_ids)
                 for uuid in uuids:
                     del self.polarion_work_item_map[uuid]
                     del self.polarion_id_map[uuid]
             except polarion_api.PolarionApiException as error:
-                self.logger.error(
-                    "Deleting work items failed. %s", error.args[0]
-                )
+                logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
         self, new_work_items: dict[str, serialize.CapellaWorkItem]
@@ -307,21 +284,17 @@ class PolarionWorker:
 
             assert work_item is not None
             missing_work_items.append(work_item)
-            self.logger.info("Create work item for %r...", work_item.title)
+            logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
             try:
-                if not self.simulation:
-                    assert self.client is not None
-                    self.client.create_work_items(missing_work_items)
+                self.client.create_work_items(missing_work_items)
                 for work_item in missing_work_items:
                     self.polarion_id_map[work_item.uuid_capella] = work_item.id
                     self.polarion_work_item_map[
                         work_item.uuid_capella
                     ] = work_item
             except polarion_api.PolarionApiException as error:
-                self.logger.error(
-                    "Creating work items failed. %s", error.args[0]
-                )
+                logger.error("Creating work items failed. %s", error.args[0])
 
     def patch_work_items(
         self,
@@ -367,11 +340,11 @@ class PolarionWorker:
                 element.create_grouped_back_link_fields(
                     new_work_item, back_links[old_work_item.id]
                 )
-            if not self.simulation:
-                api_helper.patch_work_item(
-                    self.client,
-                    new_work_item,
-                    old_work_item,
-                    old_work_item.title,
-                    "element",
-                )
+
+            api_helper.patch_work_item(
+                self.client,
+                new_work_item,
+                old_work_item,
+                old_work_item.title,
+                "element",
+            )

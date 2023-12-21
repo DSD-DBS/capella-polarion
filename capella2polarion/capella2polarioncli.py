@@ -12,14 +12,13 @@ from itertools import chain
 import capellambse
 import click
 import yaml
-from capellambse import cli_helpers
 
 from capella2polarion.c2polarion import PolarionWorkerParams
 
-GLogger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class C2PCli:
+class Capella2PolarionCli:
     """Call Level Interface."""
 
     def __init__(
@@ -30,7 +29,7 @@ class C2PCli:
         polarion_pat: str,
         polarion_delete_work_items: bool,
         capella_diagram_cache_folder_path: pathlib.Path,
-        capella_model: cli_helpers.ModelCLI,
+        capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
     ) -> None:
         self.debug = debug
@@ -48,10 +47,9 @@ class C2PCli:
         ] = []
         self.capella_model: capellambse.MelodyModel = capella_model
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
-        self.synchronize_config_content: dict[str, typing.Any]
+        self.synchronize_config_content: dict[str, typing.Any] = {}
         self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.echo = click.echo
-        self.logger: logging.Logger
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -59,19 +57,17 @@ class C2PCli:
     def print_state(self) -> None:
         """Print the State of the cli tool."""
 
-        def _type(aValue):
-            return f"type: {type(aValue)}"
+        def _type(value):
+            return f"type: {type(value)}"
 
-        def _value(aValue):
-            return aValue
+        def _value(value):
+            return value
 
         self.echo("---------------------------------------")
         lighted_member_vars = [
-            lAttribute
-            for lAttribute in dir(self)
-            if not (
-                lAttribute.startswith("__") or (lAttribute.startswith("__"))
-            )
+            attribute
+            for attribute in dir(self)
+            if not (attribute.startswith("__") or (attribute.startswith("__")))
         ]
         for lighted_member_var in lighted_member_vars:
             if lighted_member_var[0].isupper():
@@ -107,8 +103,8 @@ class C2PCli:
     def setup_logger(self) -> None:
         """Set the logger in the right mood."""
         max_logging_level = logging.DEBUG if self.debug else logging.WARNING
-        assert isinstance(GLogger.parent, logging.RootLogger)
-        GLogger.parent.setLevel(max_logging_level)
+        assert isinstance(logger.parent, logging.RootLogger)
+        logger.parent.setLevel(max_logging_level)
         log_formatter = logging.Formatter(
             "%(asctime)-15s - %(levelname)-8s %(message)s"
         )
@@ -119,8 +115,7 @@ class C2PCli:
             lambda record: record.name.startswith("capella2polarion")
             or (record.name == "httpx" and record.levelname == "INFO")
         )
-        GLogger.parent.addHandler(console_handler)
-        self.logger = GLogger
+        logger.parent.addHandler(console_handler)
 
     def load_synchronize_config(self) -> None:
         """Read the sync config into SynchronizeConfigContent.
@@ -140,7 +135,6 @@ class C2PCli:
         """Fill SynchronizeConfigRoles and correct content."""
         if self.synchronize_config_content is None:
             raise RuntimeError("first call loadSynchronizeConfig")
-        # nächste Zeile würde ich so nicht mahcen
         if special_config_asterix := self.synchronize_config_content.pop(
             "*", []
         ):
