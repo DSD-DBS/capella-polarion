@@ -322,11 +322,11 @@ class PolarionWorker:
             links = element.create_links(
                 obj,
                 self.polarion_id_map,
+                self.polarion_work_item_map,
                 descr_references,
                 self.polarion_params.project_id,
                 model,
                 link_roles,
-                TYPES_POL2CAPELLA,
             )
             work_item: serialize.CapellaWorkItem = new_work_items[uuid]
             work_item.linked_work_items = links
@@ -345,6 +345,4 @@ class PolarionWorker:
                 self.client,
                 new_work_item,
                 old_work_item,
-                old_work_item.title,
-                "element",
             )

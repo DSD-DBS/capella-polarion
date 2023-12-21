@@ -236,7 +236,8 @@ class CapellaWorkItemSerializer:
     ) -> tuple[list[str], markupsafe.Markup]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-            lambda match: self.replace_markup(match, referenced_uuids, 2), descr
+            lambda match: self.replace_markup(match, referenced_uuids, 2),
+            descr,
         )
 
         def repair_images(node: etree._Element) -> None:
@@ -280,14 +281,14 @@ class CapellaWorkItemSerializer:
         """
         uuid = match.group(1)
         try:
-            ctx["MODEL"].by_uuid(uuid)
+            self.model.by_uuid(uuid)
         except KeyError:
             logger.error("Found link to non-existing model element: %r", uuid)
             return strike_through(match.group(default_group))
         if pid := self.polarion_id_map.get(uuid):
-                referenced_uuids.append(uuid)
-                return POLARION_WORK_ITEM_URL.format(pid=pid)
-            logger.warning("Found reference to non-existing work item: %r", uuid)
+            referenced_uuids.append(uuid)
+            return POLARION_WORK_ITEM_URL.format(pid=pid)
+        logger.warning("Found reference to non-existing work item: %r", uuid)
         return match.group(default_group)
 
     def include_pre_and_post_condition(
@@ -351,17 +352,8 @@ class CapellaWorkItemSerializer:
             work_item.type = helpers.resolve_element_type(xtype)
         return work_item
 
-    def _include_nature_in_type(self, obj: pa.PhysicalComponent) -> CapellaWorkItem:
-        """Return attributes for a ``PhysicalComponent``."""
-        work_item = self._include_actor_in_type(obj)
-        xtype = work_item.type
-        if obj.nature is not None:
-            # pylint: disable-next=attribute-defined-outside-init
-            work_item.type = f"{xtype}{obj.nature.name.capitalize()}"
-        return work_item
-
     def _include_nature_in_type(
-        self, obj: pa.PhysicalComponent, ctx: dict[str, t.Any]
+        self, obj: pa.PhysicalComponent
     ) -> CapellaWorkItem:
         """Return attributes for a ``PhysicalComponent``."""
         work_item = self._include_actor_in_type(obj)
