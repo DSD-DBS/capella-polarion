@@ -30,8 +30,8 @@ classifiers = [
 dependencies = [
   "capellambse",
   "click",
-  "PyYAML"
-  #,"polarion-rest-api-client==0.2.1"
+  "PyYAML",
+  "polarion-rest-api-client==0.2.1"
 ]
 
 [project.urls]
