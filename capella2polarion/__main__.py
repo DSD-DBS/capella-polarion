@@ -96,7 +96,8 @@ def synchronize(ctx: click.core.Context) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
     logger.info(
-        "Synchronising diagrams from diagram cache at %s to Polarion project with id %s...",
+        "Synchronising diagrams from diagram cache at "
+        "%s to Polarion project with id %s...",
         str(
             capella_to_polarion_cli.get_capella_diagram_cache_index_file_path()
         ),
