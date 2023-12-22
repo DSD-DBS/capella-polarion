@@ -306,11 +306,8 @@ class TestModelElements:
     def test_create_work_items(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
-        # del base_object.pw.Elements["UnsupportedFakeModelObject"]
         del base_object.pw.elements["UnsupportedFakeModelObject"]
-        # base_object.c2pcli.CapellaModel = model = mock.MagicMock()
         base_object.c2pcli.capella_model = mock.MagicMock()
-        # model.by_uuid.side_effect = base_object.pw.Elements["FakeModelObject"]
         base_object.c2pcli.capella_model.by_uuid.side_effect = (
             base_object.pw.elements["FakeModelObject"]
         )
@@ -1049,8 +1046,15 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
 
+        # We don't want to see any successfully created references, so we pass a mock model
+        mock_model = mock.MagicMock(capellambse.MelodyModel)
+        mock_model.by_uuid.side_effect = KeyError
         serializer = serialize.CapellaWorkItemSerializer(
-            pathlib.Path(""), TEST_POL_TYPE_MAP, model, TEST_POL_ID_MAP, {}
+            pathlib.Path(""),
+            TEST_POL_TYPE_MAP,
+            mock_model,
+            TEST_POL_ID_MAP,
+            {},
         )
 
         work_item = serializer.serialize(obj)
