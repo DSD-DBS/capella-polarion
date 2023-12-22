@@ -15,7 +15,6 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
-from capella2polarion.elements import serialize
 from capella2polarion.elements import helpers, serialize
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 def create_links(
     obj: common.GenericElement | diag.Diagram,
     polarion_id_map,
-    new_work_items,
+    work_item_map,
     descr_references,
     project_id,
     model,
@@ -38,7 +37,7 @@ def create_links(
     else:
         repres = obj._short_repr_()
 
-    workitem = new_work_items[obj.uuid]
+    workitem = work_item_map[obj.uuid]
     new_links: list[polarion_api.WorkItemLink] = []
     typ = workitem.type[0].upper() + workitem.type[1:]
     for role_id in roles.get(typ, []):
@@ -103,9 +102,13 @@ def create_links(
                 new = [refs.uuid]
 
             new = set(
-                _get_work_item_ids(polarion_id_map, model, workitem.id, new, role_id)
+                _get_work_item_ids(
+                    polarion_id_map, model, workitem.id, new, role_id
+                )
             )
-            new_links.extend(_create(project_id, workitem.id, role_id, new, {}))
+            new_links.extend(
+                _create(project_id, workitem.id, role_id, new, {})
+            )
     return new_links
 
 

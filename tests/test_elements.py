@@ -14,7 +14,7 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
 
-from capella2polarion.c2polarion import TYPES_POL2CAPELLA, PolarionWorker
+from capella2polarion.c2polarion import PolarionWorker
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
 from capella2polarion.elements import element, helpers, serialize
 from capella2polarion.elements.serialize import CapellaWorkItem
@@ -287,7 +287,6 @@ class TestModelElements:
             c2p_cli.polarion_params,
             helpers.resolve_element_type,
         )
-        # pw.CapellaUUIDs = set([d["uuid"] for d in diagram_cache_index])
         pw.polarion_work_item_map = {"uuid1": work_item}
         pw.polarion_id_map = {"uuid1": "Obj-1"}
         pw.polarion_type_map = {"uuid1": "FakeModelObject"}
@@ -339,6 +338,45 @@ class TestModelElements:
             {},
         )
         assert list(work_items.values()) == [expected, expected1]
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "uuid,_type,attrs",
+        [
+            pytest.param(
+                "55b90f9a-c5af-47fc-9c1c-48090414d1f1",
+                "OperationalInteraction",
+                {"title": "Prepared food"},
+                id="OperationalInteraction",
+            )
+        ],
+    )
+    def test_create_work_items_with_special_polarion_type(
+        base_object: BaseObjectContainer,
+        model: capellambse.MelodyModel,
+        uuid: str,
+        _type: str,
+        attrs: dict[str, typing.Any],
+    ):
+        base_object.pw.elements = {_type: [model.by_uuid(uuid)]}
+        base_object.pw.polarion_type_map[uuid] = _type
+        base_object.c2pcli.capella_model = model
+
+        expected = serialize.CapellaWorkItem(
+            uuid_capella=uuid,
+            type=_type[0].lower() + _type[1:],
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+            **attrs,
+        )
+
+        work_items = base_object.pw.create_work_items(
+            TEST_DIAGRAM_CACHE, model, {}
+        )
+
+        assert len(work_items) == 1
+        assert work_items[uuid] == expected
 
     @staticmethod
     def test_create_links_custom_resolver(base_object: BaseObjectContainer):
@@ -665,10 +703,16 @@ class TestModelElements:
         )
         work_items = {
             "uuid1": serialize.CapellaWorkItem(
-                id="Obj-1", uuid_capella="uuid1", status="open"
+                id="Obj-1",
+                uuid_capella="uuid1",
+                status="open",
+                type="fakeModelObject",
             ),
             "uuid2": serialize.CapellaWorkItem(
-                id="Obj-2", uuid_capella="uuid2", status="open"
+                id="Obj-2",
+                uuid_capella="uuid2",
+                status="open",
+                type="fakeModelObject",
             ),
         }
         assert base_object.pw.client is not None
@@ -1025,13 +1069,10 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
 
-        # We don't want to see any successfully created references, so we pass a mock model
-        mock_model = mock.MagicMock(capellambse.MelodyModel)
-        mock_model.by_uuid.side_effect = KeyError
         serializer = serialize.CapellaWorkItemSerializer(
             pathlib.Path(""),
             TEST_POL_TYPE_MAP,
-            mock_model,
+            model,
             TEST_POL_ID_MAP,
             {},
         )
