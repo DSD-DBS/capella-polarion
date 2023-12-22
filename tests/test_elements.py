@@ -37,7 +37,8 @@ TEST_DESCR = (
 TEST_WE_UUID = "e37510b9-3166-4f80-a919-dfaac9b696c7"
 TEST_E_UUID = "4bf0356c-89dd-45e9-b8a6-e0332c026d33"
 TEST_WE_DESCR = (
-    '<p><span style="text-decoration: line-through;">Weather</span></p>\n'
+    '<p><span class="polarion-rte-link" data-type="workItem" '
+    'id="fake" data-item-id="TEST" data-option-id="long"/></p>\n'
 )
 TEST_ACTOR_UUID = "08e02248-504d-4ed8-a295-c7682a614f66"
 TEST_PHYS_COMP = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
