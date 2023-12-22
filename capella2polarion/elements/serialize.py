@@ -301,13 +301,6 @@ class CapellaWorkItemSerializer:
                 return ""
             return condition.specification["capella:linkedText"].striptags()
 
-        def strike_through(string: str) -> str:
-            if match := RE_DESCR_DELETED_PATTERN.match(string):
-                string = match.group(1)
-            return (
-                f'<span style="text-decoration: line-through;">{string}</span>'
-            )
-
         def matcher(match: re.Match) -> str:
             return strike_through(self.replace_markup(match, []))
 

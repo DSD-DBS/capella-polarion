@@ -75,7 +75,8 @@ class PolarionWorker:
             len(self.polarion_params.project_id) == 0
         ):
             raise ValueError(
-                f"""ProjectId invalid. Value '{self._save_value_string(self.polarion_params.project_id)}'"""
+                f"""ProjectId invalid. Value
+                '{self._save_value_string(self.polarion_params.project_id)}'"""
             )
 
         result_url = parse.urlparse(self.polarion_params.url)
@@ -86,8 +87,8 @@ class PolarionWorker:
             )
         if self.polarion_params.private_access_token is None:
             raise ValueError(
-                f"""Polarion PAT (Personal Access Token) parameter is not a valid url. Value
-                '{self._save_value_string(self.polarion_params.private_access_token)}'"""
+                "Polarion PAT (Personal Access Token) parameter "
+                "is not a set properly."
             )
         self.client = polarion_api.OpenAPIPolarionProjectClient(
             self.polarion_params.project_id,
@@ -107,7 +108,8 @@ class PolarionWorker:
 
         if not self.client.project_exists():
             raise KeyError(
-                f"Miss Polarion project with id {self._save_value_string(self.polarion_params.project_id)}"
+                f"Miss Polarion project with id "
+                f"{self._save_value_string(self.polarion_params.project_id)}"
             )
 
     def load_elements_and_type_map(

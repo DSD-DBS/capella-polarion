@@ -5,9 +5,6 @@ from __future__ import annotations
 
 import collections.abc as cabc
 import logging
-import pathlib
-import types
-import typing as t
 from collections import defaultdict
 
 import polarion_rest_api_client as polarion_api
@@ -15,7 +12,7 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
-from capella2polarion.elements import helpers, serialize
+from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
