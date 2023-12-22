@@ -65,7 +65,7 @@ TEST_SER_DIAGRAM: dict[str, typing.Any] = {
     },
 }
 TEST_WI_CHECKSUM = (
-    "73508ec0c3048c5b33316dfa56ef5e5f4179ff69efaa209e47ab65b111415e82"
+    "d7916c4c529d588dcfdfa30c78a04dcf5b50089440a767ca962e24b94fb65c5d"
 )
 TEST_REQ_TEXT = (
     "<p>Test requirement 1 really l o n g text that is&nbsp;way too long to "
@@ -541,8 +541,7 @@ class TestModelElements:
     def test_update_work_items(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
-        polarion_work_item_list: list[serialize.CapellaWorkItem] = []
-        polarion_work_item_list.append(
+        polarion_work_item_list: list[serialize.CapellaWorkItem] = [
             serialize.CapellaWorkItem(
                 id="Obj-1",
                 type="type",
@@ -553,7 +552,7 @@ class TestModelElements:
                 description=markupsafe.Markup("Test"),
                 checksum="123",
             )
-        )
+        ]
         polarion_api_get_all_work_items = mock.MagicMock()
         polarion_api_get_all_work_items.return_value = polarion_work_item_list
         monkeypatch.setattr(
@@ -601,67 +600,51 @@ class TestModelElements:
     def test_update_work_items_filters_work_items_with_same_checksum(
         base_object: BaseObjectContainer,
     ):
-        try:
-            base_object.pw.polarion_work_item_map[
-                "uuid1"
-            ] = serialize.CapellaWorkItem(
+        base_object.pw.polarion_work_item_map[
+            "uuid1"
+        ] = serialize.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella="uuid1",
+            status="open",
+            checksum=TEST_WI_CHECKSUM,
+            type="fakeModelObject",
+        )
+        work_items = {
+            "uuid1": serialize.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",
-                checksum=TEST_WI_CHECKSUM,
                 type="fakeModelObject",
             )
-            work_items: dict[str, serialize.CapellaWorkItem] = {}
-            base_object.pw.patch_work_items(
-                base_object.c2pcli.capella_model,
-                work_items,
-                {},
-                base_object.c2pcli.synchronize_config_roles,
-            )
-            # elements.patch_work_items(
-            #     base_object.pw.PolarionIdMap,
-            #     base_object.c2pcli.CapellaModel,
-            #     work_items,
-            #     base_object.pw.PolarionWorkItemMap,
-            #     base_object.pw.client,
-            #     {},
-            #     base_object.pw.polarion_params.project_id,
-            #     base_object.c2pcli.SynchronizeConfigRoles,
-            # )
-            assert base_object.pw.client is not None
-            assert base_object.pw.client.update_work_item.call_count == 0
-        except:
-            # TODO .. test zur Zeit defekt. Wird später repariert
-            pass
+        }
+        mock_model = mock.MagicMock()
+        mock_model.by_uuid.return_value = FakeModelObject(
+            "uuid1", name="Fake 1"
+        )
+
+        base_object.pw.patch_work_items(
+            mock_model,
+            work_items,
+            {},
+            base_object.c2pcli.synchronize_config_roles,
+        )
+
+        assert base_object.pw.client is not None
+        assert base_object.pw.client.update_work_item.call_count == 0
 
     @staticmethod
     def test_update_links_with_no_elements(base_object: BaseObjectContainer):
-        try:
-            base_object.pw.polarion_work_item_map = {}
-            work_items: dict[str, serialize.CapellaWorkItem] = {}
-            base_object.pw.patch_work_items(
-                base_object.c2pcli.capella_model,
-                work_items,
-                {},
-                base_object.c2pcli.synchronize_config_roles,
-            )
-            # elements.patch_work_items(
-            #     base_object.pw.PolarionIdMap,
-            #     base_object.c2pcli.CapellaModel,
-            #     work_items,
-            #     base_object.pw.PolarionWorkItemMap,
-            #     base_object.pw.client,
-            #     {},
-            #     base_object.pw.polarion_params.project_id,
-            #     base_object.c2pcli.SynchronizeConfigRoles,
-            # )
-            assert base_object.pw.client is not None
-            assert (
-                base_object.pw.client.get_all_work_item_links.call_count == 0
-            )
-        except:
-            # TODO .. test zur Zeit defekt. Wird später repariert
-            pass
+        base_object.pw.polarion_work_item_map = {}
+        base_object.pw.polarion_id_map = {}
+        work_items: dict[str, serialize.CapellaWorkItem] = {}
+        base_object.pw.patch_work_items(
+            base_object.c2pcli.capella_model,
+            work_items,
+            {},
+            base_object.c2pcli.synchronize_config_roles,
+        )
+
+        assert base_object.pw.client.get_all_work_item_links.call_count == 0
 
     @staticmethod
     def test_update_links(base_object: BaseObjectContainer):
@@ -775,13 +758,8 @@ class TestModelElements:
         mock_grouped_links_calls = mock_grouped_links.call_args_list
         assert len(mock_grouped_links_calls) == 3
         assert mock_grouped_links_reverse.call_count == 3
-        # TODO .. ich habe die Reinehfolge geändert .. vielleicht weil:
-        # in base_object 1 rein kommt, dann werden hier 0,2 hinzugefügt
-        # assert mock_grouped_links_calls[0][0][0] == dummy_work_items["uuid0"]
-        # assert mock_grouped_links_calls[1][0][0] == dummy_work_items["uuid1"]
-        # assert mock_grouped_links_calls[2][0][0] == dummy_work_items["uuid2"]
-        assert mock_grouped_links_calls[0][0][0] == dummy_work_items["uuid1"]
-        assert mock_grouped_links_calls[1][0][0] == dummy_work_items["uuid0"]
+        assert mock_grouped_links_calls[0][0][0] == dummy_work_items["uuid0"]
+        assert mock_grouped_links_calls[1][0][0] == dummy_work_items["uuid1"]
         assert mock_grouped_links_calls[2][0][0] == dummy_work_items["uuid2"]
         work_item_0 = update_work_item_calls[0][0][0]
         work_item_1 = update_work_item_calls[1][0][0]

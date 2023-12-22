@@ -304,13 +304,11 @@ class PolarionWorker:
         link_roles,
     ) -> None:
         """Update work items in a Polarion project."""
-        self.polarion_id_map.update(
-            {
-                uuid: wi.id
-                for uuid, wi in self.polarion_work_item_map.items()
-                if wi.status == "open" and wi.uuid_capella and wi.id
-            }
-        )
+        self.polarion_id_map = {
+            uuid: wi.id
+            for uuid, wi in self.polarion_work_item_map.items()
+            if wi.status == "open" and wi.uuid_capella and wi.id
+        }
 
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
         for uuid in self.polarion_id_map:
