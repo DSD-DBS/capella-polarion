@@ -1,4 +1,4 @@
-# Copyright DB Netz AG and contributors
+# Copyright DB InfraGo AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Main entry point into capella2polarion."""
 from __future__ import annotations
