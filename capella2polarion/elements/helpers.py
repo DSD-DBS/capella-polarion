@@ -1,4 +1,4 @@
-# Copyright DB Netz AG and contributors
+# Copyright DB InfraGo AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Helper objects for synchronisation of capella objects to work items."""
 
