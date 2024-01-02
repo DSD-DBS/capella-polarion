@@ -11,7 +11,7 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
-from capella2polarion.c2polarion import PolarionWorker
+from capella2polarion import polarion_worker as pw
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
 from capella2polarion.elements import helpers, serialize
 
@@ -106,7 +106,7 @@ def synchronize(ctx: click.core.Context) -> None:
     capella_to_polarion_cli.load_synchronize_config()
     capella_to_polarion_cli.load_roles_from_synchronize_config()
     capella_to_polarion_cli.load_capella_diagramm_cache_index()
-    polarion_worker = PolarionWorker(
+    polarion_worker = pw.PolarionWorker(
         capella_to_polarion_cli.polarion_params,
         helpers.resolve_element_type,
     )

@@ -14,10 +14,10 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
 
-from capella2polarion.c2polarion import PolarionWorker
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
 from capella2polarion.elements import element, helpers, serialize
 from capella2polarion.elements.serialize import CapellaWorkItem
+from capella2polarion.polarion_worker import PolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from tests.conftest import (  # type: ignore[import]

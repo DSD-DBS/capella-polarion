@@ -13,7 +13,7 @@ import capellambse
 import click
 import yaml
 
-from capella2polarion.c2polarion import PolarionWorkerParams
+from capella2polarion import polarion_worker as pw
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class Capella2PolarionCli:
         synchronize_config_io: typing.TextIO,
     ) -> None:
         self.debug = debug
-        self.polarion_params = PolarionWorkerParams(
+        self.polarion_params = pw.PolarionWorkerParams(
             polarion_project_id,
             polarion_url,
             polarion_pat,

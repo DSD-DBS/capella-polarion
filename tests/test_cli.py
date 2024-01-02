@@ -10,7 +10,7 @@ import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion.c2polarion import PolarionWorker
+from capella2polarion.polarion_worker import PolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from tests.conftest import (  # type: ignore[import]

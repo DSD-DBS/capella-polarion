@@ -24,9 +24,7 @@ from lxml import etree
 
 from capella2polarion.elements import helpers
 
-RE_DESCR_LINK_PATTERN = re.compile(
-    r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
-)
+RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">([^<]+)</a>")
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
