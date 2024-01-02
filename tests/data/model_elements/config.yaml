@@ -1,44 +1,44 @@
-# Copyright DB Netz AG and contributors
+# Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
 "*": # All layers
-  - "*": # All class types
-      - parent # Specify workitem links
-      - description_reference # Custom attribute
-  - Class:
-      - state_machines
-  - Diagram:
-      - diagram_elements
-  - Constraint
+      - "*": # All class types
+              - parent # Specify workitem links
+              - description_reference # Custom attribute
+      - Class:
+              - state_machines
+      - Diagram:
+              - diagram_elements
+      - Constraint
 
 oa: # Specify below
-  - OperationalCapability: # Capella Type with references
-      - involved_activities # Specify workitem links
-      - involved_entities
+      - OperationalCapability: # Capella Type with references
+              - involved_activities # Specify workitem links
+              - involved_entities
 
-  - OperationalActivity # Capella Type w/o references
-  - OperationalEntity # Custom Type maps to Entity
-  - OperationalInteraction # Custom Type maps to FunctionalExchange
-  - CommunicationMean
-  - Class
-  - StateMachine
+      - OperationalActivity # Capella Type w/o references
+      - OperationalEntity # Custom Type maps to Entity
+      - OperationalInteraction # Custom Type maps to FunctionalExchange
+      - CommunicationMean
+      - Class
+      - StateMachine
 
 sa:
-  - SystemComponent:
-      - allocated_functions
-  - SystemActor: # Custom Type that doesn't exist in Capella
-      - allocated_functions
-  - SystemFunction
-  - ComponentExchange:
-      - allocated_functional_exchanges
-  - ComponentPort
-  - FunctionalExchange:
-      - exchanged_items
-  - ExchangeItem
-  - Class
+      - SystemComponent:
+              - allocated_functions
+      - SystemActor: # Custom Type that doesn't exist in Capella
+              - allocated_functions
+      - SystemFunction
+      - ComponentExchange:
+              - allocated_functional_exchanges
+      - ComponentPort
+      - FunctionalExchange:
+              - exchanged_items
+      - ExchangeItem
+      - Class
 
 pa:
-  - PhysicalComponent:
-      - allocated_functions
-  - PhysicalActor:
-      - allocated_functions
+      - PhysicalComponent:
+              - allocated_functions
+      - PhysicalActor:
+              - allocated_functions

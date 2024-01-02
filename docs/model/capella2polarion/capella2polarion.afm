@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata:Metadata xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:metadata="http://www.polarsys.org/kitalpha/ad/metadata/1.0.0" id="_40W0wEcMEe6e6ZDsImiQAw">
+  <viewpointReferences id="_40q90EcMEe6e6ZDsImiQAw" vpId="org.polarsys.capella.core.viewpoint" version="6.0.0"/>
+  <viewpointReferences id="_9LkQIEcNEe6e6ZDsImiQAw" vpId="org.polarsys.kitalpha.vp.requirements" version="0.13.0"/>
+  <viewpointReferences id="_9OAgIEcNEe6e6ZDsImiQAw" vpId="org.polarsys.capella.vp.requirements" version="0.13.0"/>
+</metadata:Metadata>
