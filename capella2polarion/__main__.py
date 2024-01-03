@@ -13,7 +13,7 @@ from capellambse import cli_helpers
 
 from capella2polarion import polarion_worker as pw
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
-from capella2polarion.elements import helpers, serialize
+from capella2polarion.elements import serialize
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ def synchronize(ctx: click.core.Context) -> None:
     capella_to_polarion_cli.load_capella_diagramm_cache_index()
     polarion_worker = pw.PolarionWorker(
         capella_to_polarion_cli.polarion_params,
-        helpers.resolve_element_type,
+        serialize.resolve_element_type,
     )
     assert (
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None

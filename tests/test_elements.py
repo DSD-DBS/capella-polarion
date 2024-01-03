@@ -15,8 +15,7 @@ import pytest
 from capellambse.model import common
 
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
-from capella2polarion.elements import element, helpers, serialize
-from capella2polarion.elements.serialize import CapellaWorkItem
+from capella2polarion.elements import element, serialize
 from capella2polarion.polarion_worker import PolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
@@ -167,7 +166,7 @@ class TestDiagramElements:
         )
         pw = PolarionWorker(
             c2p_cli.polarion_params,
-            helpers.resolve_element_type,
+            serialize.resolve_element_type,
         )
         pw.capella_uuid_s = {d["uuid"] for d in diagram_cache_index}
         pw.polarion_work_item_map = {uuid: work_item}
@@ -285,7 +284,7 @@ class TestModelElements:
         )
         pw = PolarionWorker(
             c2p_cli.polarion_params,
-            helpers.resolve_element_type,
+            serialize.resolve_element_type,
         )
         pw.polarion_work_item_map = {"uuid1": work_item}
         pw.polarion_id_map = {"uuid1": "Obj-1"}
@@ -751,7 +750,7 @@ class TestModelElements:
     def test_patch_work_item_grouped_links(
         monkeypatch: pytest.MonkeyPatch,
         base_object: BaseObjectContainer,
-        dummy_work_items: dict[str, CapellaWorkItem],
+        dummy_work_items: dict[str, serialize.CapellaWorkItem],
     ):
         work_items = dummy_work_items
         base_object.pw.polarion_work_item_map = {
@@ -815,7 +814,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes(
-        dummy_work_items: dict[str, CapellaWorkItem]
+        dummy_work_items: dict[str, serialize.CapellaWorkItem]
     ):
         for work_item in dummy_work_items.values():
             element.create_grouped_link_fields(work_item)
@@ -840,7 +839,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_reverse_grouped_links_attributes(
-        dummy_work_items: dict[str, CapellaWorkItem]
+        dummy_work_items: dict[str, serialize.CapellaWorkItem]
     ):
         reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
@@ -901,7 +900,7 @@ class TestHelpers:
     def test_resolve_element_type():
         xtype = "LogicalComponent"
 
-        type = helpers.resolve_element_type(xtype)
+        type = serialize.resolve_element_type(xtype)
 
         assert type == "logicalComponent"
 

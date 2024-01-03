@@ -22,8 +22,6 @@ from capellambse.model.crosslayer import capellacore, cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
-from capella2polarion.elements import helpers
-
 RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">([^<]+)</a>")
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
@@ -68,6 +66,11 @@ class CapellaWorkItem(polarion_api.WorkItem):
     uuid_capella: str
     preCondition: Condition | None
     postCondition: Condition | None
+
+
+def resolve_element_type(type_: str) -> str:
+    """Return a valid Type ID for polarion for a given ``obj``."""
+    return type_[0].lower() + type_[1:]
 
 
 def strike_through(string: str) -> str:
@@ -220,7 +223,7 @@ class CapellaWorkItemSerializer:
         self.descr_references[obj.uuid] = uuids
         requirement_types = _get_requirement_types_text(obj)
         return CapellaWorkItem(
-            type=helpers.resolve_element_type(xtype),
+            type=resolve_element_type(xtype),
             title=obj.name,
             description_type="text/html",
             description=value,
@@ -340,7 +343,7 @@ class CapellaWorkItemSerializer:
                 r"\1Actor", type(obj).__name__
             )
             # pylint: disable-next=attribute-defined-outside-init
-            work_item.type = helpers.resolve_element_type(xtype)
+            work_item.type = resolve_element_type(xtype)
         return work_item
 
     def _include_nature_in_type(

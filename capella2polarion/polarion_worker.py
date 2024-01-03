@@ -3,6 +3,7 @@
 """Module for polarion API client work."""
 from __future__ import annotations
 
+import collections.abc as cabc
 import logging
 import pathlib
 import typing
@@ -13,7 +14,7 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import api_helper, element, serialize
+from capella2polarion.elements import element, serialize
 
 logger = logging.getLogger(__name__)
 
@@ -301,6 +302,97 @@ class PolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
 
+    def patch_work_item(
+        self,
+        new: serialize.CapellaWorkItem,
+        old: serialize.CapellaWorkItem,
+    ):
+        """Patch a given WorkItem.
+
+        Parameters
+        ----------
+        api
+            The context to execute the patch for.
+        new
+            The updated CapellaWorkItem
+        old
+            The CapellaWorkItem currently present on polarion
+        """
+        if new == old:
+            return
+
+        log_args = (old.id, new.type, new.title)
+        logger.info("Update work item %r for model %s %r...", *log_args)
+        if "uuid_capella" in new.additional_attributes:
+            del new.additional_attributes["uuid_capella"]
+
+        old.linked_work_items = self.client.get_all_work_item_links(old.id)
+        new.type = None
+        new.status = "open"
+        assert new.id is not None
+        try:
+            self.client.update_work_item(new)
+            if delete_link_ids := PolarionWorker.get_missing_link_ids(
+                old.linked_work_items, new.linked_work_items
+            ):
+                id_list_str = ", ".join(delete_link_ids.keys())
+                logger.info(
+                    "Delete work item links %r for model %s %r",
+                    id_list_str,
+                    new.type,
+                    new.title,
+                )
+                self.client.delete_work_item_links(
+                    list(delete_link_ids.values())
+                )
+
+            if create_links := PolarionWorker.get_missing_link_ids(
+                new.linked_work_items, old.linked_work_items
+            ):
+                id_list_str = ", ".join(create_links.keys())
+                logger.info(
+                    "Create work item links %r for model %s %r",
+                    id_list_str,
+                    new.type,
+                    new.title,
+                )
+                self.client.create_work_item_links(list(create_links.values()))
+
+        except polarion_api.PolarionApiException as error:
+            logger.error(
+                "Updating work item %r (%s %s) failed. %s",
+                *log_args,
+                error.args[0],
+            )
+
+    @staticmethod
+    def get_missing_link_ids(
+        left: cabc.Iterable[polarion_api.WorkItemLink],
+        right: cabc.Iterable[polarion_api.WorkItemLink],
+    ) -> dict[str, polarion_api.WorkItemLink]:
+        """Return an ID-Link dict of links present in left and not in right."""
+        left_id_map = {
+            PolarionWorker._get_link_id(link): link for link in left
+        }
+        right_id_map = {
+            PolarionWorker._get_link_id(link): link for link in right
+        }
+        return {
+            lid: left_id_map[lid]
+            for lid in set(left_id_map) - set(right_id_map)
+        }
+
+    @staticmethod
+    def _get_link_id(link: polarion_api.WorkItemLink) -> str:
+        return "/".join(
+            (
+                link.primary_work_item_id,
+                link.role,
+                link.secondary_work_item_project,
+                link.secondary_work_item_id,
+            )
+        )
+
     def patch_work_items(
         self,
         model: capellambse.MelodyModel,
@@ -344,8 +436,7 @@ class PolarionWorker:
                     new_work_item, back_links[old_work_item.id]
                 )
 
-            api_helper.patch_work_item(
-                self.client,
+            self.patch_work_item(
                 new_work_item,
                 old_work_item,
             )
