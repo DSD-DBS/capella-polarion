@@ -20,7 +20,3 @@ capella2polarion_synchronise_elements:
         "${CAPELLA2POLARION_MODEL_JSON:?}" \
         ./diagram_cache \
         ${CAPELLA2POLARION_CONFIG:?}
-
-  artifacts:
-    paths:
-      - elements_index.yaml
