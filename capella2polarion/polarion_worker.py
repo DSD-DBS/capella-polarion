@@ -14,7 +14,12 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion.elements import element, serialize
+from capella2polarion import capella_work_item
+from capella2polarion.capella_polarion_conversion import (
+    element_converter,
+    link_converter,
+)
+from capella2polarion.polarion_connector import polarion_repo
 
 logger = logging.getLogger(__name__)
 
@@ -62,15 +67,16 @@ class PolarionWorker:
     def __init__(
         self,
         params: PolarionWorkerParams,
+        model: capellambse.MelodyModel,
         make_type_id: typing.Any,
     ) -> None:
         self.polarion_params: PolarionWorkerParams = params
         self.elements: dict[str, list[common.GenericElement]] = {}
-        self.polarion_type_map: dict[str, str] = {}
-        self.capella_uuid_s: set[str] = set()
+        self.polarion_type_map: dict[str, str] = {}  # TODO refactor
+        self.capella_uuid_s: set[str] = set()  # TODO refactor
         self.x_types: set[str] = set()
-        self.polarion_id_map: dict[str, str] = {}
-        self.polarion_work_item_map: dict[str, serialize.CapellaWorkItem] = {}
+        self.polarion_data_repo = polarion_repo.PolarionDataRepository()
+        self.model = model
         self.make_type_id: typing.Any = make_type_id
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -96,7 +102,7 @@ class PolarionWorker:
             self.polarion_params.delete_work_items,
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
             polarion_access_token=self.polarion_params.private_access_token,
-            custom_work_item=serialize.CapellaWorkItem,
+            custom_work_item=capella_work_item.CapellaWorkItem,
             add_work_item_checksum=True,
         )
         self.check_client()
@@ -116,7 +122,6 @@ class PolarionWorker:
     def load_elements_and_type_map(
         self,
         config: dict[str, typing.Any],
-        model: capellambse.MelodyModel,
         diagram_idx: list[dict[str, typing.Any]],
     ) -> None:
         """Return an elements and UUID to Polarion type map."""
@@ -124,7 +129,7 @@ class PolarionWorker:
         type_map: dict[str, str] = {}
         elements: dict[str, list[common.GenericElement]] = {}
         for _below, pol_types in config.items():
-            below = getattr(model, _below)
+            below = getattr(self.model, _below)
             for typ in pol_types:
                 if isinstance(typ, dict):
                     typ = list(typ.keys())[0]
@@ -133,7 +138,7 @@ class PolarionWorker:
                     continue
 
                 xtype = convert_type.get(typ, typ)
-                objects = model.search(xtype, below=below)
+                objects = self.model.search(xtype, below=below)
                 elements.setdefault(typ, []).extend(objects)
                 for obj in objects:
                     type_map[obj.uuid] = typ
@@ -173,7 +178,7 @@ class PolarionWorker:
 
         diagrams_from_cache = {d["uuid"] for d in diagram_idx if d["success"]}
         elements["Diagram"] = [
-            d for d in model.diagrams if d.uuid in diagrams_from_cache
+            d for d in self.model.diagrams if d.uuid in diagrams_from_cache
         ]
         for obj in elements["Diagram"]:
             type_map[obj.uuid] = "Diagram"
@@ -199,29 +204,22 @@ class PolarionWorker:
             {"workitems": "id,uuid_capella,checksum,status"},
         )
 
-        self.polarion_work_item_map = {
-            wi.uuid_capella: wi
-            for wi in work_items
-            if wi.id and wi.uuid_capella
-        }
-        self.polarion_id_map = {
-            uuid: wi.id for uuid, wi in self.polarion_work_item_map.items()
-        }
+        self.polarion_data_repo.update_work_items(work_items)
 
     def create_work_items(
         self,
         diagram_cache_path: pathlib.Path,
         model,
         descr_references: dict[str, list[str]],
-    ) -> dict[str, serialize.CapellaWorkItem]:
+    ) -> dict[str, capella_work_item.CapellaWorkItem]:
         """Create a list of work items for Polarion."""
         objects = chain.from_iterable(self.elements.values())
         _work_items = []
-        serializer = serialize.CapellaWorkItemSerializer(
+        serializer = element_converter.CapellaWorkItemSerializer(
             diagram_cache_path,
             self.polarion_type_map,
             model,
-            self.polarion_id_map,
+            self.polarion_data_repo,
             descr_references,
         )
         for obj in objects:
@@ -229,13 +227,15 @@ class PolarionWorker:
 
         _work_items = list(filter(None, _work_items))
         valid_types = set(map(self.make_type_id, set(self.elements)))
-        work_items: list[serialize.CapellaWorkItem] = []
+        work_items: list[capella_work_item.CapellaWorkItem] = []
         missing_types: set[str] = set()
         for work_item in _work_items:
             assert work_item is not None
             assert work_item.title is not None
             assert work_item.type is not None
-            if old := self.polarion_work_item_map.get(work_item.uuid_capella):
+            if old := self.polarion_data_repo.get_work_item_by_capella_uuid(
+                work_item.uuid_capella
+            ):
                 work_item.id = old.id
             if work_item.type in valid_types:
                 work_items.append(work_item)
@@ -257,15 +257,13 @@ class PolarionWorker:
         """
 
         def serialize_for_delete(uuid: str) -> str:
-            logger.info(
-                "Delete work item %r...",
-                workitem_id := self.polarion_id_map[uuid],
-            )
-            return workitem_id
+            work_item_id, _ = self.polarion_data_repo[uuid]
+            logger.info("Delete work item %r...", work_item_id)
+            return work_item_id
 
         existing_work_items = {
             uuid
-            for uuid, work_item in self.polarion_work_item_map.items()
+            for uuid, _, work_item in self.polarion_data_repo.items()
             if work_item.status != "deleted"
         }
         uuids: set[str] = existing_work_items - self.capella_uuid_s
@@ -273,19 +271,19 @@ class PolarionWorker:
         if work_item_ids:
             try:
                 self.client.delete_work_items(work_item_ids)
-                for uuid in uuids:
-                    del self.polarion_work_item_map[uuid]
-                    del self.polarion_id_map[uuid]
+                self.polarion_data_repo.remove_work_items_by_capella_uuid(
+                    uuids
+                )
             except polarion_api.PolarionApiException as error:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
-        self, new_work_items: dict[str, serialize.CapellaWorkItem]
+        self, new_work_items: dict[str, capella_work_item.CapellaWorkItem]
     ) -> None:
         """Post work items in a Polarion project."""
-        missing_work_items: list[serialize.CapellaWorkItem] = []
+        missing_work_items: list[capella_work_item.CapellaWorkItem] = []
         for work_item in new_work_items.values():
-            if work_item.uuid_capella in self.polarion_id_map:
+            if work_item.uuid_capella in self.polarion_data_repo:
                 continue
 
             assert work_item is not None
@@ -294,18 +292,14 @@ class PolarionWorker:
         if missing_work_items:
             try:
                 self.client.create_work_items(missing_work_items)
-                for work_item in missing_work_items:
-                    self.polarion_id_map[work_item.uuid_capella] = work_item.id
-                    self.polarion_work_item_map[
-                        work_item.uuid_capella
-                    ] = work_item
+                self.polarion_data_repo.update_work_items(missing_work_items)
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
 
     def patch_work_item(
         self,
-        new: serialize.CapellaWorkItem,
-        old: serialize.CapellaWorkItem,
+        new: capella_work_item.CapellaWorkItem,
+        old: capella_work_item.CapellaWorkItem,
     ):
         """Patch a given WorkItem.
 
@@ -395,44 +389,41 @@ class PolarionWorker:
 
     def patch_work_items(
         self,
-        model: capellambse.MelodyModel,
-        new_work_items: dict[str, serialize.CapellaWorkItem],
+        new_work_items: dict[str, capella_work_item.CapellaWorkItem],
         descr_references,
         link_roles,
     ) -> None:
         """Update work items in a Polarion project."""
-        self.polarion_id_map = {
-            uuid: wi.id
-            for uuid, wi in self.polarion_work_item_map.items()
-            if wi.status == "open" and wi.uuid_capella and wi.id
-        }
 
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
-        for uuid in self.polarion_id_map:
-            objects = model
+        link_serializer = link_converter.LinkSerializer(
+            self.polarion_data_repo,
+            descr_references,
+            self.polarion_params.project_id,
+            self.model,
+        )
+
+        for uuid in self.polarion_data_repo:
+            objects = self.model
             if uuid.startswith("_"):
-                objects = model.diagrams
+                objects = self.model.diagrams
             obj = objects.by_uuid(uuid)
 
-            links = element.create_links(
+            links = link_serializer.create_links_for_work_item(
                 obj,
-                self.polarion_id_map,
-                self.polarion_work_item_map,
-                descr_references,
-                self.polarion_params.project_id,
-                model,
                 link_roles,
             )
-            work_item: serialize.CapellaWorkItem = new_work_items[uuid]
+            work_item: capella_work_item.CapellaWorkItem = new_work_items[uuid]
             work_item.linked_work_items = links
 
-            element.create_grouped_link_fields(work_item, back_links)
+            link_converter.create_grouped_link_fields(work_item, back_links)
 
-        for uuid in self.polarion_id_map:
-            new_work_item: serialize.CapellaWorkItem = new_work_items[uuid]
-            old_work_item = self.polarion_work_item_map[uuid]
+        for uuid, _, old_work_item in self.polarion_data_repo.items():
+            new_work_item: capella_work_item.CapellaWorkItem = new_work_items[
+                uuid
+            ]
             if old_work_item.id in back_links:
-                element.create_grouped_back_link_fields(
+                link_converter.create_grouped_back_link_fields(
                     new_work_item, back_links[old_work_item.id]
                 )
 

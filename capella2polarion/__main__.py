@@ -11,9 +11,10 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
+from capella2polarion import capella_work_item
 from capella2polarion import polarion_worker as pw
 from capella2polarion.capella2polarioncli import Capella2PolarionCli
-from capella2polarion.elements import serialize
+from capella2polarion.capella_polarion_conversion import element_converter
 
 logger = logging.getLogger(__name__)
 
@@ -108,21 +109,21 @@ def synchronize(ctx: click.core.Context) -> None:
     capella_to_polarion_cli.load_capella_diagramm_cache_index()
     polarion_worker = pw.PolarionWorker(
         capella_to_polarion_cli.polarion_params,
-        serialize.resolve_element_type,
+        capella_to_polarion_cli.capella_model,
+        element_converter.resolve_element_type,
     )
     assert (
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
     polarion_worker.load_elements_and_type_map(
         capella_to_polarion_cli.synchronize_config_content,
-        capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.capella_diagram_cache_index_content,
     )
 
     polarion_worker.fill_xtypes()
     polarion_worker.load_polarion_work_item_map()
     description_references: typing.Any = {}
-    new_work_items: dict[str, serialize.CapellaWorkItem]
+    new_work_items: dict[str, capella_work_item.CapellaWorkItem]
     new_work_items = polarion_worker.create_work_items(
         capella_to_polarion_cli.capella_diagram_cache_folder_path,
         capella_to_polarion_cli.capella_model,
@@ -136,7 +137,6 @@ def synchronize(ctx: click.core.Context) -> None:
         description_references,
     )
     polarion_worker.patch_work_items(
-        capella_to_polarion_cli.capella_model,
         new_work_items,
         description_references,
         capella_to_polarion_cli.synchronize_config_roles,

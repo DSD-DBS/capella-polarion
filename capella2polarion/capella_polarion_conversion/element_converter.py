@@ -14,13 +14,16 @@ import typing as t
 
 import capellambse
 import markupsafe
-import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
 from capellambse.model import diagram as diagr
 from capellambse.model.crosslayer import capellacore, cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
+
+from capella2polarion.polarion_connector import polarion_repo
+
+from .. import capella_work_item
 
 RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">([^<]+)</a>")
 RE_DESCR_DELETED_PATTERN = re.compile(
@@ -52,20 +55,6 @@ PrePostConditionElement = t.Union[
 ]
 
 logger = logging.getLogger(__name__)
-
-
-class CapellaWorkItem(polarion_api.WorkItem):
-    """A custom WorkItem class with additional capella related attributes."""
-
-    class Condition(t.TypedDict):
-        """A class to describe a pre or post condition."""
-
-        type: str
-        value: str
-
-    uuid_capella: str
-    preCondition: Condition | None
-    postCondition: Condition | None
 
 
 def resolve_element_type(type_: str) -> str:
@@ -135,7 +124,9 @@ def _get_requirement_types_text(
     return _format_texts(type_texts)
 
 
-def _condition(html: bool, value: str) -> CapellaWorkItem.Condition:
+def _condition(
+    html: bool, value: str
+) -> capella_work_item.CapellaWorkItem.Condition:
     _type = "text/html" if html else "text/plain"
     return {"type": _type, "value": value}
 
@@ -145,11 +136,15 @@ class CapellaWorkItemSerializer:
 
     diagram_cache_path: pathlib.Path
     polarion_type_map: dict[str, str]
+    capella_polarion_mapping: polarion_repo.PolarionDataRepository
     model: capellambse.MelodyModel
-    polarion_id_map: dict[str, str]
     descr_references: dict[str, list[str]]
+
     serializers: dict[
-        str, cabc.Callable[[common.GenericElement], CapellaWorkItem]
+        str,
+        cabc.Callable[
+            [common.GenericElement], capella_work_item.CapellaWorkItem
+        ],
     ]
     serializer_mapping: dict[str, str]
 
@@ -158,14 +153,14 @@ class CapellaWorkItemSerializer:
         diagram_cache_path: pathlib.Path,
         polarion_type_map: dict[str, str],
         model: capellambse.MelodyModel,
-        polarion_id_map: dict[str, str],
+        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         descr_references: dict[str, list[str]],
         serializer_mapping: dict[str, str] | None = None,
     ):
         self.diagram_cache_path = diagram_cache_path
         self.polarion_type_map = polarion_type_map
         self.model = model
-        self.polarion_id_map = polarion_id_map
+        self.capella_polarion_mapping = capella_polarion_mapping
         self.descr_references = descr_references
         self.serializers = {
             "include_pre_and_post_condition": self.include_pre_and_post_condition,
@@ -177,7 +172,7 @@ class CapellaWorkItemSerializer:
 
     def serialize(
         self, obj: diagr.Diagram | common.GenericElement
-    ) -> CapellaWorkItem | None:
+    ) -> capella_work_item.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
         try:
             if isinstance(obj, diagr.Diagram):
@@ -195,7 +190,9 @@ class CapellaWorkItemSerializer:
             logger.error("Serializing model element failed. %s", error.args[0])
             return None
 
-    def diagram(self, diag: diagr.Diagram) -> CapellaWorkItem:
+    def diagram(
+        self, diag: diagr.Diagram
+    ) -> capella_work_item.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
@@ -205,7 +202,7 @@ class CapellaWorkItemSerializer:
         description = (
             f'<html><p><img style="{style}" src="{src}" /></p></html>'
         )
-        return CapellaWorkItem(
+        return capella_work_item.CapellaWorkItem(
             type="diagram",
             title=diag.name,
             description_type="text/html",
@@ -216,13 +213,13 @@ class CapellaWorkItemSerializer:
 
     def _generic_work_item(
         self, obj: common.GenericElement
-    ) -> CapellaWorkItem:
+    ) -> capella_work_item.CapellaWorkItem:
         xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
         raw_description = getattr(obj, "description", markupsafe.Markup(""))
         uuids, value = self._sanitize_description(obj, raw_description)
         self.descr_references[obj.uuid] = uuids
         requirement_types = _get_requirement_types_text(obj)
-        return CapellaWorkItem(
+        return capella_work_item.CapellaWorkItem(
             type=resolve_element_type(xtype),
             title=obj.name,
             description_type="text/html",
@@ -286,7 +283,7 @@ class CapellaWorkItemSerializer:
         except KeyError:
             logger.error("Found link to non-existing model element: %r", uuid)
             return strike_through(match.group(default_group))
-        if pid := self.polarion_id_map.get(uuid):
+        if pid := self.capella_polarion_mapping.get_work_item_id(uuid):
             referenced_uuids.append(uuid)
             return POLARION_WORK_ITEM_URL.format(pid=pid)
         logger.warning("Found reference to non-existing work item: %r", uuid)
@@ -294,7 +291,7 @@ class CapellaWorkItemSerializer:
 
     def include_pre_and_post_condition(
         self, obj: PrePostConditionElement
-    ) -> CapellaWorkItem:
+    ) -> capella_work_item.CapellaWorkItem:
         """Return generic attributes and pre- and post-condition."""
 
         def get_condition(cap: PrePostConditionElement, name: str) -> str:
@@ -328,14 +325,18 @@ class CapellaWorkItemSerializer:
             self.descr_references[obj.uuid] = uuids
         return value
 
-    def constraint(self, obj: capellacore.Constraint) -> CapellaWorkItem:
+    def constraint(
+        self, obj: capellacore.Constraint
+    ) -> capella_work_item.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         work_item = self._generic_work_item(obj)
         # pylint: disable-next=attribute-defined-outside-init
         work_item.description = self.get_linked_text(obj)
         return work_item
 
-    def _include_actor_in_type(self, obj: cs.Component) -> CapellaWorkItem:
+    def _include_actor_in_type(
+        self, obj: cs.Component
+    ) -> capella_work_item.CapellaWorkItem:
         """Return attributes for a ``Component``."""
         work_item = self._generic_work_item(obj)
         if obj.is_actor:
@@ -348,7 +349,7 @@ class CapellaWorkItemSerializer:
 
     def _include_nature_in_type(
         self, obj: pa.PhysicalComponent
-    ) -> CapellaWorkItem:
+    ) -> capella_work_item.CapellaWorkItem:
         """Return attributes for a ``PhysicalComponent``."""
         work_item = self._include_actor_in_type(obj)
         xtype = work_item.type
