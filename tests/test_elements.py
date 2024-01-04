@@ -130,9 +130,15 @@ HTML_LINK_2 = {
 
 
 class BaseObjectContainer:
-    def __init__(self, cli: Capella2PolarionCli, pw: PolarionWorker) -> None:
+    def __init__(
+        self,
+        cli: Capella2PolarionCli,
+        pw: PolarionWorker,
+        new_work_items: dict[str, capella_work_item.CapellaWorkItem],
+    ) -> None:
         self.c2pcli: Capella2PolarionCli = cli
         self.pw: PolarionWorker = pw
+        self.new_work_items = new_work_items
 
 
 class TestDiagramElements:
@@ -180,7 +186,18 @@ class TestDiagramElements:
             [work_item]
         )
         pw.elements = {"Diagram": c2p_cli.capella_model.diagrams}
-        return BaseObjectContainer(c2p_cli, pw)
+        return BaseObjectContainer(
+            c2p_cli,
+            pw,
+            {
+                uuid: capella_work_item.CapellaWorkItem(
+                    id="Diag-1",
+                    checksum="123",
+                    uuid_capella=uuid,
+                    type="fakeModelObject",
+                )
+            },
+        )
 
     @staticmethod
     def test_create_diagrams(base_object: BaseObjectContainer):
@@ -269,10 +286,7 @@ class TestModelElements:
                 pass
 
         work_item = capella_work_item.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            status="open",
-            type="fakeModelObject",
+            id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
         )
         c2p_cli = Capella2PolarionCli(
             debug=True,
@@ -311,7 +325,19 @@ class TestModelElements:
                 UnsupportedFakeModelObject("uuid3")
             ],
         }
-        return BaseObjectContainer(c2p_cli, pw)
+        return BaseObjectContainer(
+            c2p_cli,
+            pw,
+            {
+                "uuid1": capella_work_item.CapellaWorkItem(
+                    id="Obj-1",
+                    uuid_capella="uuid1",
+                    status="open",
+                    checksum="123",
+                    type="fakeModelObject",
+                )
+            },
+        )
 
     @staticmethod
     def test_create_work_items(
@@ -392,18 +418,16 @@ class TestModelElements:
     @staticmethod
     def test_create_links_custom_resolver(base_object: BaseObjectContainer):
         obj = base_object.pw.elements["FakeModelObject"][1]
-        base_object.pw.polarion_data_repo.update_work_items(
-            [
-                capella_work_item.CapellaWorkItem(
-                    id="Obj-2",
-                    uuid_capella="uuid2",
-                    type="fakeModelObject",
-                    description_type="text/html",
-                    description=markupsafe.Markup(""),
-                    status="open",
-                )
-            ]
+        obj_2 = capella_work_item.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
         )
+        base_object.pw.polarion_data_repo.update_work_items([obj_2])
+        base_object.new_work_items["uuid2"] = obj_2
         base_object.c2pcli.synchronize_config_roles = {
             "FakeModelObject": ["description_reference"]
         }
@@ -416,6 +440,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
+            base_object.new_work_items,
             description_reference,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
@@ -435,30 +460,26 @@ class TestModelElements:
 
         obj = base_object.c2pcli.capella_model.by_uuid(function_uuid)
 
-        base_object.pw.polarion_data_repo.update_work_items(
-            [
-                capella_work_item.CapellaWorkItem(
-                    id="Obj-1",
-                    uuid_capella=function_uuid,
-                    type=type(obj).__name__,
-                    description_type="text/html",
-                    description=markupsafe.Markup(""),
-                    status="open",
-                )
-            ]
+        obj_1 = capella_work_item.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella=function_uuid,
+            type=type(obj).__name__,
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
         )
-        base_object.pw.polarion_data_repo.update_work_items(
-            [
-                capella_work_item.CapellaWorkItem(
-                    id="Obj-2",
-                    uuid_capella=uuid,
-                    type="functionalExchange",
-                    description_type="text/html",
-                    description=markupsafe.Markup(""),
-                    status="open",
-                )
-            ]
+        obj_2 = capella_work_item.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella=uuid,
+            type="functionalExchange",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
         )
+
+        base_object.pw.polarion_data_repo.update_work_items([obj_1, obj_2])
+        base_object.new_work_items[function_uuid] = obj_1
+        base_object.new_work_items[uuid] = obj_2
 
         base_object.c2pcli.synchronize_config_roles = {
             "SystemFunction": ["input_exchanges"]
@@ -471,6 +492,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
+            base_object.new_work_items,
             {},
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
@@ -494,6 +516,7 @@ class TestModelElements:
         with caplog.at_level(logging.DEBUG):
             link_serializer = link_converter.LinkSerializer(
                 base_object.pw.polarion_data_repo,
+                base_object.new_work_items,
                 {},
                 base_object.pw.polarion_params.project_id,
                 base_object.c2pcli.capella_model,
@@ -519,19 +542,21 @@ class TestModelElements:
             ),
         )
         base_object.pw.elements["FakeModelObject"].append(obj)
-        base_object.pw.polarion_data_repo.update_work_items(
-            [
-                capella_work_item.CapellaWorkItem(
-                    id=f"Obj-{i}",
-                    uuid_capella=f"uuid{i}",
-                    type="fakeModelObject",
-                    description_type="text/html",
-                    description=markupsafe.Markup(""),
-                    status="open",
-                )
-                for i in range(4, 7)
-            ]
-        )
+
+        work_items = [
+            capella_work_item.CapellaWorkItem(
+                id=f"Obj-{i}",
+                uuid_capella=f"uuid{i}",
+                type="fakeModelObject",
+                description_type="text/html",
+                description=markupsafe.Markup(""),
+                status="open",
+            )
+            for i in range(4, 7)
+        ]
+        base_object.pw.polarion_data_repo.update_work_items(work_items)
+        for work_item in work_items:
+            base_object.new_work_items[work_item.uuid_capella] = work_item
 
         expected_link = polarion_api.WorkItemLink(
             "Obj-6",
@@ -547,6 +572,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
+            base_object.new_work_items,
             {},
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
@@ -564,18 +590,17 @@ class TestModelElements:
         base_object: BaseObjectContainer,
     ):
         obj = base_object.pw.elements["FakeModelObject"][1]
-        base_object.pw.polarion_data_repo.update_work_items(
-            [
-                capella_work_item.CapellaWorkItem(
-                    id="Obj-2",
-                    uuid_capella="uuid2",
-                    type="fakeModelObject",
-                    description_type="text/html",
-                    description=markupsafe.Markup(""),
-                    status="open",
-                )
-            ]
+        work_item_2 = capella_work_item.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
         )
+
+        base_object.pw.polarion_data_repo.update_work_items([work_item_2])
+        base_object.new_work_items["uuid2"] = work_item_2
 
         expected = polarion_api.WorkItemLink(
             "Obj-2",
@@ -585,6 +610,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
+            base_object.new_work_items,
             {},
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
@@ -625,6 +651,7 @@ class TestModelElements:
                 id="Obj-1",
                 uuid_capella="uuid1",
                 title="Fake 1",
+                type="type",
                 description_type="text/html",
                 description=markupsafe.Markup(""),
             )

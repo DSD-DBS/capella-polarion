@@ -30,8 +30,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--polarion-url",
-    envvar="POLARION_URL",
-    default="https://localhost",
+    envvar="POLARION_HOST",
     type=str,
 )
 @click.option("--polarion-pat", envvar="POLARION_PAT", type=str)

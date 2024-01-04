@@ -398,12 +398,13 @@ class PolarionWorker:
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
         link_serializer = link_converter.LinkSerializer(
             self.polarion_data_repo,
+            new_work_items,
             descr_references,
             self.polarion_params.project_id,
             self.model,
         )
 
-        for uuid in self.polarion_data_repo:
+        for uuid in new_work_items:
             objects = self.model
             if uuid.startswith("_"):
                 objects = self.model.diagrams

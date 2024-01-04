@@ -28,11 +28,13 @@ class LinkSerializer:
     def __init__(
         self,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
+        new_work_items: dict[str, capella_work_item.CapellaWorkItem],
         description_references: dict[str, list[str]],
         project_id: str,
         model: capellambse.MelodyModel,
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
+        self.new_work_items = new_work_items
         self.description_references = description_references
         self.project_id = project_id
         self.model = model
@@ -48,12 +50,7 @@ class LinkSerializer:
         else:
             repres = obj._short_repr_()
 
-        work_item = (
-            self.capella_polarion_mapping.get_work_item_by_capella_uuid(
-                obj.uuid
-            )
-        )
-        assert work_item is not None
+        work_item = self.new_work_items[obj.uuid]
         new_links: list[polarion_api.WorkItemLink] = []
         typ = work_item.type[0].upper() + work_item.type[1:]
         for role_id in roles.get(typ, []):
