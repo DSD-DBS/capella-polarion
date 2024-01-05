@@ -328,8 +328,6 @@ class CapellaWorkItemSerializer:
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         work_item = self._generic_work_item(obj)
-        if work_item.uuid_capella == "b24a9e54-4386-4d38-aea3-7c5172d73bb6":
-            pass
         # pylint: disable-next=attribute-defined-outside-init
         work_item.description = self.get_linked_text(obj)
         return work_item
