@@ -419,10 +419,8 @@ class PolarionWorker:
 
             link_converter.create_grouped_link_fields(work_item, back_links)
 
-        for uuid, _, old_work_item in self.polarion_data_repo.items():
-            new_work_item: capella_work_item.CapellaWorkItem = new_work_items[
-                uuid
-            ]
+        for uuid, new_work_item in new_work_items.items():
+            _, old_work_item = self.polarion_data_repo[uuid]
             if old_work_item.id in back_links:
                 link_converter.create_grouped_back_link_fields(
                     new_work_item, back_links[old_work_item.id]

@@ -25,7 +25,9 @@ from capella2polarion.polarion_connector import polarion_repo
 
 from .. import capella_work_item
 
-RE_DESCR_LINK_PATTERN = re.compile(r"<a href=\"hlink://([^\"]+)\">([^<]+)</a>")
+RE_DESCR_LINK_PATTERN = re.compile(
+    r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
+)
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
@@ -330,6 +332,8 @@ class CapellaWorkItemSerializer:
     ) -> capella_work_item.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         work_item = self._generic_work_item(obj)
+        if work_item.uuid_capella == "b24a9e54-4386-4d38-aea3-7c5172d73bb6":
+            pass
         # pylint: disable-next=attribute-defined-outside-init
         work_item.description = self.get_linked_text(obj)
         return work_item
