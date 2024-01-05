@@ -13,7 +13,7 @@ import capellambse
 import click
 import yaml
 
-from capella2polarion import polarion_worker as pw
+from capella2polarion import worker as pw
 
 logger = logging.getLogger(__name__)
 

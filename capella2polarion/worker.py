@@ -14,12 +14,9 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion import capella_work_item
-from capella2polarion.capella_polarion_conversion import (
-    element_converter,
-    link_converter,
-)
-from capella2polarion.polarion_connector import polarion_repo
+from capella2polarion import data
+from capella2polarion.connectors import polarion_repo
+from capella2polarion.converters import element_converter, link_converter
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +99,7 @@ class PolarionWorker:
             self.polarion_params.delete_work_items,
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
             polarion_access_token=self.polarion_params.private_access_token,
-            custom_work_item=capella_work_item.CapellaWorkItem,
+            custom_work_item=data.CapellaWorkItem,
             add_work_item_checksum=True,
         )
         self.check_client()
@@ -211,7 +208,7 @@ class PolarionWorker:
         diagram_cache_path: pathlib.Path,
         model,
         descr_references: dict[str, list[str]],
-    ) -> dict[str, capella_work_item.CapellaWorkItem]:
+    ) -> dict[str, data.CapellaWorkItem]:
         """Create a list of work items for Polarion."""
         objects = chain.from_iterable(self.elements.values())
         _work_items = []
@@ -227,7 +224,7 @@ class PolarionWorker:
 
         _work_items = list(filter(None, _work_items))
         valid_types = set(map(self.make_type_id, set(self.elements)))
-        work_items: list[capella_work_item.CapellaWorkItem] = []
+        work_items: list[data.CapellaWorkItem] = []
         missing_types: set[str] = set()
         for work_item in _work_items:
             assert work_item is not None
@@ -278,10 +275,10 @@ class PolarionWorker:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
-        self, new_work_items: dict[str, capella_work_item.CapellaWorkItem]
+        self, new_work_items: dict[str, data.CapellaWorkItem]
     ) -> None:
         """Post work items in a Polarion project."""
-        missing_work_items: list[capella_work_item.CapellaWorkItem] = []
+        missing_work_items: list[data.CapellaWorkItem] = []
         for work_item in new_work_items.values():
             if work_item.uuid_capella in self.polarion_data_repo:
                 continue
@@ -298,8 +295,8 @@ class PolarionWorker:
 
     def patch_work_item(
         self,
-        new: capella_work_item.CapellaWorkItem,
-        old: capella_work_item.CapellaWorkItem,
+        new: data.CapellaWorkItem,
+        old: data.CapellaWorkItem,
     ):
         """Patch a given WorkItem.
 
@@ -389,7 +386,7 @@ class PolarionWorker:
 
     def patch_work_items(
         self,
-        new_work_items: dict[str, capella_work_item.CapellaWorkItem],
+        new_work_items: dict[str, data.CapellaWorkItem],
         descr_references,
         link_roles,
     ) -> None:
@@ -414,7 +411,7 @@ class PolarionWorker:
                 obj,
                 link_roles,
             )
-            work_item: capella_work_item.CapellaWorkItem = new_work_items[uuid]
+            work_item: data.CapellaWorkItem = new_work_items[uuid]
             work_item.linked_work_items = links
 
             link_converter.create_grouped_link_fields(work_item, back_links)

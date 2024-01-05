@@ -12,7 +12,7 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 
-from capella2polarion import capella_work_item
+from capella2polarion import data
 
 TEST_DATA_ROOT = pathlib.Path(__file__).parent / "data"
 TEST_DIAGRAM_CACHE = TEST_DATA_ROOT / "diagram_cache"
@@ -36,9 +36,9 @@ def model() -> capellambse.MelodyModel:
 
 
 @pytest.fixture
-def dummy_work_items() -> dict[str, capella_work_item.CapellaWorkItem]:
+def dummy_work_items() -> dict[str, data.CapellaWorkItem]:
     return {
-        f"uuid{i}": capella_work_item.CapellaWorkItem(
+        f"uuid{i}": data.CapellaWorkItem(
             id=f"Obj-{i}",
             uuid_capella=f"uuid{i}",
             title=f"Fake {i}",

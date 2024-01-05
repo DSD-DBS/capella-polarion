@@ -3,29 +3,27 @@
 """Module providing a universal PolarionDataRepository class."""
 from __future__ import annotations
 
-import typing
+import collections.abc as cabc
 
 import bidict
 
-from capella2polarion import capella_work_item
+from capella2polarion import data
 
 
 class PolarionDataRepository:
-    """A mapping class to access all contents by Capella and Polarion IDs.
+    """A mapping to access all contents by Capella and Polarion IDs.
 
-    This class only holds data already present in the Polarion. It only
+    This class only holds data already present in Polarion. It only
     receives updates if data were written to Polarion. There shall be no
     intermediate data stored here during serialization.
     """
 
     _id_mapping: bidict.bidict[str, str]
-    _work_items: dict[str, capella_work_item.CapellaWorkItem]
+    _work_items: dict[str, data.CapellaWorkItem]
 
     def __init__(
         self,
-        polarion_work_items: typing.Optional[
-            list[capella_work_item.CapellaWorkItem]
-        ] = None,
+        polarion_work_items: list[data.CapellaWorkItem] | None = None,
     ):
         if polarion_work_items is None:
             polarion_work_items = []
@@ -47,23 +45,21 @@ class PolarionDataRepository:
         """Return True, if the given capella UUID is in the repository."""
         return item in self._id_mapping
 
-    def __sizeof__(self):
+    def __sizeof__(self) -> int:
         """Return the amount of registered Capella UUIDs."""
         return len(self._id_mapping)
 
-    def __getitem__(
-        self, item: str
-    ) -> typing.Tuple[str, capella_work_item.CapellaWorkItem]:
+    def __getitem__(self, item: str) -> tuple[str, data.CapellaWorkItem]:
         """Return the polarion ID and work_item for a given Capella UUID."""
         return self._id_mapping[item], self._work_items[item]
 
-    def __iter__(self) -> typing.Iterator[str]:
+    def __iter__(self) -> cabc.Iterator[str]:
         """Iterate all Capella UUIDs."""
         return self._id_mapping.__iter__()
 
     def items(
         self,
-    ):
+    ) -> cabc.Iterator[tuple[str, str, data.CapellaWorkItem]]:
         """Yield all Capella UUIDs, Work Item IDs and Work Items."""
         for uuid, polarion_id in self._id_mapping.items():
             yield uuid, polarion_id, self._work_items[uuid]
@@ -78,13 +74,13 @@ class PolarionDataRepository:
 
     def get_work_item_by_capella_uuid(
         self, capella_uuid: str
-    ) -> capella_work_item.CapellaWorkItem | None:
+    ) -> data.CapellaWorkItem | None:
         """Return a Work Item for a provided Capella UUID."""
         return self._work_items.get(capella_uuid)
 
     def get_work_item_by_polarion_id(
         self, work_item_id: str
-    ) -> capella_work_item.CapellaWorkItem | None:
+    ) -> data.CapellaWorkItem | None:
         """Return a Work Item for a provided Work Item ID."""
         return self.get_work_item_by_capella_uuid(
             self.get_capella_uuid(work_item_id)  # type: ignore
@@ -92,7 +88,7 @@ class PolarionDataRepository:
 
     def update_work_items(
         self,
-        work_items: list[capella_work_item.CapellaWorkItem],
+        work_items: list[data.CapellaWorkItem],
     ):
         """Update all mappings for the given Work Items."""
         for work_item in work_items:
@@ -111,7 +107,7 @@ class PolarionDataRepository:
             {work_item.uuid_capella: work_item for work_item in work_items}
         )
 
-    def remove_work_items_by_capella_uuid(self, uuids: typing.Iterable[str]):
+    def remove_work_items_by_capella_uuid(self, uuids: cabc.Iterable[str]):
         """Remove entries for the given Capella UUIDs."""
         for uuid in uuids:
             del self._work_items[uuid]

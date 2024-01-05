@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import collections.abc as cabc
+import functools
 import logging
+import typing as t
 from collections import defaultdict
 
 import capellambse
@@ -13,9 +15,9 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
-from capella2polarion import capella_work_item
-from capella2polarion.capella_polarion_conversion import element_converter
-from capella2polarion.polarion_connector import polarion_repo
+from capella2polarion import data
+from capella2polarion.connectors import polarion_repo
+from capella2polarion.converters import element_converter
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class LinkSerializer:
     def __init__(
         self,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-        new_work_items: dict[str, capella_work_item.CapellaWorkItem],
+        new_work_items: dict[str, data.CapellaWorkItem],
         description_references: dict[str, list[str]],
         project_id: str,
         model: capellambse.MelodyModel,
@@ -38,6 +40,23 @@ class LinkSerializer:
         self.description_references = description_references
         self.project_id = project_id
         self.model = model
+
+        self.serializers: dict[
+            str,
+            cabc.Callable[
+                [common.GenericElement, str, str, dict[str, t.Any]],
+                list[polarion_api.WorkItemLink],
+            ],
+        ] = {
+            "description_reference": self._handle_description_reference_links,
+            "diagram_elements": self._handle_diagram_reference_links,
+            "input_exchanges": functools.partial(
+                self._handle_exchanges, attr="inputs"
+            ),
+            "output_exchanges": functools.partial(
+                self._handle_exchanges, attr="outputs"
+            ),
+        }
 
     def create_links_for_work_item(
         self,
@@ -54,41 +73,8 @@ class LinkSerializer:
         new_links: list[polarion_api.WorkItemLink] = []
         typ = work_item.type[0].upper() + work_item.type[1:]
         for role_id in roles.get(typ, []):
-            if role_id == "description_reference":
-                new_links.extend(
-                    self._handle_description_reference_links(
-                        obj,
-                        work_item.id,
-                        role_id,
-                        {},
-                    )
-                )
-            elif role_id == "diagram_elements":
-                new_links.extend(
-                    self._handle_diagram_reference_links(
-                        obj, work_item.id, role_id, {}
-                    )
-                )
-            elif role_id == "input_exchanges":
-                new_links.extend(
-                    self._handle_exchanges(
-                        obj,
-                        work_item.id,
-                        role_id,
-                        {},
-                        "inputs",
-                    )
-                )
-            elif role_id == "output_exchanges":
-                new_links.extend(
-                    self._handle_exchanges(
-                        obj,
-                        work_item.id,
-                        role_id,
-                        {},
-                        "outputs",
-                    )
-                )
+            if serializer := self.serializers.get(role_id):
+                new_links.extend(serializer(obj, work_item.id, role_id, {}))
             else:
                 if (refs := getattr(obj, role_id, None)) is None:
                     logger.info(
@@ -207,10 +193,10 @@ class LinkSerializer:
 
 
 def create_grouped_link_fields(
-    work_item: capella_work_item.CapellaWorkItem,
+    work_item: data.CapellaWorkItem,
     back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
 ):
-    """Create the grouped link work items fields from the primary work item.
+    """Create the grouped link fields from the primary work item.
 
     Parameters
     ----------
@@ -234,10 +220,10 @@ def create_grouped_link_fields(
 
 
 def create_grouped_back_link_fields(
-    work_item: capella_work_item.CapellaWorkItem,
+    work_item: data.CapellaWorkItem,
     links: list[polarion_api.WorkItemLink],
 ):
-    """Create backlinks for the given WorkItem using a list of backlinks.
+    """Create fields for the given WorkItem using a list of backlinks.
 
     Parameters
     ----------
@@ -280,7 +266,7 @@ def _make_url_list(
 
 
 def _create_link_fields(
-    work_item: capella_work_item.CapellaWorkItem,
+    work_item: data.CapellaWorkItem,
     role: str,
     links: list[polarion_api.WorkItemLink],
     reverse: bool = False,

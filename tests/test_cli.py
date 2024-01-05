@@ -10,12 +10,11 @@ import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion.polarion_worker import PolarionWorker
+from capella2polarion.worker import PolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from tests.conftest import (  # type: ignore[import]
     TEST_DIAGRAM_CACHE,
-    TEST_HOST,
     TEST_MODEL,
     TEST_MODEL_ELEMENTS_CONFIG,
 )
@@ -41,7 +40,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         PolarionWorker, "patch_work_items", mock_patch_work_items
     )
 
-    command = [
+    command: list[str] = [
         "--polarion-project-id",
         "{project-id}",
         "--polarion-url",
@@ -50,11 +49,11 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "AlexandersPrivateAcessToken",
         "--polarion-delete-work-items",
         "--capella-diagram-cache-folder-path",
-        TEST_DIAGRAM_CACHE,
+        str(TEST_DIAGRAM_CACHE),
         "--capella-model",
-        TEST_MODEL,
+        str(TEST_MODEL),
         "--synchronize-config",
-        TEST_MODEL_ELEMENTS_CONFIG,
+        str(TEST_MODEL_ELEMENTS_CONFIG),
         "synchronize",
     ]
 
