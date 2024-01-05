@@ -28,10 +28,10 @@ file.
 
 Polarion
 ========
-In general, if an attribute is not configured, it will still be accepted and
-created via the Rest API but it will be handled as a plain string attribute.
-However, to be able to make ``GET`` requests, you need to configure your
-Polarion project correctly. For that there is the `Polarion DBS Project
+In general, if an attribute is not configured, it will not be accepted and the
+the Rest API will raise a 404 HTTPError since it expects a plain string
+attribute. However, to be able to make ``GET`` requests, you need to configure
+your Polarion project correctly. For that there is the `Polarion DBS Project
 Template`_ which includes icon, custom field and enumeration configuration for
 a pleasant capella2polarion synchronization.
 
