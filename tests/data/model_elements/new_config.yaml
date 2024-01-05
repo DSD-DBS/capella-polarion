@@ -1,0 +1,23 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+"*": # All layers
+  "*": # All class types
+    links:
+      - parent # Specify workitem links
+      - description_reference # Custom attribute
+  Class:
+    links:
+      - state_machines
+  Diagram:
+    links:
+      - diagram_elements
+  Constraint:
+
+oa: # Specify below
+  FunctionalExchange:
+    polarion_type: operationalInteraction
+    links:
+      - exchange_items
+  OperationalCapability:
+    serializer: include_pre_and_post_condition

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import base64
 import collections
-import collections.abc as cabc
 import logging
 import mimetypes
 import pathlib
@@ -21,9 +20,8 @@ from capellambse.model.crosslayer import capellacore, cs, interaction
 from capellambse.model.layers import oa, pa
 from lxml import etree
 
+from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-
-from .. import data_models
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -42,12 +40,12 @@ POLARION_WORK_ITEM_URL = (
 SERIALIZERS: dict[str, str] = {
     "CapabilityRealization": "include_pre_and_post_condition",
     "Capability": "include_pre_and_post_condition",
-    "LogicalComponent": "_include_actor_in_type",
+    "LogicalComponent": "include_actor_in_type",
     "OperationalCapability": "include_pre_and_post_condition",
-    "PhysicalComponent": "_include_nature_in_type",
-    "SystemComponent": "_include_actor_in_type",
+    "PhysicalComponent": "include_nature_in_type",
+    "SystemComponent": "include_actor_in_type",
     "Scenario": "include_pre_and_post_condition",
-    "Constraint": "constraint",
+    "Constraint": "linked_text_as_description",
     "SystemCapability": "include_pre_and_post_condition",
 }
 
@@ -141,11 +139,6 @@ class CapellaWorkItemSerializer:
     capella_polarion_mapping: polarion_repo.PolarionDataRepository
     model: capellambse.MelodyModel
     descr_references: dict[str, list[str]]
-
-    serializers: dict[
-        str,
-        cabc.Callable[[common.GenericElement], data_models.CapellaWorkItem],
-    ]
     serializer_mapping: dict[str, str]
 
     def __init__(
@@ -162,12 +155,6 @@ class CapellaWorkItemSerializer:
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.descr_references = descr_references
-        self.serializers = {
-            "include_pre_and_post_condition": self.include_pre_and_post_condition,
-            "_include_actor_in_type": self._include_actor_in_type,
-            "_include_nature_in_type": self._include_nature_in_type,
-            "constraint": self.constraint,
-        }
         self.serializer_mapping = serializer_mapping or SERIALIZERS
 
     def serialize(
@@ -176,13 +163,14 @@ class CapellaWorkItemSerializer:
         """Return a CapellaWorkItem for the given diagram or element."""
         try:
             if isinstance(obj, diagr.Diagram):
-                return self.diagram(obj)
+                return self._diagram(obj)
             else:
                 xtype = self.polarion_type_map.get(
                     obj.uuid, type(obj).__name__
                 )
-                serializer = self.serializers.get(
-                    self.serializer_mapping.get(xtype, ""),
+                serializer = getattr(
+                    self,
+                    f"_{self.serializer_mapping.get(xtype)}",
                     self._generic_work_item,
                 )
                 return serializer(obj)
@@ -190,7 +178,7 @@ class CapellaWorkItemSerializer:
             logger.error("Serializing model element failed. %s", error.args[0])
             return None
 
-    def diagram(self, diag: diagr.Diagram) -> data_models.CapellaWorkItem:
+    def _diagram(self, diag: diagr.Diagram) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
@@ -232,7 +220,7 @@ class CapellaWorkItemSerializer:
     ) -> tuple[list[str], markupsafe.Markup]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-            lambda match: self.replace_markup(match, referenced_uuids, 2),
+            lambda match: self._replace_markup(match, referenced_uuids, 2),
             descr,
         )
 
@@ -264,7 +252,7 @@ class CapellaWorkItemSerializer:
         )
         return referenced_uuids, repaired_markup
 
-    def replace_markup(
+    def _replace_markup(
         self,
         match: re.Match,
         referenced_uuids: list[str],
@@ -287,7 +275,7 @@ class CapellaWorkItemSerializer:
         logger.warning("Found reference to non-existing work item: %r", uuid)
         return match.group(default_group)
 
-    def include_pre_and_post_condition(
+    def _include_pre_and_post_condition(
         self, obj: PrePostConditionElement
     ) -> data_models.CapellaWorkItem:
         """Return generic attributes and pre- and post-condition."""
@@ -298,7 +286,7 @@ class CapellaWorkItemSerializer:
             return condition.specification["capella:linkedText"].striptags()
 
         def matcher(match: re.Match) -> str:
-            return strike_through(self.replace_markup(match, []))
+            return strike_through(self._replace_markup(match, []))
 
         work_item = self._generic_work_item(obj)
         pre_condition = RE_DESCR_DELETED_PATTERN.sub(
@@ -313,7 +301,7 @@ class CapellaWorkItemSerializer:
 
         return work_item
 
-    def get_linked_text(
+    def _get_linked_text(
         self, obj: capellacore.Constraint
     ) -> markupsafe.Markup:
         """Return sanitized markup of the given ``obj`` linked text."""
@@ -323,13 +311,13 @@ class CapellaWorkItemSerializer:
             self.descr_references[obj.uuid] = uuids
         return value
 
-    def constraint(
+    def _linked_text_as_description(
         self, obj: capellacore.Constraint
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         work_item = self._generic_work_item(obj)
         # pylint: disable-next=attribute-defined-outside-init
-        work_item.description = self.get_linked_text(obj)
+        work_item.description = self._get_linked_text(obj)
         return work_item
 
     def _include_actor_in_type(
