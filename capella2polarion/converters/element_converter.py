@@ -23,7 +23,7 @@ from lxml import etree
 
 from capella2polarion.connectors import polarion_repo
 
-from .. import data
+from .. import data_models
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -126,7 +126,9 @@ def _get_requirement_types_text(
     return _format_texts(type_texts)
 
 
-def _condition(html: bool, value: str) -> data.CapellaWorkItem.Condition:
+def _condition(
+    html: bool, value: str
+) -> data_models.CapellaWorkItem.Condition:
     _type = "text/html" if html else "text/plain"
     return {"type": _type, "value": value}
 
@@ -142,7 +144,7 @@ class CapellaWorkItemSerializer:
 
     serializers: dict[
         str,
-        cabc.Callable[[common.GenericElement], data.CapellaWorkItem],
+        cabc.Callable[[common.GenericElement], data_models.CapellaWorkItem],
     ]
     serializer_mapping: dict[str, str]
 
@@ -170,7 +172,7 @@ class CapellaWorkItemSerializer:
 
     def serialize(
         self, obj: diagr.Diagram | common.GenericElement
-    ) -> data.CapellaWorkItem | None:
+    ) -> data_models.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
         try:
             if isinstance(obj, diagr.Diagram):
@@ -188,7 +190,7 @@ class CapellaWorkItemSerializer:
             logger.error("Serializing model element failed. %s", error.args[0])
             return None
 
-    def diagram(self, diag: diagr.Diagram) -> data.CapellaWorkItem:
+    def diagram(self, diag: diagr.Diagram) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
@@ -198,7 +200,7 @@ class CapellaWorkItemSerializer:
         description = (
             f'<html><p><img style="{style}" src="{src}" /></p></html>'
         )
-        return data.CapellaWorkItem(
+        return data_models.CapellaWorkItem(
             type="diagram",
             title=diag.name,
             description_type="text/html",
@@ -209,13 +211,13 @@ class CapellaWorkItemSerializer:
 
     def _generic_work_item(
         self, obj: common.GenericElement
-    ) -> data.CapellaWorkItem:
+    ) -> data_models.CapellaWorkItem:
         xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
         raw_description = getattr(obj, "description", markupsafe.Markup(""))
         uuids, value = self._sanitize_description(obj, raw_description)
         self.descr_references[obj.uuid] = uuids
         requirement_types = _get_requirement_types_text(obj)
-        return data.CapellaWorkItem(
+        return data_models.CapellaWorkItem(
             type=resolve_element_type(xtype),
             title=obj.name,
             description_type="text/html",
@@ -287,7 +289,7 @@ class CapellaWorkItemSerializer:
 
     def include_pre_and_post_condition(
         self, obj: PrePostConditionElement
-    ) -> data.CapellaWorkItem:
+    ) -> data_models.CapellaWorkItem:
         """Return generic attributes and pre- and post-condition."""
 
         def get_condition(cap: PrePostConditionElement, name: str) -> str:
@@ -321,7 +323,9 @@ class CapellaWorkItemSerializer:
             self.descr_references[obj.uuid] = uuids
         return value
 
-    def constraint(self, obj: capellacore.Constraint) -> data.CapellaWorkItem:
+    def constraint(
+        self, obj: capellacore.Constraint
+    ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         work_item = self._generic_work_item(obj)
         if work_item.uuid_capella == "b24a9e54-4386-4d38-aea3-7c5172d73bb6":
@@ -332,7 +336,7 @@ class CapellaWorkItemSerializer:
 
     def _include_actor_in_type(
         self, obj: cs.Component
-    ) -> data.CapellaWorkItem:
+    ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Component``."""
         work_item = self._generic_work_item(obj)
         if obj.is_actor:
@@ -345,7 +349,7 @@ class CapellaWorkItemSerializer:
 
     def _include_nature_in_type(
         self, obj: pa.PhysicalComponent
-    ) -> data.CapellaWorkItem:
+    ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``PhysicalComponent``."""
         work_item = self._include_actor_in_type(obj)
         xtype = work_item.type

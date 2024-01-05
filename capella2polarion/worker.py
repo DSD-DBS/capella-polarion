@@ -14,7 +14,7 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 
-from capella2polarion import data
+from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import element_converter, link_converter
 
@@ -70,7 +70,7 @@ class PolarionWorker:
         self.polarion_params: PolarionWorkerParams = params
         self.elements: dict[str, list[common.GenericElement]] = {}
         self.polarion_type_map: dict[str, str] = {}  # TODO refactor
-        self.capella_uuid_s: set[str] = set()  # TODO refactor
+        self.capella_uuids: set[str] = set()  # TODO refactor
         self.x_types: set[str] = set()
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.model = model
@@ -99,7 +99,7 @@ class PolarionWorker:
             self.polarion_params.delete_work_items,
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
             polarion_access_token=self.polarion_params.private_access_token,
-            custom_work_item=data.CapellaWorkItem,
+            custom_work_item=data_models.CapellaWorkItem,
             add_work_item_checksum=True,
         )
         self.check_client()
@@ -181,7 +181,7 @@ class PolarionWorker:
             type_map[obj.uuid] = "Diagram"
         self.elements = elements
         self.polarion_type_map = type_map
-        self.capella_uuid_s = set(self.polarion_type_map)
+        self.capella_uuids = set(self.polarion_type_map)
 
     def fill_xtypes(self):
         """Return a set of Polarion types from the current context."""
@@ -208,7 +208,7 @@ class PolarionWorker:
         diagram_cache_path: pathlib.Path,
         model,
         descr_references: dict[str, list[str]],
-    ) -> dict[str, data.CapellaWorkItem]:
+    ) -> dict[str, data_models.CapellaWorkItem]:
         """Create a list of work items for Polarion."""
         objects = chain.from_iterable(self.elements.values())
         _work_items = []
@@ -224,7 +224,7 @@ class PolarionWorker:
 
         _work_items = list(filter(None, _work_items))
         valid_types = set(map(self.make_type_id, set(self.elements)))
-        work_items: list[data.CapellaWorkItem] = []
+        work_items: list[data_models.CapellaWorkItem] = []
         missing_types: set[str] = set()
         for work_item in _work_items:
             assert work_item is not None
@@ -263,7 +263,7 @@ class PolarionWorker:
             for uuid, _, work_item in self.polarion_data_repo.items()
             if work_item.status != "deleted"
         }
-        uuids: set[str] = existing_work_items - self.capella_uuid_s
+        uuids: set[str] = existing_work_items - self.capella_uuids
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
@@ -275,10 +275,10 @@ class PolarionWorker:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
-        self, new_work_items: dict[str, data.CapellaWorkItem]
+        self, new_work_items: dict[str, data_models.CapellaWorkItem]
     ) -> None:
         """Post work items in a Polarion project."""
-        missing_work_items: list[data.CapellaWorkItem] = []
+        missing_work_items: list[data_models.CapellaWorkItem] = []
         for work_item in new_work_items.values():
             if work_item.uuid_capella in self.polarion_data_repo:
                 continue
@@ -295,8 +295,8 @@ class PolarionWorker:
 
     def patch_work_item(
         self,
-        new: data.CapellaWorkItem,
-        old: data.CapellaWorkItem,
+        new: data_models.CapellaWorkItem,
+        old: data_models.CapellaWorkItem,
     ):
         """Patch a given WorkItem.
 
@@ -386,7 +386,7 @@ class PolarionWorker:
 
     def patch_work_items(
         self,
-        new_work_items: dict[str, data.CapellaWorkItem],
+        new_work_items: dict[str, data_models.CapellaWorkItem],
         descr_references,
         link_roles,
     ) -> None:
@@ -411,7 +411,7 @@ class PolarionWorker:
                 obj,
                 link_roles,
             )
-            work_item: data.CapellaWorkItem = new_work_items[uuid]
+            work_item: data_models.CapellaWorkItem = new_work_items[uuid]
             work_item.linked_work_items = links
 
             link_converter.create_grouped_link_fields(work_item, back_links)

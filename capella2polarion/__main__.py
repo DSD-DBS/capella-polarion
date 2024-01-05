@@ -11,7 +11,7 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
-from capella2polarion import data
+from capella2polarion import data_models
 from capella2polarion import worker as pw
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.converters import element_converter
@@ -122,7 +122,7 @@ def synchronize(ctx: click.core.Context) -> None:
     polarion_worker.fill_xtypes()
     polarion_worker.load_polarion_work_item_map()
     description_references: typing.Any = {}
-    new_work_items: dict[str, data.CapellaWorkItem]
+    new_work_items: dict[str, data_models.CapellaWorkItem]
     new_work_items = polarion_worker.create_work_items(
         capella_to_polarion_cli.capella_diagram_cache_folder_path,
         capella_to_polarion_cli.capella_model,

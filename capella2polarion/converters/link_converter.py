@@ -15,7 +15,7 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
-from capella2polarion import data
+from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import element_converter
 
@@ -30,7 +30,7 @@ class LinkSerializer:
     def __init__(
         self,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-        new_work_items: dict[str, data.CapellaWorkItem],
+        new_work_items: dict[str, data_models.CapellaWorkItem],
         description_references: dict[str, list[str]],
         project_id: str,
         model: capellambse.MelodyModel,
@@ -193,7 +193,7 @@ class LinkSerializer:
 
 
 def create_grouped_link_fields(
-    work_item: data.CapellaWorkItem,
+    work_item: data_models.CapellaWorkItem,
     back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
 ):
     """Create the grouped link fields from the primary work item.
@@ -220,7 +220,7 @@ def create_grouped_link_fields(
 
 
 def create_grouped_back_link_fields(
-    work_item: data.CapellaWorkItem,
+    work_item: data_models.CapellaWorkItem,
     links: list[polarion_api.WorkItemLink],
 ):
     """Create fields for the given WorkItem using a list of backlinks.
@@ -266,7 +266,7 @@ def _make_url_list(
 
 
 def _create_link_fields(
-    work_item: data.CapellaWorkItem,
+    work_item: data_models.CapellaWorkItem,
     role: str,
     links: list[polarion_api.WorkItemLink],
     reverse: bool = False,

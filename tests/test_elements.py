@@ -14,7 +14,7 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
 
-from capella2polarion import data
+from capella2polarion import data_models
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import element_converter, link_converter
@@ -131,7 +131,7 @@ class BaseObjectContainer:
         self,
         cli: Capella2PolarionCli,
         pw: PolarionWorker,
-        new_work_items: dict[str, data.CapellaWorkItem],
+        new_work_items: dict[str, data_models.CapellaWorkItem],
     ) -> None:
         self.c2pcli: Capella2PolarionCli = cli
         self.pw: PolarionWorker = pw
@@ -153,7 +153,7 @@ class TestDiagramElements:
                 pass
 
         uuid = diagram_cache_index[0]["uuid"]
-        work_item = data.CapellaWorkItem(
+        work_item = data_models.CapellaWorkItem(
             id="Diag-1", checksum="123", uuid_capella=uuid
         )
         c2p_cli = Capella2PolarionCli(
@@ -178,7 +178,7 @@ class TestDiagramElements:
             model,
             element_converter.resolve_element_type,
         )
-        pw.capella_uuid_s = {d["uuid"] for d in diagram_cache_index}
+        pw.capella_uuids = {d["uuid"] for d in diagram_cache_index}
         pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
             [work_item]
         )
@@ -187,7 +187,7 @@ class TestDiagramElements:
             c2p_cli,
             pw,
             {
-                uuid: data.CapellaWorkItem(
+                uuid: data_models.CapellaWorkItem(
                     id="Diag-1",
                     checksum="123",
                     uuid_capella=uuid,
@@ -201,7 +201,7 @@ class TestDiagramElements:
         c2p_cli = base_object.c2pcli
         pw = base_object.pw
         description_reference: dict[str, list[str]] = {}
-        new_work_items: dict[str, data.CapellaWorkItem]
+        new_work_items: dict[str, data_models.CapellaWorkItem]
         new_work_items = pw.create_work_items(
             c2p_cli.capella_diagram_cache_folder_path,
             c2p_cli.capella_model,
@@ -209,10 +209,10 @@ class TestDiagramElements:
         )
         assert len(new_work_items) == 1
         work_item = new_work_items[TEST_DIAG_UUID]
-        assert isinstance(work_item, data.CapellaWorkItem)
+        assert isinstance(work_item, data_models.CapellaWorkItem)
         description = work_item.description
         work_item.description = None
-        assert work_item == data.CapellaWorkItem(**TEST_SER_DIAGRAM)
+        assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
         assert description.startswith(TEST_DIAG_DESCR)
 
@@ -233,7 +233,7 @@ class TestDiagramElements:
     @staticmethod
     def test_delete_diagrams(base_object: BaseObjectContainer):
         pw = base_object.pw
-        pw.capella_uuid_s = set()
+        pw.capella_uuids = set()
         pw.delete_work_items()
         assert pw.client is not None
         assert pw.client.delete_work_items.call_count == 1
@@ -280,7 +280,7 @@ class TestModelElements:
             def write(self, text: str):
                 pass
 
-        work_item = data.CapellaWorkItem(
+        work_item = data_models.CapellaWorkItem(
             id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
         )
         c2p_cli = Capella2PolarionCli(
@@ -324,7 +324,7 @@ class TestModelElements:
             c2p_cli,
             pw,
             {
-                "uuid1": data.CapellaWorkItem(
+                "uuid1": data_models.CapellaWorkItem(
                     id="Obj-1",
                     uuid_capella="uuid1",
                     status="open",
@@ -349,14 +349,14 @@ class TestModelElements:
             mock_generic_work_item := mock.MagicMock(),
         )
         mock_generic_work_item.side_effect = [
-            expected := data.CapellaWorkItem(
+            expected := data_models.CapellaWorkItem(
                 uuid_capella="uuid1",
                 title="Fake 1",
                 type="fakeModelObject",
                 description_type="text/html",
                 description=markupsafe.Markup(""),
             ),
-            expected1 := data.CapellaWorkItem(
+            expected1 := data_models.CapellaWorkItem(
                 uuid_capella="uuid2",
                 title="Fake 2",
                 type="fakeModelObject",
@@ -394,7 +394,7 @@ class TestModelElements:
         base_object.pw.polarion_type_map[uuid] = _type
         base_object.c2pcli.capella_model = model
 
-        expected = data.CapellaWorkItem(
+        expected = data_models.CapellaWorkItem(
             uuid_capella=uuid,
             type=_type[0].lower() + _type[1:],
             description_type="text/html",
@@ -413,7 +413,7 @@ class TestModelElements:
     @staticmethod
     def test_create_links_custom_resolver(base_object: BaseObjectContainer):
         obj = base_object.pw.elements["FakeModelObject"][1]
-        obj_2 = data.CapellaWorkItem(
+        obj_2 = data_models.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -455,7 +455,7 @@ class TestModelElements:
 
         obj = base_object.c2pcli.capella_model.by_uuid(function_uuid)
 
-        obj_1 = data.CapellaWorkItem(
+        obj_1 = data_models.CapellaWorkItem(
             id="Obj-1",
             uuid_capella=function_uuid,
             type=type(obj).__name__,
@@ -463,7 +463,7 @@ class TestModelElements:
             description=markupsafe.Markup(""),
             status="open",
         )
-        obj_2 = data.CapellaWorkItem(
+        obj_2 = data_models.CapellaWorkItem(
             id="Obj-2",
             uuid_capella=uuid,
             type="functionalExchange",
@@ -539,7 +539,7 @@ class TestModelElements:
         base_object.pw.elements["FakeModelObject"].append(obj)
 
         work_items = [
-            data.CapellaWorkItem(
+            data_models.CapellaWorkItem(
                 id=f"Obj-{i}",
                 uuid_capella=f"uuid{i}",
                 type="fakeModelObject",
@@ -585,7 +585,7 @@ class TestModelElements:
         base_object: BaseObjectContainer,
     ):
         obj = base_object.pw.elements["FakeModelObject"][1]
-        work_item_2 = data.CapellaWorkItem(
+        work_item_2 = data_models.CapellaWorkItem(
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
@@ -620,8 +620,8 @@ class TestModelElements:
     def test_update_work_items(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
-        polarion_work_item_list: list[data.CapellaWorkItem] = [
-            data.CapellaWorkItem(
+        polarion_work_item_list: list[data_models.CapellaWorkItem] = [
+            data_models.CapellaWorkItem(
                 id="Obj-1",
                 type="type",
                 uuid_capella="uuid1",
@@ -642,7 +642,7 @@ class TestModelElements:
         base_object.pw.load_polarion_work_item_map()
 
         work_items = {
-            "uuid1": data.CapellaWorkItem(
+            "uuid1": data_models.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 title="Fake 1",
@@ -665,7 +665,7 @@ class TestModelElements:
         assert base_object.pw.client.create_work_item_links.call_count == 0
         assert base_object.pw.client.update_work_item.call_count == 1
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
-        assert isinstance(work_item, data.CapellaWorkItem)
+        assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
         assert work_item.title == "Fake 1"
         assert work_item.description_type == "text/html"
@@ -680,7 +680,7 @@ class TestModelElements:
     ):
         base_object.pw.polarion_data_repo.update_work_items(
             [
-                data.CapellaWorkItem(
+                data_models.CapellaWorkItem(
                     id="Obj-1",
                     uuid_capella="uuid1",
                     status="open",
@@ -690,7 +690,7 @@ class TestModelElements:
             ]
         )
         work_items = {
-            "uuid1": data.CapellaWorkItem(
+            "uuid1": data_models.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",
@@ -716,7 +716,7 @@ class TestModelElements:
         base_object.pw.polarion_data_repo = (
             polarion_repo.PolarionDataRepository()
         )
-        work_items: dict[str, data.CapellaWorkItem] = {}
+        work_items: dict[str, data_models.CapellaWorkItem] = {}
         base_object.pw.patch_work_items(
             work_items, {}, base_object.c2pcli.synchronize_config_roles
         )
@@ -732,7 +732,7 @@ class TestModelElements:
         work_item.linked_work_items = [link]
         base_object.pw.polarion_data_repo.update_work_items(
             [
-                data.CapellaWorkItem(
+                data_models.CapellaWorkItem(
                     id="Obj-2",
                     uuid_capella="uuid2",
                     status="open",
@@ -741,13 +741,13 @@ class TestModelElements:
             ]
         )
         work_items = {
-            "uuid1": data.CapellaWorkItem(
+            "uuid1": data_models.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",
                 type="fakeModelObject",
             ),
-            "uuid2": data.CapellaWorkItem(
+            "uuid2": data_models.CapellaWorkItem(
                 id="Obj-2",
                 uuid_capella="uuid2",
                 status="open",
@@ -788,19 +788,19 @@ class TestModelElements:
     def test_patch_work_item_grouped_links(
         monkeypatch: pytest.MonkeyPatch,
         base_object: BaseObjectContainer,
-        dummy_work_items: dict[str, data.CapellaWorkItem],
+        dummy_work_items: dict[str, data_models.CapellaWorkItem],
     ):
         work_items = dummy_work_items
         base_object.pw.polarion_data_repo = (
             polarion_repo.PolarionDataRepository(
                 [
-                    data.CapellaWorkItem(
+                    data_models.CapellaWorkItem(
                         id="Obj-0", uuid_capella="uuid0", status="open"
                     ),
-                    data.CapellaWorkItem(
+                    data_models.CapellaWorkItem(
                         id="Obj-1", uuid_capella="uuid1", status="open"
                     ),
-                    data.CapellaWorkItem(
+                    data_models.CapellaWorkItem(
                         id="Obj-2", uuid_capella="uuid2", status="open"
                     ),
                 ]
@@ -858,7 +858,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes(
-        dummy_work_items: dict[str, data.CapellaWorkItem]
+        dummy_work_items: dict[str, data_models.CapellaWorkItem]
     ):
         for work_item in dummy_work_items.values():
             link_converter.create_grouped_link_fields(work_item)
@@ -883,7 +883,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_reverse_grouped_links_attributes(
-        dummy_work_items: dict[str, data.CapellaWorkItem]
+        dummy_work_items: dict[str, data_models.CapellaWorkItem]
     ):
         reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
@@ -921,7 +921,7 @@ class TestModelElements:
 
 
 def test_grouped_linked_work_items_order_consistency():
-    work_item = data.CapellaWorkItem("id", "Dummy")
+    work_item = data_models.CapellaWorkItem("id", "Dummy")
     links = [
         polarion_api.WorkItemLink("prim1", "id", "role1"),
         polarion_api.WorkItemLink("prim2", "id", "role1"),
@@ -966,7 +966,7 @@ class TestSerializers:
         if serialized_diagram is not None:
             serialized_diagram.description = None
 
-        assert serialized_diagram == data.CapellaWorkItem(
+        assert serialized_diagram == data_models.CapellaWorkItem(
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
@@ -1121,7 +1121,11 @@ class TestSerializers:
             TEST_POL_TYPE_MAP,
             model,
             polarion_repo.PolarionDataRepository(
-                [data.CapellaWorkItem(id="TEST", uuid_capella=TEST_E_UUID)]
+                [
+                    data_models.CapellaWorkItem(
+                        id="TEST", uuid_capella=TEST_E_UUID
+                    )
+                ]
             ),
             {},
         )
@@ -1131,5 +1135,5 @@ class TestSerializers:
         status = work_item.status
         work_item.status = None
 
-        assert work_item == data.CapellaWorkItem(**expected)
+        assert work_item == data_models.CapellaWorkItem(**expected)
         assert status == "open"
