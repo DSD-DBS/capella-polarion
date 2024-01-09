@@ -21,3 +21,20 @@ oa: # Specify below
       - exchange_items
   OperationalCapability:
     serializer: include_pre_and_post_condition
+pa:
+  PhysicalComponent:
+    - actor: false
+      nature: null
+      polarion_type: PhysicalComponent
+    - actor: false
+      nature: NODE
+      polarion_type: PhysicalComponentNode
+    - actor: false
+      nature: BEHAVIOR
+      polarion_type: PhysicalComponentBehavior
+    - actor: true
+      nature: NODE
+      polarion_type: PhysicalActorNode
+    - actor: true
+      nature: BEHAVIOR
+      polarion_type: PhysicalActorBehavior
