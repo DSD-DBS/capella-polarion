@@ -7,13 +7,12 @@ import json
 import logging
 import pathlib
 import typing
-from itertools import chain
 
 import capellambse
 import click
-import yaml
 
 from capella2polarion import worker as pw
+from capella2polarion.converters import converter_config
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,7 @@ class Capella2PolarionCli:
         self.synchronize_config_content: dict[str, typing.Any] = {}
         self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.echo = click.echo
+        self.config: converter_config.ConverterConfig | None = None
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -93,7 +93,7 @@ class Capella2PolarionCli:
                 self.echo(f"{lighted_member_var}: '{string_value}'")
         self.echo(
             f"""Capella Diagram Cache Index-File exits: {('YES'
-            if self.exits_capella_diagramm_cache_index_file() else 'NO')}"""
+            if self.exits_capella_diagram_cache_index_file() else 'NO')}"""
         )
         self.echo(
             f"""Synchronize Config-IO is open: {('YES'
@@ -126,87 +126,9 @@ class Capella2PolarionCli:
             raise RuntimeError("synchronize config io stream is closed ")
         if not self.synchronize_config_io.readable():
             raise RuntimeError("synchronize config io stream is not readable")
-        self.synchronize_config_io.seek(0)
-        self.synchronize_config_content = yaml.safe_load(
+        self.config = converter_config.ConverterConfig(
             self.synchronize_config_io
         )
-
-    def load_roles_from_synchronize_config(self) -> None:
-        """Fill SynchronizeConfigRoles and correct content."""
-        if self.synchronize_config_content is None:
-            raise RuntimeError("first call loadSynchronizeConfig")
-        if special_config_asterix := self.synchronize_config_content.pop(
-            "*", []
-        ):
-            special_config: dict[str, typing.Any] = {}
-            for typ in special_config_asterix:
-                if isinstance(typ, str):
-                    special_config[typ] = None
-                else:
-                    special_config.update(typ)
-
-            lookup: dict[str, dict[str, list[str]]] = {}
-            for layer, xtypes in self.synchronize_config_content.items():
-                for xt in xtypes:
-                    if isinstance(xt, str):
-                        item: dict[str, list[str]] = {xt: []}
-                    else:
-                        item = xt
-
-                    lookup.setdefault(layer, {}).update(item)
-
-            new_config: dict[str, typing.Any] = {}
-            for layer, xtypes in self.synchronize_config_content.items():
-                new_entries: list[str | dict[str, typing.Any]] = []
-                for xtype in xtypes:
-                    if isinstance(xtype, dict):
-                        for sub_key, sub_value in xtype.items():
-                            new_value = (
-                                special_config.get("*", [])
-                                + special_config.get(sub_key, [])
-                                + sub_value
-                            )
-                            new_entries.append({sub_key: new_value})
-                    else:
-                        star = special_config.get("*", [])
-                        special_xtype = special_config.get(xtype, [])
-                        if new_value := star + special_xtype:
-                            new_entries.append({xtype: new_value})
-                        else:
-                            new_entries.append(xtype)
-
-                wildcard_values = special_config.get("*", [])
-                for key, value in special_config.items():
-                    if key == "*":
-                        continue
-
-                    if isinstance(value, list):
-                        new_value = (
-                            lookup.get(layer, {}).get(key, [])
-                            + wildcard_values
-                            + value
-                        )
-                        new_entries.append({key: new_value})
-                    elif value is None and key not in [
-                        entry
-                        if isinstance(entry, str)
-                        else list(entry.keys())[0]
-                        for entry in new_entries
-                    ]:
-                        new_entries.append({key: wildcard_values})
-                new_config[layer] = new_entries
-            self.synchronize_config_content = new_config
-
-        roles: dict[str, list[str]] = {}
-        for typ in chain.from_iterable(
-            self.synchronize_config_content.values()
-        ):
-            if isinstance(typ, dict):
-                for key, role_ids in typ.items():
-                    roles[key] = list(role_ids)
-            else:
-                roles[typ] = []
-        self.synchronize_config_roles = roles
 
     def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
         """Return index file path."""
@@ -214,7 +136,7 @@ class Capella2PolarionCli:
             raise ValueError("CapellaDiagramCacheFolderPath not filled")
         return self.capella_diagram_cache_folder_path / "index.json"
 
-    def exits_capella_diagramm_cache_index_file(self) -> bool:
+    def exits_capella_diagram_cache_index_file(self) -> bool:
         """Test existens of file."""
         return (
             False
@@ -224,7 +146,7 @@ class Capella2PolarionCli:
 
     def load_capella_diagramm_cache_index(self) -> None:
         """Load to CapellaDiagramCacheIndexContent."""
-        if not self.exits_capella_diagramm_cache_index_file():
+        if not self.exits_capella_diagram_cache_index_file():
             raise ValueError("capella diagramm cache index file doe not exits")
         self.capella_diagram_cache_index_content = []
         if self.get_capella_diagram_cache_index_file_path() is not None:

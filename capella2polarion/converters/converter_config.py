@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import dataclasses
 import typing
+from collections import abc as cabc
 
 import yaml
 
@@ -31,11 +32,24 @@ class ConverterConfig:
         config_dict = yaml.safe_load(synchronize_config)
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
+        self.polarion_types = set[str]()
+        self.diagram_config: CapellaTypeConfig | None = None
+
         # We handle the cross layer config separately as global_configs
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
         self.__global_config = CapellaTypeConfig(links=global_links)
+
+        if "Diagram" in global_config_dict:
+            diagram_config = global_config_dict.pop("Diagram") or {}
+            p_type = diagram_config.get("polarion_type") or "diagram"
+            self.polarion_types.add(p_type)
+            self.diagram_config = CapellaTypeConfig(
+                p_type,
+                diagram_config.get("serializer"),
+                diagram_config.get("links", []) + global_links,
+            )
 
         def _read_capella_type_configs(conf: dict | list | None) -> list[dict]:
             if conf is None:
@@ -53,9 +67,12 @@ class ConverterConfig:
 
         for c_type, type_config in global_config_dict.items():
             type_config = type_config or {}
+            p_type = type_config.get(
+                "polarion_type"
+            ) or _default_type_conversion(c_type)
+            self.polarion_types.add(p_type)
             self._global_configs[c_type] = CapellaTypeConfig(
-                type_config.get("polarion_type")
-                or _default_type_conversion(c_type),
+                p_type,
                 type_config.get("serializer"),
                 type_config.get("links", []) + global_links,
                 type_config.get("actor"),
@@ -63,6 +80,7 @@ class ConverterConfig:
             )
 
         for layer, type_configs in config_dict.items():
+            type_configs = type_configs or {}
             self._layer_configs[layer] = {}
             for c_type, c_type_config in type_configs.items():
                 type_configs = _read_capella_type_configs(c_type_config)
@@ -77,11 +95,15 @@ class ConverterConfig:
                         )
                         or self.__global_config
                     )
+                    p_type = (
+                        type_config.get("polarion_type")
+                        or closest_config.p_type
+                        or _default_type_conversion(c_type)
+                    )
+                    self.polarion_types.add(p_type)
                     self._layer_configs[layer][c_type].append(
                         CapellaTypeConfig(
-                            type_config.get("polarion_type")
-                            or closest_config.p_type
-                            or _default_type_conversion(c_type),
+                            p_type,
                             type_config.get("serializer")
                             or closest_config.converter,
                             type_config.get("links", [])
@@ -99,6 +121,8 @@ class ConverterConfig:
         nature: str | None = None,
     ) -> CapellaTypeConfig | None:
         """Get the type config for a given layer and capella_type."""
+        if layer not in self._layer_configs:
+            return None
         layer_configs = self._layer_configs.get(layer, {}).get(c_type)
         global_config = self._global_configs.get(c_type)
         if layer_configs:
@@ -155,3 +179,12 @@ class ConverterConfig:
         """Check if there is a config for a given layer and Capella type."""
         layer, c_type, actor, nature = item
         return self.get_type_config(layer, c_type, actor, nature) is not None
+
+    def layers_and_types(self) -> cabc.Iterator[tuple[str, str]]:
+        """Iterate all layers and types of the config."""
+        for layer, layer_types in self._layer_configs.items():
+            for c_type in layer_types:
+                yield layer, c_type
+            for c_type in self._global_configs:
+                if c_type not in layer_types:
+                    yield layer, c_type

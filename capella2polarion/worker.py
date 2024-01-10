@@ -7,43 +7,22 @@ import collections.abc as cabc
 import logging
 import pathlib
 import typing
-from itertools import chain
+from typing import Optional
 from urllib import parse
 
 import capellambse
 import polarion_rest_api_client as polarion_api
-from capellambse.model import common
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import element_converter, link_converter
+from capella2polarion.converters import (
+    converter_config,
+    data_session,
+    element_converter,
+    link_converter,
+)
 
 logger = logging.getLogger(__name__)
-
-# STATUS_DELETE = "deleted"
-ACTOR_TYPES = {
-    "LogicalActor": "LogicalComponent",
-    "SystemActor": "SystemComponent",
-    "PhysicalActor": "PhysicalComponent",
-}
-PHYSICAL_COMPONENT_TYPES = {
-    "PhysicalComponentNode": "PhysicalComponent",
-    "PhysicalActorNode": "PhysicalComponent",
-    "PhysicalComponentBehavior": "PhysicalComponent",
-    "PhysicalActorBehavior": "PhysicalComponent",
-}
-POL2CAPELLA_TYPES: dict[str, str] = (
-    {
-        "OperationalEntity": "Entity",
-        "OperationalInteraction": "FunctionalExchange",
-        "SystemCapability": "Capability",
-    }
-    | ACTOR_TYPES
-    | PHYSICAL_COMPONENT_TYPES
-)
-TYPES_POL2CAPELLA = {
-    ctype: ptype for ptype, ctype in POL2CAPELLA_TYPES.items()
-}
 
 
 class PolarionWorkerParams:
@@ -58,23 +37,25 @@ class PolarionWorkerParams:
         self.delete_work_items = delete_work_items
 
 
-class PolarionWorker:
-    """PolarionWorker encapsulate the Polarion API Client work."""
+class CapellaPolarionWorker:
+    """CapellaPolarionWorker encapsulate the Polarion API Client work."""
 
     def __init__(
         self,
         params: PolarionWorkerParams,
         model: capellambse.MelodyModel,
-        make_type_id: typing.Any,
+        config: converter_config.ConverterConfig,
+        diagram_idx: list[dict[str, typing.Any]],
+        diagram_cache_path: pathlib.Path,
     ) -> None:
-        self.polarion_params: PolarionWorkerParams = params
-        self.elements: dict[str, list[common.GenericElement]] = {}
-        self.polarion_type_map: dict[str, str] = {}  # TODO refactor
-        self.capella_uuids: set[str] = set()  # TODO refactor
-        self.x_types: set[str] = set()
+        self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
+        self.converter_session: data_session.ConverterSession = {}
         self.model = model
-        self.make_type_id: typing.Any = make_type_id
+        self.config = config
+        self.diagram_idx = diagram_idx
+        self.diagram_cache_path = diagram_cache_path
+
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
         ):
@@ -108,93 +89,58 @@ class PolarionWorker:
         return "None" if value is None else value
 
     def check_client(self) -> None:
-        """Instantiate the polarion client, move to PolarionWorker Class."""
-
+        """Instantiate the polarion client as member."""
         if not self.client.project_exists():
             raise KeyError(
                 f"Miss Polarion project with id "
                 f"{self._save_value_string(self.polarion_params.project_id)}"
             )
 
-    def load_elements_and_type_map(
+    def generate_converter_session(
         self,
-        config: dict[str, typing.Any],
-        diagram_idx: list[dict[str, typing.Any]],
     ) -> None:
         """Return an elements and UUID to Polarion type map."""
-        convert_type = POL2CAPELLA_TYPES
-        type_map: dict[str, str] = {}
-        elements: dict[str, list[common.GenericElement]] = {}
-        for _below, pol_types in config.items():
-            below = getattr(self.model, _below)
-            for typ in pol_types:
-                if isinstance(typ, dict):
-                    typ = list(typ.keys())[0]
-
-                if typ == "Diagram":
-                    continue
-
-                xtype = convert_type.get(typ, typ)
-                objects = self.model.search(xtype, below=below)
-                elements.setdefault(typ, []).extend(objects)
-                for obj in objects:
-                    type_map[obj.uuid] = typ
-
-        for typ, xtype in ACTOR_TYPES.items():
-            if typ not in elements:
+        missing_types = set[tuple[str, str, Optional[bool], Optional[str]]]()
+        for layer, c_type in self.config.layers_and_types():
+            below = getattr(self.model, layer)
+            if c_type == "Diagram":
                 continue
 
-            actors: list[common.GenericElement] = []
-            components: list[common.GenericElement] = []
-            for obj in elements[typ]:
-                if obj.is_actor:
-                    actors.append(obj)
+            objects = self.model.search(c_type, below=below)
+            for obj in objects:
+                actor = None if not hasattr(obj, "is_actor") else obj.is_actor
+                nature = None if not hasattr(obj, "nature") else obj.nature
+                if config := self.config.get_type_config(
+                    layer, c_type, actor, nature
+                ):
+                    self.converter_session[
+                        obj.uuid
+                    ] = data_session.ConverterData(layer, config, obj)
                 else:
-                    components.append(obj)
-                    type_map[obj.uuid] = xtype
+                    missing_types.add((layer, c_type, actor, nature))
 
-            elements[typ] = actors
-            elements[xtype] = components
+        if self.config.diagram_config:
+            diagrams_from_cache = {
+                d["uuid"] for d in self.diagram_idx if d["success"]
+            }
+            for d in self.model.diagrams:
+                if d.uuid in diagrams_from_cache:
+                    self.converter_session[
+                        d.uuid
+                    ] = data_session.ConverterData(
+                        "", self.config.diagram_config, d
+                    )
 
-        nature_mapping: dict[str, tuple[list[common.GenericElement], str]] = {
-            "UNSET": ([], "PhysicalComponent"),
-            "NODE": ([], "PhysicalComponentNode"),
-            "BEHAVIOR": ([], "PhysicalComponentBehavior"),
-            "NODE_actor": ([], "PhysicalActorNode"),
-            "BEHAVIOR_actor": ([], "PhysicalActorBehavior"),
-        }
-        for obj in elements.get("PhysicalComponent", []):
-            postfix = "_actor" if obj.is_actor else ""
-            container, xtype = nature_mapping[f"{str(obj.nature)}{postfix}"]
-            container.append(obj)
-            type_map[obj.uuid] = xtype
-
-        for container, xtype in nature_mapping.values():
-            if container:
-                elements[xtype] = container
-
-        diagrams_from_cache = {d["uuid"] for d in diagram_idx if d["success"]}
-        elements["Diagram"] = [
-            d for d in self.model.diagrams if d.uuid in diagrams_from_cache
-        ]
-        for obj in elements["Diagram"]:
-            type_map[obj.uuid] = "Diagram"
-        self.elements = elements
-        self.polarion_type_map = type_map
-        self.capella_uuids = set(self.polarion_type_map)
-
-    def fill_xtypes(self):
-        """Return a set of Polarion types from the current context."""
-        xtypes = set[str]()
-        for obj in chain.from_iterable(self.elements.values()):
-            xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
-            xtypes.add(self.make_type_id(xtype))
-        self.x_types = xtypes
+        if missing_types:
+            for missing_type in missing_types:
+                logger.warning(
+                    "Capella type %r is configured in layer %r, but not for actor %r and nature %r.",
+                    *missing_type,
+                )
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        work_item_types = list(map(self.make_type_id, self.x_types))
-        _type = " ".join(work_item_types)
+        _type = " ".join(self.config.polarion_types)
 
         work_items = self.client.get_all_work_items(
             f"type:({_type})",
@@ -205,28 +151,16 @@ class PolarionWorker:
 
     def create_work_items(
         self,
-        diagram_cache_path: pathlib.Path,
-        model,
-        descr_references: dict[str, list[str]],
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Create a list of work items for Polarion."""
-        objects = chain.from_iterable(self.elements.values())
-        _work_items = []
         serializer = element_converter.CapellaWorkItemSerializer(
-            diagram_cache_path,
-            self.polarion_type_map,
-            model,
+            self.diagram_cache_path,
+            self.model,
             self.polarion_data_repo,
-            descr_references,
+            self.converter_session,
         )
-        for obj in objects:
-            _work_items.append(serializer.serialize(obj))
-
-        _work_items = list(filter(None, _work_items))
-        valid_types = set(map(self.make_type_id, set(self.elements)))
-        work_items: list[data_models.CapellaWorkItem] = []
-        missing_types: set[str] = set()
-        for work_item in _work_items:
+        work_items = serializer.serialize_all()
+        for work_item in work_items:
             assert work_item is not None
             assert work_item.title is not None
             assert work_item.type is not None
@@ -234,16 +168,7 @@ class PolarionWorker:
                 work_item.uuid_capella
             ):
                 work_item.id = old.id
-            if work_item.type in valid_types:
-                work_items.append(work_item)
-            else:
-                missing_types.add(work_item.type)
 
-        if missing_types:
-            logger.debug(
-                "%r are missing in the capella2polarion configuration",
-                ", ".join(missing_types),
-            )
         return {wi.uuid_capella: wi for wi in work_items}
 
     def delete_work_items(self) -> None:
@@ -263,7 +188,7 @@ class PolarionWorker:
             for uuid, _, work_item in self.polarion_data_repo.items()
             if work_item.status != "deleted"
         }
-        uuids: set[str] = existing_work_items - self.capella_uuids
+        uuids: set[str] = existing_work_items - set(self.converter_session)
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
@@ -275,11 +200,19 @@ class PolarionWorker:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
-        self, new_work_items: dict[str, data_models.CapellaWorkItem]
+        self,
     ) -> None:
         """Post work items in a Polarion project."""
         missing_work_items: list[data_models.CapellaWorkItem] = []
-        for work_item in new_work_items.values():
+        for uuid, converter_data in self.converter_session.items():
+            work_item = converter_data.work_item
+            if work_item is None:
+                logger.warning(
+                    "Expected to find a WorkItem for %s, but there is none",
+                    uuid,
+                )
+                continue
+
             if work_item.uuid_capella in self.polarion_data_repo:
                 continue
 
@@ -323,7 +256,7 @@ class PolarionWorker:
         assert new.id is not None
         try:
             self.client.update_work_item(new)
-            if delete_link_ids := PolarionWorker.get_missing_link_ids(
+            if delete_link_ids := CapellaPolarionWorker.get_missing_link_ids(
                 old.linked_work_items, new.linked_work_items
             ):
                 id_list_str = ", ".join(delete_link_ids.keys())
@@ -337,7 +270,7 @@ class PolarionWorker:
                     list(delete_link_ids.values())
                 )
 
-            if create_links := PolarionWorker.get_missing_link_ids(
+            if create_links := CapellaPolarionWorker.get_missing_link_ids(
                 new.linked_work_items, old.linked_work_items
             ):
                 id_list_str = ", ".join(create_links.keys())
@@ -363,10 +296,10 @@ class PolarionWorker:
     ) -> dict[str, polarion_api.WorkItemLink]:
         """Return an ID-Link dict of links present in left and not in right."""
         left_id_map = {
-            PolarionWorker._get_link_id(link): link for link in left
+            CapellaPolarionWorker._get_link_id(link): link for link in left
         }
         right_id_map = {
-            PolarionWorker._get_link_id(link): link for link in right
+            CapellaPolarionWorker._get_link_id(link): link for link in right
         }
         return {
             lid: left_id_map[lid]
@@ -386,44 +319,47 @@ class PolarionWorker:
 
     def patch_work_items(
         self,
-        new_work_items: dict[str, data_models.CapellaWorkItem],
-        descr_references,
-        link_roles,
     ) -> None:
         """Update work items in a Polarion project."""
 
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
         link_serializer = link_converter.LinkSerializer(
             self.polarion_data_repo,
-            new_work_items,
-            descr_references,
+            self.converter_session,
             self.polarion_params.project_id,
             self.model,
         )
 
-        for uuid in new_work_items:
-            objects = self.model
-            if uuid.startswith("_"):
-                objects = self.model.diagrams
-            obj = objects.by_uuid(uuid)
+        for uuid, converter_data in self.converter_session.items():
+            if converter_data.work_item is None:
+                logger.warning(
+                    "Expected to find a WorkItem for %s, but there is none",
+                    uuid,
+                )
+                continue
 
-            links = link_serializer.create_links_for_work_item(
-                obj,
-                link_roles,
+            links = link_serializer.create_links_for_work_item(uuid)
+            converter_data.work_item.linked_work_items = links
+
+            link_converter.create_grouped_link_fields(
+                converter_data.work_item, back_links
             )
-            work_item: data_models.CapellaWorkItem = new_work_items[uuid]
-            work_item.linked_work_items = links
 
-            link_converter.create_grouped_link_fields(work_item, back_links)
+        for uuid, converter_data in self.converter_session.items():
+            if converter_data.work_item is None:
+                logger.warning(
+                    "Expected to find a WorkItem for %s, but there is none",
+                    uuid,
+                )
+                continue
 
-        for uuid, new_work_item in new_work_items.items():
             _, old_work_item = self.polarion_data_repo[uuid]
             if old_work_item.id in back_links:
                 link_converter.create_grouped_back_link_fields(
-                    new_work_item, back_links[old_work_item.id]
+                    converter_data.work_item, back_links[old_work_item.id]
                 )
 
             self.patch_work_item(
-                new_work_item,
+                converter_data.work_item,
                 old_work_item,
             )

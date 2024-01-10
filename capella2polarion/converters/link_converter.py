@@ -17,7 +17,7 @@ from capellambse.model.crosslayer import fa
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import element_converter
+from capella2polarion.converters import data_session, element_converter
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +30,12 @@ class LinkSerializer:
     def __init__(
         self,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-        new_work_items: dict[str, data_models.CapellaWorkItem],
-        description_references: dict[str, list[str]],
+        converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
-        self.new_work_items = new_work_items
-        self.description_references = description_references
+        self.converter_session = converter_session
         self.project_id = project_id
         self.model = model
 
@@ -59,20 +57,20 @@ class LinkSerializer:
         }
 
     def create_links_for_work_item(
-        self,
-        obj: common.GenericElement | diag.Diagram,
-        roles,
+        self, uuid: str
     ) -> list[polarion_api.WorkItemLink]:
         """Create work item links for a given Capella object."""
+        converter_data = self.converter_session[uuid]
+        obj = converter_data.capella_element
         if isinstance(obj, diag.Diagram):
             repres = f"<Diagram {obj.name!r}>"
         else:
             repres = obj._short_repr_()
 
-        work_item = self.new_work_items[obj.uuid]
+        work_item = converter_data.work_item
+        assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
-        typ = work_item.type[0].upper() + work_item.type[1:]
-        for role_id in roles.get(typ, []):
+        for role_id in converter_data.type_config.links:
             if serializer := self.serializers.get(role_id):
                 new_links.extend(serializer(obj, work_item.id, role_id, {}))
             else:
@@ -123,7 +121,7 @@ class LinkSerializer:
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        refs = self.description_references.get(obj.uuid, [])
+        refs = self.converter_session[obj.uuid].description_references
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
 

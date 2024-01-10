@@ -10,18 +10,19 @@ import mimetypes
 import pathlib
 import re
 import typing as t
+from collections import abc as cabc
 
 import capellambse
 import markupsafe
 from capellambse import helpers as chelpers
 from capellambse.model import common
-from capellambse.model import diagram as diagr
-from capellambse.model.crosslayer import capellacore, cs, interaction
-from capellambse.model.layers import oa, pa
+from capellambse.model.crosslayer import interaction
+from capellambse.model.layers import oa
 from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
+from capella2polarion.converters import data_session
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -36,19 +37,6 @@ POLARION_WORK_ITEM_URL = (
     'id="fake" data-item-id="{pid}" data-option-id="long">'
     "</span>"
 )
-
-SERIALIZERS: dict[str, str] = {
-    "CapabilityRealization": "include_pre_and_post_condition",
-    "Capability": "include_pre_and_post_condition",
-    "LogicalComponent": "include_actor_in_type",
-    "OperationalCapability": "include_pre_and_post_condition",
-    "PhysicalComponent": "include_nature_in_type",
-    "SystemComponent": "include_actor_in_type",
-    "Scenario": "include_pre_and_post_condition",
-    "Constraint": "linked_text_as_description",
-    "SystemCapability": "include_pre_and_post_condition",
-}
-
 
 PrePostConditionElement = t.Union[
     oa.OperationalCapability, interaction.Scenario
@@ -135,51 +123,50 @@ class CapellaWorkItemSerializer:
     """The general serializer class for CapellaWorkItems."""
 
     diagram_cache_path: pathlib.Path
-    polarion_type_map: dict[str, str]
-    capella_polarion_mapping: polarion_repo.PolarionDataRepository
     model: capellambse.MelodyModel
-    descr_references: dict[str, list[str]]
-    serializer_mapping: dict[str, str]
 
     def __init__(
         self,
         diagram_cache_path: pathlib.Path,
-        polarion_type_map: dict[str, str],
         model: capellambse.MelodyModel,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-        descr_references: dict[str, list[str]],
-        serializer_mapping: dict[str, str] | None = None,
+        converter_session: data_session.ConverterSession,
     ):
         self.diagram_cache_path = diagram_cache_path
-        self.polarion_type_map = polarion_type_map
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
-        self.descr_references = descr_references
-        self.serializer_mapping = serializer_mapping or SERIALIZERS
+        self.converter_session = converter_session
+
+    def serialize_all(self):
+        """Serialize all items of the converter_session."""
+        work_items = [self.serialize(uuid) for uuid in self.converter_session]
+        return list(filter(None, work_items))
 
     def serialize(
-        self, obj: diagr.Diagram | common.GenericElement
+        self,
+        uuid: str,
     ) -> data_models.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
+        converter_data = self.converter_session[uuid]
         try:
-            if isinstance(obj, diagr.Diagram):
-                return self._diagram(obj)
-            else:
-                xtype = self.polarion_type_map.get(
-                    obj.uuid, type(obj).__name__
-                )
-                serializer = getattr(
-                    self,
-                    f"_{self.serializer_mapping.get(xtype)}",
-                    self._generic_work_item,
-                )
-                return serializer(obj)
+            serializer: cabc.Callable[
+                [data_session.ConverterData], data_models.CapellaWorkItem
+            ] = getattr(
+                self,
+                f"_{converter_data.type_config.converter}",
+                self._generic_work_item,
+            )
+            converter_data.work_item = serializer(converter_data)
+            return converter_data.work_item
         except Exception as error:
             logger.error("Serializing model element failed. %s", error.args[0])
             return None
 
-    def _diagram(self, diag: diagr.Diagram) -> data_models.CapellaWorkItem:
+    def _diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
+        diag = converter_data.capella_element
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
         style = "; ".join(
@@ -189,7 +176,7 @@ class CapellaWorkItemSerializer:
             f'<html><p><img style="{style}" src="{src}" /></p></html>'
         )
         return data_models.CapellaWorkItem(
-            type="diagram",
+            type=converter_data.type_config.p_type,
             title=diag.name,
             description_type="text/html",
             description=description,
@@ -198,15 +185,15 @@ class CapellaWorkItemSerializer:
         )
 
     def _generic_work_item(
-        self, obj: common.GenericElement
+        self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
-        xtype = self.polarion_type_map.get(obj.uuid, type(obj).__name__)
+        obj = converter_data.capella_element
         raw_description = getattr(obj, "description", markupsafe.Markup(""))
         uuids, value = self._sanitize_description(obj, raw_description)
-        self.descr_references[obj.uuid] = uuids
+        converter_data.description_references = uuids
         requirement_types = _get_requirement_types_text(obj)
         return data_models.CapellaWorkItem(
-            type=resolve_element_type(xtype),
+            type=converter_data.type_config.p_type,
             title=obj.name,
             description_type="text/html",
             description=value,
@@ -276,9 +263,12 @@ class CapellaWorkItemSerializer:
         return match.group(default_group)
 
     def _include_pre_and_post_condition(
-        self, obj: PrePostConditionElement
+        self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Return generic attributes and pre- and post-condition."""
+        obj = converter_data.capella_element
+        assert hasattr(obj, "precondition"), "Missing PreCondition Attribute"
+        assert hasattr(obj, "postcondition"), "Missing PostCondition Attribute"
 
         def get_condition(cap: PrePostConditionElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
@@ -288,7 +278,7 @@ class CapellaWorkItemSerializer:
         def matcher(match: re.Match) -> str:
             return strike_through(self._replace_markup(match, []))
 
-        work_item = self._generic_work_item(obj)
+        work_item = self._generic_work_item(converter_data)
         pre_condition = RE_DESCR_DELETED_PATTERN.sub(
             matcher, get_condition(obj, "precondition")
         )
@@ -302,44 +292,21 @@ class CapellaWorkItemSerializer:
         return work_item
 
     def _get_linked_text(
-        self, obj: capellacore.Constraint
+        self, converter_data: data_session.ConverterData
     ) -> markupsafe.Markup:
         """Return sanitized markup of the given ``obj`` linked text."""
+        obj = converter_data.capella_element
         description = obj.specification["capella:linkedText"].striptags()
         uuids, value = self._sanitize_description(obj, description)
         if uuids:
-            self.descr_references[obj.uuid] = uuids
+            converter_data.description_references = uuids
         return value
 
     def _linked_text_as_description(
-        self, obj: capellacore.Constraint
+        self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
-        work_item = self._generic_work_item(obj)
+        work_item = self._generic_work_item(converter_data)
         # pylint: disable-next=attribute-defined-outside-init
-        work_item.description = self._get_linked_text(obj)
-        return work_item
-
-    def _include_actor_in_type(
-        self, obj: cs.Component
-    ) -> data_models.CapellaWorkItem:
-        """Return attributes for a ``Component``."""
-        work_item = self._generic_work_item(obj)
-        if obj.is_actor:
-            xtype = RE_CAMEL_CASE_2ND_WORD_PATTERN.sub(
-                r"\1Actor", type(obj).__name__
-            )
-            # pylint: disable-next=attribute-defined-outside-init
-            work_item.type = resolve_element_type(xtype)
-        return work_item
-
-    def _include_nature_in_type(
-        self, obj: pa.PhysicalComponent
-    ) -> data_models.CapellaWorkItem:
-        """Return attributes for a ``PhysicalComponent``."""
-        work_item = self._include_actor_in_type(obj)
-        xtype = work_item.type
-        nature = [obj.nature.name, ""][obj.nature == "UNSET"]
-        # pylint: disable-next=attribute-defined-outside-init
-        work_item.type = f"{xtype}{nature.capitalize()}"
+        work_item.description = self._get_linked_text(converter_data)
         return work_item

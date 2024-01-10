@@ -11,10 +11,8 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
-from capella2polarion import data_models
 from capella2polarion import worker as pw
 from capella2polarion.cli import Capella2PolarionCli
-from capella2polarion.converters import element_converter
 
 logger = logging.getLogger(__name__)
 
@@ -104,42 +102,29 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.polarion_params.project_id,
     )
     capella_to_polarion_cli.load_synchronize_config()
-    capella_to_polarion_cli.load_roles_from_synchronize_config()
     capella_to_polarion_cli.load_capella_diagramm_cache_index()
-    polarion_worker = pw.PolarionWorker(
-        capella_to_polarion_cli.polarion_params,
-        capella_to_polarion_cli.capella_model,
-        element_converter.resolve_element_type,
-    )
+
     assert (
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
-    polarion_worker.load_elements_and_type_map(
-        capella_to_polarion_cli.synchronize_config_content,
-        capella_to_polarion_cli.capella_diagram_cache_index_content,
-    )
 
-    polarion_worker.fill_xtypes()
+    assert capella_to_polarion_cli.config is not None
+
+    polarion_worker = pw.CapellaPolarionWorker(
+        capella_to_polarion_cli.polarion_params,
+        capella_to_polarion_cli.capella_model,
+        capella_to_polarion_cli.config,
+        capella_to_polarion_cli.capella_diagram_cache_index_content,
+        capella_to_polarion_cli.capella_diagram_cache_folder_path,
+    )
+    polarion_worker.generate_converter_session()
+
     polarion_worker.load_polarion_work_item_map()
-    description_references: typing.Any = {}
-    new_work_items: dict[str, data_models.CapellaWorkItem]
-    new_work_items = polarion_worker.create_work_items(
-        capella_to_polarion_cli.capella_diagram_cache_folder_path,
-        capella_to_polarion_cli.capella_model,
-        description_references,
-    )
+    polarion_worker.create_work_items()
     polarion_worker.delete_work_items()
-    polarion_worker.post_work_items(new_work_items)
-    new_work_items = polarion_worker.create_work_items(
-        capella_to_polarion_cli.capella_diagram_cache_folder_path,
-        capella_to_polarion_cli.capella_model,
-        description_references,
-    )
-    polarion_worker.patch_work_items(
-        new_work_items,
-        description_references,
-        capella_to_polarion_cli.synchronize_config_roles,
-    )
+    polarion_worker.post_work_items()
+    polarion_worker.create_work_items()
+    polarion_worker.patch_work_items()
 
 
 if __name__ == "__main__":

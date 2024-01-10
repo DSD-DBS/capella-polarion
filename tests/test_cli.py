@@ -10,7 +10,7 @@ import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion.worker import PolarionWorker
+from capella2polarion.worker import CapellaPolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from tests.conftest import (  # type: ignore[import]
@@ -25,19 +25,21 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     mock_get_polarion_wi_map = mock.MagicMock()
     monkeypatch.setattr(
-        PolarionWorker, "load_polarion_work_item_map", mock_get_polarion_wi_map
+        CapellaPolarionWorker,
+        "load_polarion_work_item_map",
+        mock_get_polarion_wi_map,
     )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        PolarionWorker, "delete_work_items", mock_delete_work_items
+        CapellaPolarionWorker, "delete_work_items", mock_delete_work_items
     )
     mock_post_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        PolarionWorker, "post_work_items", mock_post_work_items
+        CapellaPolarionWorker, "post_work_items", mock_post_work_items
     )
     mock_patch_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        PolarionWorker, "patch_work_items", mock_patch_work_items
+        CapellaPolarionWorker, "patch_work_items", mock_patch_work_items
     )
 
     command: list[str] = [
