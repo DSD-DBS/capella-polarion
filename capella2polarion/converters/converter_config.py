@@ -147,7 +147,7 @@ class ConverterConfig:
 
 
 def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
-    """Checks wether the given ``config`` matches the given ``kwargs``."""
+    """Check whether the given ``config`` matches the given ``kwargs``."""
     if config is None:
         return False
 
