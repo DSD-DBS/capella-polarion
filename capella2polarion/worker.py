@@ -6,8 +6,7 @@ from __future__ import annotations
 import collections.abc as cabc
 import logging
 import pathlib
-import typing
-from typing import Optional
+import typing as t
 from urllib import parse
 
 import capellambse
@@ -45,7 +44,7 @@ class CapellaPolarionWorker:
         params: PolarionWorkerParams,
         model: capellambse.MelodyModel,
         config: converter_config.ConverterConfig,
-        diagram_idx: list[dict[str, typing.Any]],
+        diagram_idx: list[dict[str, t.Any]],
         diagram_cache_path: pathlib.Path,
     ) -> None:
         self.polarion_params = params
@@ -100,7 +99,7 @@ class CapellaPolarionWorker:
         self,
     ) -> None:
         """Return an elements and UUID to Polarion type map."""
-        missing_types = set[tuple[str, str, Optional[bool], Optional[str]]]()
+        missing_types: set[tuple[str, str, dict[str, t.Any]]] = set()
         for layer, c_type in self.config.layers_and_types():
             below = getattr(self.model, layer)
             if c_type == "Diagram":
@@ -108,16 +107,18 @@ class CapellaPolarionWorker:
 
             objects = self.model.search(c_type, below=below)
             for obj in objects:
-                actor = None if not hasattr(obj, "is_actor") else obj.is_actor
-                nature = None if not hasattr(obj, "nature") else obj.nature
+                attributes = {
+                    "actor": getattr(obj, "is_actor", None),
+                    "nature": getattr(obj, "nature", None),
+                }
                 if config := self.config.get_type_config(
-                    layer, c_type, actor, nature
+                    layer, c_type, **attributes
                 ):
                     self.converter_session[
                         obj.uuid
                     ] = data_session.ConverterData(layer, config, obj)
                 else:
-                    missing_types.add((layer, c_type, actor, nature))
+                    missing_types.add((layer, c_type, attributes))
 
         if self.config.diagram_config:
             diagrams_from_cache = {
@@ -133,9 +134,12 @@ class CapellaPolarionWorker:
 
         if missing_types:
             for missing_type in missing_types:
+                layer, c_type, attributes = missing_type
                 logger.warning(
-                    "Capella type %r is configured in layer %r, but not for actor %r and nature %r.",
-                    *missing_type,
+                    "Capella type %r is configured in layer %r, but not for %s.",
+                    layer,
+                    c_type,
+                    ", ".join(f"{k!r}={v!r}" for k, v in attributes.items()),
                 )
 
     def load_polarion_work_item_map(self):

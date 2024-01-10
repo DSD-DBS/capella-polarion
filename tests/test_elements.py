@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import typing
+import typing as t
 from unittest import mock
 
 import capellambse
@@ -56,7 +56,7 @@ TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_DIAG_DESCR = (
     '<html><p><img style="max-width: 100%" src="data:image/svg+xml;base64,'
 )
-TEST_SER_DIAGRAM: dict[str, typing.Any] = {
+TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": "Diag-1",
     "title": "[CC] Capability",
     "description_type": "text/html",
@@ -142,7 +142,7 @@ class TestDiagramElements:
     @staticmethod
     @pytest.fixture
     def base_object(
-        diagram_cache_index: list[dict[str, typing.Any]],
+        diagram_cache_index: list[dict[str, t.Any]],
         model: capellambse.MelodyModel,
         monkeypatch: pytest.MonkeyPatch,
     ) -> BaseObjectContainer:
@@ -234,7 +234,7 @@ class FakeModelObject:
         self,
         uuid: str,
         name: str = "",
-        attribute: typing.Any | None = None,
+        attribute: t.Any | None = None,
     ):
         self.uuid = uuid
         self.name = name
@@ -369,7 +369,7 @@ class TestModelElements:
         model: capellambse.MelodyModel,
         uuid: str,
         _type: str,
-        attrs: dict[str, typing.Any],
+        attrs: dict[str, t.Any],
     ):
         base_object.pw.converter_session = {
             uuid: data_session.ConverterData(
@@ -1118,17 +1118,20 @@ class TestSerializers:
         model: capellambse.MelodyModel,
         layer: str,
         uuid: str,
-        expected: dict[str, typing.Any],
+        expected: dict[str, t.Any],
     ):
         obj = model.by_uuid(uuid)
-        with open(conftest.TEST_MODEL_ELEMENTS_CONFIG, "r") as f:
+        with open(
+            conftest.TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8"
+        ) as f:
             config = converter_config.ConverterConfig(f)
 
         c_type = type(obj).__name__
-        actor = None if not hasattr(obj, "is_actor") else obj.is_actor
-        nature = None if not hasattr(obj, "nature") else obj.nature
-
-        type_config = config.get_type_config(layer, c_type, actor, nature)
+        attributes = {
+            "actor": getattr(obj, "is_actor", None),
+            "nature": getattr(obj, "nature", None),
+        }
+        type_config = config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
 
         serializer = element_converter.CapellaWorkItemSerializer(

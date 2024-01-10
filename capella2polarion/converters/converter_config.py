@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import dataclasses
-import typing
+import typing as t
 from collections import abc as cabc
 
 import yaml
+
+_C2P_DEFAULT = "_C2P_DEFAULT"
 
 
 @dataclasses.dataclass
@@ -28,7 +30,7 @@ def _default_type_conversion(c_type: str) -> str:
 class ConverterConfig:
     """The overall Config for capella2polarion."""
 
-    def __init__(self, synchronize_config: typing.TextIO):
+    def __init__(self, synchronize_config: t.TextIO):
         config_dict = yaml.safe_load(synchronize_config)
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
@@ -61,8 +63,8 @@ class ConverterConfig:
             # having actor set to None
             return sorted(
                 conf,
-                key=lambda c: int(c.get("actor") is not None)
-                + 2 * int(c.get("nature") is not None),
+                key=lambda c: int(c.get("actor", _C2P_DEFAULT) != _C2P_DEFAULT)
+                + 2 * int(c.get("nature", _C2P_DEFAULT) != _C2P_DEFAULT),
             )
 
         for c_type, type_config in global_config_dict.items():
@@ -75,8 +77,8 @@ class ConverterConfig:
                 p_type,
                 type_config.get("serializer"),
                 type_config.get("links", []) + global_links,
-                type_config.get("actor"),
-                type_config.get("nature"),
+                type_config.get("actor", _C2P_DEFAULT),
+                type_config.get("nature", _C2P_DEFAULT),
             )
 
         for layer, type_configs in config_dict.items():
@@ -90,8 +92,8 @@ class ConverterConfig:
                         self.get_type_config(
                             layer,
                             c_type,
-                            type_config.get("actor"),
-                            type_config.get("nature"),
+                            actor=type_config.get("actor", _C2P_DEFAULT),
+                            nature=type_config.get("nature", _C2P_DEFAULT),
                         )
                         or self.__global_config
                     )
@@ -108,83 +110,52 @@ class ConverterConfig:
                             or closest_config.converter,
                             type_config.get("links", [])
                             + closest_config.links,
-                            type_config.get("actor"),
-                            type_config.get("nature"),
+                            type_config.get("actor", _C2P_DEFAULT),
+                            type_config.get("nature", _C2P_DEFAULT),
                         )
                     )
 
     def get_type_config(
-        self,
-        layer: str,
-        c_type: str,
-        actor: bool | None = None,
-        nature: str | None = None,
+        self, layer: str, c_type: str, **attributes: t.Any
     ) -> CapellaTypeConfig | None:
         """Get the type config for a given layer and capella_type."""
         if layer not in self._layer_configs:
             return None
-        layer_configs = self._layer_configs.get(layer, {}).get(c_type)
-        global_config = self._global_configs.get(c_type)
-        if layer_configs:
-            if config := next(
-                filter(
-                    lambda c: c is not None
-                    and c.actor == actor
-                    and c.nature == nature,
-                    layer_configs,
-                ),
-                None,
-            ):
-                return config
 
-            if config := next(
-                filter(
-                    lambda c: c is not None
-                    and c.actor == actor
-                    and c.nature is None,
-                    layer_configs,
-                ),
-                None,
-            ):
+        layer_configs = self._layer_configs.get(layer, {}).get(c_type, [])
+        for config in layer_configs[::-1]:
+            if config_matches(config, **attributes):
                 return config
-
-            if config := next(
-                filter(
-                    lambda c: c is not None
-                    and c.actor is None
-                    and c.nature == nature,
-                    layer_configs,
-                ),
-                None,
-            ):
-                return config
-
-            if config := next(
-                filter(
-                    lambda c: c is not None
-                    and c.actor is None
-                    and c.nature is None,
-                    layer_configs,
-                ),
-                None,
-            ):
-                return config
-
-        return global_config
+        return self._global_configs.get(c_type)
 
     def __contains__(
         self,
-        item: tuple[str, str, typing.Optional[bool], typing.Optional[str]],
+        item: tuple[str, str, dict[str, t.Any]],
     ):
         """Check if there is a config for a given layer and Capella type."""
-        layer, c_type, actor, nature = item
-        return self.get_type_config(layer, c_type, actor, nature) is not None
+        layer, c_type, attributes = item
+        return self.get_type_config(layer, c_type, **attributes) is not None
 
     def layers_and_types(self) -> cabc.Iterator[tuple[str, str]]:
-        """Iterate all layers and types of the config."""
+        """Yield the layer and Capella type of the config."""
         for layer, layer_types in self._layer_configs.items():
             for c_type in layer_types:
                 yield layer, c_type
             for c_type in self._global_configs:
                 if c_type not in layer_types:
                     yield layer, c_type
+
+
+def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
+    """Checks wether the given ``config`` matches the given ``kwargs``."""
+    if config is None:
+        return False
+
+    default_attr = _C2P_DEFAULT
+    for attr_name, attr in kwargs.items():
+        if getattr(config, attr_name, default_attr) not in {
+            attr,
+            default_attr,
+        }:
+            return False
+    return True

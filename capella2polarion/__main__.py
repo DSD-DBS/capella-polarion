@@ -96,9 +96,7 @@ def synchronize(ctx: click.core.Context) -> None:
     logger.info(
         "Synchronising diagrams from diagram cache at "
         "%s to Polarion project with id %s...",
-        str(
-            capella_to_polarion_cli.get_capella_diagram_cache_index_file_path()
-        ),
+        str(capella_to_polarion_cli.capella_diagram_cache_folder_path),
         capella_to_polarion_cli.polarion_params.project_id,
     )
     capella_to_polarion_cli.load_synchronize_config()
@@ -107,7 +105,6 @@ def synchronize(ctx: click.core.Context) -> None:
     assert (
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
-
     assert capella_to_polarion_cli.config is not None
 
     polarion_worker = pw.CapellaPolarionWorker(
@@ -123,6 +120,8 @@ def synchronize(ctx: click.core.Context) -> None:
     polarion_worker.create_work_items()
     polarion_worker.delete_work_items()
     polarion_worker.post_work_items()
+
+    # Create missing links for new work items
     polarion_worker.create_work_items()
     polarion_worker.patch_work_items()
 

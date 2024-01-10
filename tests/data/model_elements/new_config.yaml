@@ -30,7 +30,7 @@ oa: # Specify below
 pa:
   PhysicalComponent:
     - actor: false
-      nature: null
+      nature: UNSET
       polarion_type: physicalComponent
     - actor: false
       nature: NODE

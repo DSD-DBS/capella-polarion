@@ -27,7 +27,7 @@ class Capella2PolarionCli:
         polarion_url: str,
         polarion_pat: str,
         polarion_delete_work_items: bool,
-        capella_diagram_cache_folder_path: pathlib.Path,
+        capella_diagram_cache_folder_path: pathlib.Path | None,
         capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
     ) -> None:
@@ -38,8 +38,14 @@ class Capella2PolarionCli:
             polarion_pat,
             polarion_delete_work_items,
         )
+        if capella_diagram_cache_folder_path is None:
+            raise ValueError("CapellaDiagramCacheFolderPath not filled")
+
         self.capella_diagram_cache_folder_path = (
             capella_diagram_cache_folder_path
+        )
+        self.capella_diagram_cache_index_file_path = (
+            self.capella_diagram_cache_folder_path / "index.json"
         )
         self.capella_diagram_cache_index_content: list[
             dict[str, typing.Any]
@@ -91,14 +97,13 @@ class Capella2PolarionCli:
                     string_value = _type(member_value)
                 string_value = self._none_save_value_string(string_value)
                 self.echo(f"{lighted_member_var}: '{string_value}'")
-        self.echo(
-            f"""Capella Diagram Cache Index-File exits: {('YES'
-            if self.exits_capella_diagram_cache_index_file() else 'NO')}"""
-        )
-        self.echo(
-            f"""Synchronize Config-IO is open: {('YES'
-            if not self.synchronize_config_io.closed else 'NO')}"""
-        )
+
+        echo = ("NO", "YES")[
+            self.capella_diagram_cache_index_file_path.is_file()
+        ]
+        self.echo(f"""Capella Diagram Cache Index-File exists: {echo}""")
+        echo = ("YES", "NO")[self.synchronize_config_io.closed]
+        self.echo(f"""Synchronize Config-IO is open: {echo}""")
 
     def setup_logger(self) -> None:
         """Set the logger in the right mood."""
@@ -130,31 +135,14 @@ class Capella2PolarionCli:
             self.synchronize_config_io
         )
 
-    def get_capella_diagram_cache_index_file_path(self) -> pathlib.Path:
-        """Return index file path."""
-        if self.capella_diagram_cache_folder_path is None:
-            raise ValueError("CapellaDiagramCacheFolderPath not filled")
-        return self.capella_diagram_cache_folder_path / "index.json"
-
-    def exits_capella_diagram_cache_index_file(self) -> bool:
-        """Test existens of file."""
-        return (
-            False
-            if self.get_capella_diagram_cache_index_file_path() is None
-            else self.get_capella_diagram_cache_index_file_path().is_file()
-        )
-
     def load_capella_diagramm_cache_index(self) -> None:
-        """Load to CapellaDiagramCacheIndexContent."""
-        if not self.exits_capella_diagram_cache_index_file():
-            raise ValueError("capella diagramm cache index file doe not exits")
-        self.capella_diagram_cache_index_content = []
-        if self.get_capella_diagram_cache_index_file_path() is not None:
-            l_text_content = (
-                self.get_capella_diagram_cache_index_file_path().read_text(
-                    encoding="utf8"
-                )
+        """Load Capella Diagram Cache index file content."""
+        if not self.capella_diagram_cache_index_file_path.is_file():
+            raise ValueError(
+                "capella diagramm cache index.json file does not exist"
             )
-            self.capella_diagram_cache_index_content = json.loads(
-                l_text_content
-            )
+
+        l_text_content = self.capella_diagram_cache_index_file_path.read_text(
+            encoding="utf8"
+        )
+        self.capella_diagram_cache_index_content = json.loads(l_text_content)
