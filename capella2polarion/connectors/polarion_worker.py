@@ -5,21 +5,13 @@ from __future__ import annotations
 
 import collections.abc as cabc
 import logging
-import pathlib
-import typing as t
 from urllib import parse
 
-import capellambse
 import polarion_rest_api_client as polarion_api
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import (
-    converter_config,
-    data_session,
-    element_converter,
-    link_converter,
-)
+from capella2polarion.converters import converter_config, data_session
 
 logger = logging.getLogger(__name__)
 
@@ -42,18 +34,11 @@ class CapellaPolarionWorker:
     def __init__(
         self,
         params: PolarionWorkerParams,
-        model: capellambse.MelodyModel,
         config: converter_config.ConverterConfig,
-        diagram_idx: list[dict[str, t.Any]],
-        diagram_cache_path: pathlib.Path,
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
-        self.converter_session: data_session.ConverterSession = {}
-        self.model = model
         self.config = config
-        self.diagram_idx = diagram_idx
-        self.diagram_cache_path = diagram_cache_path
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -92,53 +77,6 @@ class CapellaPolarionWorker:
                 f"{self.polarion_params.project_id}"
             )
 
-    def generate_converter_session(
-        self,
-    ) -> None:
-        """Return an elements and UUID to Polarion type map."""
-        missing_types: set[tuple[str, str, dict[str, t.Any]]] = set()
-        for layer, c_type in self.config.layers_and_types():
-            below = getattr(self.model, layer)
-            if c_type == "Diagram":
-                continue
-
-            objects = self.model.search(c_type, below=below)
-            for obj in objects:
-                attributes = {
-                    "actor": getattr(obj, "is_actor", None),
-                    "nature": getattr(obj, "nature", None),
-                }
-                if config := self.config.get_type_config(
-                    layer, c_type, **attributes
-                ):
-                    self.converter_session[
-                        obj.uuid
-                    ] = data_session.ConverterData(layer, config, obj)
-                else:
-                    missing_types.add((layer, c_type, attributes))
-
-        if self.config.diagram_config:
-            diagrams_from_cache = {
-                d["uuid"] for d in self.diagram_idx if d["success"]
-            }
-            for d in self.model.diagrams:
-                if d.uuid in diagrams_from_cache:
-                    self.converter_session[
-                        d.uuid
-                    ] = data_session.ConverterData(
-                        "", self.config.diagram_config, d
-                    )
-
-        if missing_types:
-            for missing_type in missing_types:
-                layer, c_type, attributes = missing_type
-                logger.warning(
-                    "Capella type %r is configured in layer %r, but not for %s.",
-                    layer,
-                    c_type,
-                    ", ".join(f"{k!r}={v!r}" for k, v in attributes.items()),
-                )
-
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
         _type = " ".join(self.config.polarion_types)
@@ -150,29 +88,9 @@ class CapellaPolarionWorker:
 
         self.polarion_data_repo.update_work_items(work_items)
 
-    def create_work_items(
-        self,
-    ) -> dict[str, data_models.CapellaWorkItem]:
-        """Create a list of work items for Polarion."""
-        serializer = element_converter.CapellaWorkItemSerializer(
-            self.diagram_cache_path,
-            self.model,
-            self.polarion_data_repo,
-            self.converter_session,
-        )
-        work_items = serializer.serialize_all()
-        for work_item in work_items:
-            assert work_item is not None
-            assert work_item.title is not None
-            assert work_item.type is not None
-            if old := self.polarion_data_repo.get_work_item_by_capella_uuid(
-                work_item.uuid_capella
-            ):
-                work_item.id = old.id
-
-        return {wi.uuid_capella: wi for wi in work_items}
-
-    def delete_work_items(self) -> None:
+    def delete_work_items(
+        self, converter_session: data_session.ConverterSession
+    ) -> None:
         """Delete work items in a Polarion project.
 
         If the delete flag is set to ``False`` in the context work items are
@@ -189,7 +107,7 @@ class CapellaPolarionWorker:
             for uuid, _, work_item in self.polarion_data_repo.items()
             if work_item.status != "deleted"
         }
-        uuids: set[str] = existing_work_items - set(self.converter_session)
+        uuids: set[str] = existing_work_items - set(converter_session)
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
@@ -201,11 +119,11 @@ class CapellaPolarionWorker:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
     def post_work_items(
-        self,
+        self, converter_session: data_session.ConverterSession
     ) -> None:
         """Post work items in a Polarion project."""
         missing_work_items: list[data_models.CapellaWorkItem] = []
-        for uuid, converter_data in self.converter_session.items():
+        for uuid, converter_data in converter_session.items():
             work_item = converter_data.work_item
             if work_item is None:
                 logger.warning(
@@ -228,23 +146,16 @@ class CapellaPolarionWorker:
                 logger.error("Creating work items failed. %s", error.args[0])
 
     def patch_work_item(
-        self,
-        new: data_models.CapellaWorkItem,
-        old: data_models.CapellaWorkItem,
+        self, uuid: str, converter_session: data_session.ConverterSession
     ):
-        """Patch a given WorkItem.
-
-        Parameters
-        ----------
-        api
-            The context to execute the patch for.
-        new
-            The updated CapellaWorkItem
-        old
-            The CapellaWorkItem currently present on polarion
-        """
+        """Patch a given WorkItem."""
+        new = converter_session[uuid].work_item
+        _, old = self.polarion_data_repo[uuid]
         if new == old:
             return
+
+        assert old is not None
+        assert new is not None
 
         log_args = (old.id, new.type, new.title)
         logger.info("Update work item %r for model %s %r...", *log_args)
@@ -319,48 +230,8 @@ class CapellaPolarionWorker:
         )
 
     def patch_work_items(
-        self,
+        self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
-
-        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
-        link_serializer = link_converter.LinkSerializer(
-            self.polarion_data_repo,
-            self.converter_session,
-            self.polarion_params.project_id,
-            self.model,
-        )
-
-        for uuid, converter_data in self.converter_session.items():
-            if converter_data.work_item is None:
-                logger.warning(
-                    "Expected to find a WorkItem for %s, but there is none",
-                    uuid,
-                )
-                continue
-
-            links = link_serializer.create_links_for_work_item(uuid)
-            converter_data.work_item.linked_work_items = links
-
-            link_converter.create_grouped_link_fields(
-                converter_data.work_item, back_links
-            )
-
-        for uuid, converter_data in self.converter_session.items():
-            if converter_data.work_item is None:
-                logger.warning(
-                    "Expected to find a WorkItem for %s, but there is none",
-                    uuid,
-                )
-                continue
-
-            _, old_work_item = self.polarion_data_repo[uuid]
-            if old_work_item.id in back_links:
-                link_converter.create_grouped_back_link_fields(
-                    converter_data.work_item, back_links[old_work_item.id]
-                )
-
-            self.patch_work_item(
-                converter_data.work_item,
-                old_work_item,
-            )
+        for uuid in converter_session:
+            self.patch_work_item(uuid, converter_session)

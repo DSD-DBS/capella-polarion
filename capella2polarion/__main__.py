@@ -11,8 +11,9 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
-from capella2polarion import worker as pw
 from capella2polarion.cli import Capella2PolarionCli
+from capella2polarion.connectors import polarion_worker as pw
+from capella2polarion.converters import model_converter
 
 logger = logging.getLogger(__name__)
 
@@ -106,23 +107,32 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
 
-    polarion_worker = pw.CapellaPolarionWorker(
-        capella_to_polarion_cli.polarion_params,
+    mc = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
+        capella_to_polarion_cli.capella_diagram_cache_folder_path,
+        capella_to_polarion_cli.polarion_params.project_id,
+    )
+
+    mc.read_model(
         capella_to_polarion_cli.config,
         capella_to_polarion_cli.capella_diagram_cache_index_content,
-        capella_to_polarion_cli.capella_diagram_cache_folder_path,
     )
-    polarion_worker.generate_converter_session()
+
+    polarion_worker = pw.CapellaPolarionWorker(
+        capella_to_polarion_cli.polarion_params, capella_to_polarion_cli.config
+    )
 
     polarion_worker.load_polarion_work_item_map()
-    polarion_worker.create_work_items()
-    polarion_worker.delete_work_items()
-    polarion_worker.post_work_items()
+
+    mc.generate_work_items(polarion_worker.polarion_data_repo)
+
+    polarion_worker.delete_work_items(mc.converter_session)
+    polarion_worker.post_work_items(mc.converter_session)
 
     # Create missing links for new work items
-    polarion_worker.create_work_items()
-    polarion_worker.patch_work_items()
+    mc.generate_work_items(polarion_worker.polarion_data_repo, True)
+
+    polarion_worker.patch_work_items(mc.converter_session)
 
 
 if __name__ == "__main__":

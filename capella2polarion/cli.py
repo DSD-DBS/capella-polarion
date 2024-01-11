@@ -11,7 +11,7 @@ import typing
 import capellambse
 import click
 
-from capella2polarion import worker as pw
+from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.converters import converter_config
 
 logger = logging.getLogger(__name__)
