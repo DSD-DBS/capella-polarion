@@ -19,7 +19,7 @@ class CapellaTypeConfig:
     p_type: str | None = None
     converter: str | None = None
     links: list[str] = dataclasses.field(default_factory=list)
-    actor: bool | None = None
+    is_actor: bool | None = None
     nature: str | None = None
 
 
@@ -44,7 +44,7 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.set_global_links(global_links)
+        self.__global_config.links = global_links
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
@@ -78,7 +78,7 @@ class ConverterConfig:
                 self.get_type_config(
                     layer,
                     c_type,
-                    actor=type_config.get("actor", _C2P_DEFAULT),
+                    actor=type_config.get("is_actor", _C2P_DEFAULT),
                     nature=type_config.get("nature", _C2P_DEFAULT),
                 )
                 or self.__global_config
@@ -94,7 +94,7 @@ class ConverterConfig:
                     p_type,
                     type_config.get("serializer") or closest_config.converter,
                     type_config.get("links", []) + closest_config.links,
-                    type_config.get("actor", _C2P_DEFAULT),
+                    type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
                 )
             )
@@ -109,7 +109,7 @@ class ConverterConfig:
             p_type,
             type_config.get("serializer"),
             type_config.get("links", []) + self.__global_config.links,
-            type_config.get("actor", _C2P_DEFAULT),
+            type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
 
@@ -122,14 +122,6 @@ class ConverterConfig:
             diagram_config.get("serializer") or "diagram",
             diagram_config.get("links", []) + self.__global_config.links,
         )
-
-    def set_global_links(self, links: list[str]):
-        """Set links of the global config object.
-
-        Must be set before adding additional configs to enable
-        inheritance!
-        """
-        self.__global_config.links = links
 
     def get_type_config(
         self, layer: str, c_type: str, **attributes: t.Any
@@ -186,9 +178,9 @@ def _read_capella_type_configs(
         return [conf]
 
     # We want to have the most generic config first followed by those
-    # having actor set to None
+    # having is_actor set to None
     return sorted(
         conf,
-        key=lambda c: int(c.get("actor", _C2P_DEFAULT) != _C2P_DEFAULT)
+        key=lambda c: int(c.get("is_actor", _C2P_DEFAULT) != _C2P_DEFAULT)
         + 2 * int(c.get("nature", _C2P_DEFAULT) != _C2P_DEFAULT),
     )

@@ -21,7 +21,7 @@
   Entity:
   StateMachine:
 
-oa:
+oa: # Specify below
   FunctionalExchange:
     polarion_type: operationalInteraction
     links:

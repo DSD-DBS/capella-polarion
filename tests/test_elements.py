@@ -17,19 +17,20 @@ from capellambse.model import common
 from capella2polarion import data_models
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_repo
+from capella2polarion.connectors.polarion_worker import CapellaPolarionWorker
 from capella2polarion.converters import (
     converter_config,
     data_session,
     element_converter,
     link_converter,
+    model_converter,
 )
-from capella2polarion.worker import CapellaPolarionWorker
-from tests import conftest
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
-from tests.conftest import (  # type: ignore[import]
+from .conftest import (  # type: ignore[import]
     TEST_DIAGRAM_CACHE,
     TEST_HOST,
+    TEST_MODEL_ELEMENTS_CONFIG,
 )
 
 # pylint: disable=redefined-outer-name
@@ -133,9 +134,11 @@ class BaseObjectContainer:
         self,
         cli: Capella2PolarionCli,
         pw: CapellaPolarionWorker,
+        mc: model_converter.ModelConverter,
     ) -> None:
         self.c2pcli: Capella2PolarionCli = cli
         self.pw: CapellaPolarionWorker = pw
+        self.mc = mc
 
 
 class TestDiagramElements:
@@ -174,28 +177,33 @@ class TestDiagramElements:
             polarion_api, "OpenAPIPolarionProjectClient", mock_api
         )
         c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
-        pw = CapellaPolarionWorker(
-            c2p_cli.polarion_params,
+
+        mc = model_converter.ModelConverter(
             model,
-            c2p_cli.config,
-            c2p_cli.capella_diagram_cache_index_content,
             c2p_cli.capella_diagram_cache_folder_path,
+            c2p_cli.polarion_params.project_id,
         )
-        pw.converter_session = {
+
+        mc.converter_session = {
             TEST_DIAG_UUID: data_session.ConverterData(
                 "", DIAGRAM_CONFIG, model.diagrams.by_uuid(TEST_DIAG_UUID)
             )
         }
+
+        pw = CapellaPolarionWorker(c2p_cli.polarion_params, c2p_cli.config)
+
         pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
             [work_item]
         )
-        return BaseObjectContainer(c2p_cli, pw)
+        return BaseObjectContainer(c2p_cli, pw, mc)
 
     @staticmethod
     def test_create_diagrams(base_object: BaseObjectContainer):
         pw = base_object.pw
         new_work_items: dict[str, data_models.CapellaWorkItem]
-        new_work_items = pw.create_work_items()
+        new_work_items = base_object.mc.generate_work_items(
+            pw.polarion_data_repo
+        )
         assert len(new_work_items) == 1
         work_item = new_work_items[TEST_DIAG_UUID]
         assert isinstance(work_item, data_models.CapellaWorkItem)
@@ -211,20 +219,20 @@ class TestDiagramElements:
     ):
         # This test does not make any sense, but it also didn't before
         pw = base_object.pw
-        pw.create_work_items()
-        assert pw.client.create_work_items.call_count == 0
+        base_object.mc.generate_work_items(pw.polarion_data_repo)
+        assert pw.client.generate_work_items.call_count == 0
 
     @staticmethod
     def test_delete_diagrams(base_object: BaseObjectContainer):
         pw = base_object.pw
-        pw.converter_session = {}
-        pw.create_work_items()
-        pw.post_work_items()
-        pw.delete_work_items()
+        base_object.mc.converter_session = {}
+        base_object.mc.generate_work_items(pw.polarion_data_repo)
+        pw.post_work_items(base_object.mc.converter_session)
+        pw.delete_work_items(base_object.mc.converter_session)
         assert pw.client is not None
         assert pw.client.delete_work_items.call_count == 1
         assert pw.client.delete_work_items.call_args[0][0] == ["Diag-1"]
-        assert pw.client.create_work_items.call_count == 0
+        assert pw.client.generate_work_items.call_count == 0
 
 
 class FakeModelObject:
@@ -288,21 +296,19 @@ class TestModelElements:
             polarion_api, "OpenAPIPolarionProjectClient", mock_api
         )
         c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
-        pw = CapellaPolarionWorker(
-            c2p_cli.polarion_params,
-            model,
-            c2p_cli.config,
-            c2p_cli.capella_diagram_cache_index_content,
-            c2p_cli.capella_diagram_cache_folder_path,
-        )
-        pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
-            [work_item]
-        )
+
         fake = FakeModelObject("uuid1", name="Fake 1")
         fake_model_type_config = converter_config.CapellaTypeConfig(
             "fakeModelObject", links=["attribute"]
         )
-        pw.converter_session = {
+
+        mc = model_converter.ModelConverter(
+            model,
+            c2p_cli.capella_diagram_cache_folder_path,
+            c2p_cli.polarion_params.project_id,
+        )
+
+        mc.converter_session = {
             "uuid1": data_session.ConverterData(
                 "oa",
                 fake_model_type_config,
@@ -321,7 +327,12 @@ class TestModelElements:
                 FakeModelObject("uuid2", name="Fake 2", attribute=fake),
             ),
         }
-        return BaseObjectContainer(c2p_cli, pw)
+
+        pw = CapellaPolarionWorker(c2p_cli.polarion_params, c2p_cli.config)
+        pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
+            [work_item]
+        )
+        return BaseObjectContainer(c2p_cli, pw, mc)
 
     @staticmethod
     def test_create_work_items(
@@ -349,7 +360,9 @@ class TestModelElements:
                 description=markupsafe.Markup(""),
             ),
         ]
-        work_items = base_object.pw.create_work_items()
+        work_items = base_object.mc.generate_work_items(
+            base_object.pw.polarion_data_repo
+        )
         assert list(work_items.values()) == [expected, expected1]
 
     @staticmethod
@@ -371,7 +384,7 @@ class TestModelElements:
         _type: str,
         attrs: dict[str, t.Any],
     ):
-        base_object.pw.converter_session = {
+        base_object.mc.converter_session = {
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
@@ -391,7 +404,9 @@ class TestModelElements:
             **attrs,
         )
 
-        work_items = base_object.pw.create_work_items()
+        work_items = base_object.mc.generate_work_items(
+            base_object.pw.polarion_data_repo
+        )
 
         assert len(work_items) == 1
         assert work_items[uuid] == expected
@@ -407,11 +422,11 @@ class TestModelElements:
             status="open",
         )
         base_object.pw.polarion_data_repo.update_work_items([work_item_obj_2])
-        base_object.pw.converter_session["uuid2"].work_item = work_item_obj_2
-        base_object.pw.converter_session["uuid2"].type_config.links = [
+        base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
+        base_object.mc.converter_session["uuid2"].type_config.links = [
             "description_reference"
         ]
-        base_object.pw.converter_session["uuid2"].description_references = [
+        base_object.mc.converter_session["uuid2"].description_references = [
             "uuid1"
         ]
         expected = polarion_api.WorkItemLink(
@@ -422,7 +437,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
-            base_object.pw.converter_session,
+            base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
         )
@@ -461,7 +476,7 @@ class TestModelElements:
         base_object.pw.polarion_data_repo.update_work_items(
             [work_item_obj_1, work_item_obj_2]
         )
-        base_object.pw.converter_session[
+        base_object.mc.converter_session[
             function_uuid
         ] = data_session.ConverterData(
             "fa",
@@ -471,7 +486,7 @@ class TestModelElements:
             funtion_obj,
             work_item_obj_1,
         )
-        base_object.pw.converter_session[uuid] = data_session.ConverterData(
+        base_object.mc.converter_session[uuid] = data_session.ConverterData(
             "fa",
             converter_config.CapellaTypeConfig(
                 "functionalExchange",
@@ -491,7 +506,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
-            base_object.pw.converter_session,
+            base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
         )
@@ -510,7 +525,7 @@ class TestModelElements:
         with caplog.at_level(logging.DEBUG):
             link_serializer = link_converter.LinkSerializer(
                 base_object.pw.polarion_data_repo,
-                base_object.pw.converter_session,
+                base_object.mc.converter_session,
                 base_object.pw.polarion_params.project_id,
                 base_object.c2pcli.capella_model,
             )
@@ -548,11 +563,11 @@ class TestModelElements:
         ]
         base_object.pw.polarion_data_repo.update_work_items(work_items)
         for work_item in work_items:
-            base_object.pw.converter_session[
+            base_object.mc.converter_session[
                 work_item.uuid_capella
             ] = data_session.ConverterData(
                 "",
-                base_object.pw.converter_session["uuid1"].type_config,
+                base_object.mc.converter_session["uuid1"].type_config,
                 fake_objects[work_item.uuid_capella],
                 work_item,
             )
@@ -571,7 +586,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
-            base_object.pw.converter_session,
+            base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
         )
@@ -596,7 +611,7 @@ class TestModelElements:
         )
 
         base_object.pw.polarion_data_repo.update_work_items([work_item_2])
-        base_object.pw.converter_session["uuid2"].work_item = work_item_2
+        base_object.mc.converter_session["uuid2"].work_item = work_item_2
 
         expected = polarion_api.WorkItemLink(
             "Obj-2",
@@ -606,7 +621,7 @@ class TestModelElements:
         )
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
-            base_object.pw.converter_session,
+            base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
         )
@@ -644,7 +659,7 @@ class TestModelElements:
 
         base_object.pw.load_polarion_work_item_map()
 
-        base_object.pw.converter_session[
+        base_object.mc.converter_session[
             "uuid1"
         ].work_item = data_models.CapellaWorkItem(
             id="Obj-1",
@@ -655,9 +670,9 @@ class TestModelElements:
             description=markupsafe.Markup(""),
         )
 
-        del base_object.pw.converter_session["uuid2"]
+        del base_object.mc.converter_session["uuid2"]
 
-        base_object.pw.patch_work_items()
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
         assert base_object.pw.client is not None
         assert base_object.pw.client.get_all_work_item_links.call_count == 1
         assert base_object.pw.client.delete_work_item_links.call_count == 0
@@ -688,7 +703,7 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.pw.converter_session[
+        base_object.mc.converter_session[
             "uuid1"
         ].work_item = data_models.CapellaWorkItem(
             id="Obj-1",
@@ -697,9 +712,9 @@ class TestModelElements:
             type="fakeModelObject",
         )
 
-        del base_object.pw.converter_session["uuid2"]
+        del base_object.mc.converter_session["uuid2"]
 
-        base_object.pw.patch_work_items()
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
 
         assert base_object.pw.client is not None
         assert base_object.pw.client.update_work_item.call_count == 0
@@ -709,8 +724,8 @@ class TestModelElements:
         base_object.pw.polarion_data_repo = (
             polarion_repo.PolarionDataRepository()
         )
-        base_object.pw.converter_session = {}
-        base_object.pw.patch_work_items()
+        base_object.mc.converter_session = {}
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
 
         assert base_object.pw.client.get_all_work_item_links.call_count == 0
 
@@ -731,7 +746,7 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.pw.converter_session[
+        base_object.mc.converter_session[
             "uuid1"
         ].work_item = data_models.CapellaWorkItem(
             id="Obj-1",
@@ -739,7 +754,7 @@ class TestModelElements:
             status="open",
             type="fakeModelObject",
         )
-        base_object.pw.converter_session[
+        base_object.mc.converter_session[
             "uuid2"
         ].work_item = data_models.CapellaWorkItem(
             id="Obj-2",
@@ -756,7 +771,10 @@ class TestModelElements:
         expected_new_link = polarion_api.WorkItemLink(
             "Obj-2", "Obj-1", "attribute", None, "project_id"
         )
-        base_object.pw.patch_work_items()
+        base_object.mc.generate_work_item_links(
+            base_object.pw.polarion_data_repo
+        )
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
         assert base_object.pw.client is not None
         links = base_object.pw.client.get_all_work_item_links.call_args_list
         assert base_object.pw.client.get_all_work_item_links.call_count == 2
@@ -777,7 +795,7 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         dummy_work_items: dict[str, data_models.CapellaWorkItem],
     ):
-        base_object.pw.converter_session = {
+        base_object.mc.converter_session = {
             work_item.uuid_capella: data_session.ConverterData(
                 "",
                 converter_config.CapellaTypeConfig("fakeModelObject"),
@@ -812,7 +830,11 @@ class TestModelElements:
         ].linked_work_items
 
         def mock_back_link(work_item, back_links):
-            back_links[work_item.id] = []
+            back_links[work_item.id] = [
+                polarion_api.WorkItemLink(
+                    "Obj-0", work_item.id, "attribute", True, "project_id"
+                )
+            ]
 
         mock_grouped_links = mock.MagicMock()
         monkeypatch.setattr(
@@ -829,8 +851,11 @@ class TestModelElements:
         mock_model.by_uuid.side_effect = [
             FakeModelObject(f"uuid{i}", name=f"Fake {i}") for i in range(3)
         ]
-        base_object.pw.model = mock_model
-        base_object.pw.patch_work_items()
+        base_object.mc.model = mock_model
+        base_object.mc.generate_work_item_links(
+            base_object.pw.polarion_data_repo
+        )
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
         assert base_object.pw.client is not None
         update_work_item_calls = (
             base_object.pw.client.update_work_item.call_args_list
@@ -1122,14 +1147,12 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
         config = converter_config.ConverterConfig()
-        with open(
-            conftest.TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8"
-        ) as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)
 
         c_type = type(obj).__name__
         attributes = {
-            "actor": getattr(obj, "is_actor", None),
+            "is_actor": getattr(obj, "is_actor", None),
             "nature": getattr(obj, "nature", None),
         }
         type_config = config.get_type_config(layer, c_type, **attributes)

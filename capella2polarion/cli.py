@@ -11,7 +11,7 @@ import typing
 import capellambse
 import click
 
-from capella2polarion import worker as pw
+from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.converters import converter_config
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,6 @@ class Capella2PolarionCli:
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
         self.synchronize_config_content: dict[str, typing.Any] = {}
         self.synchronize_config_roles: dict[str, list[str]] | None = None
-        self.echo = click.echo
         self.config = converter_config.ConverterConfig()
 
     def _none_save_value_string(self, value: str | None) -> str | None:
@@ -69,7 +68,7 @@ class Capella2PolarionCli:
         def _value(value):
             return value
 
-        self.echo("---------------------------------------")
+        click.echo("---------------------------------------")
         lighted_member_vars = [
             attribute
             for attribute in dir(self)
@@ -96,14 +95,14 @@ class Capella2PolarionCli:
                 else:
                     string_value = _type(member_value)
                 string_value = self._none_save_value_string(string_value)
-                self.echo(f"{lighted_member_var}: '{string_value}'")
+                click.echo(f"{lighted_member_var}: '{string_value}'")
 
         echo = ("NO", "YES")[
             self.capella_diagram_cache_index_file_path.is_file()
         ]
-        self.echo(f"""Capella Diagram Cache Index-File exists: {echo}""")
+        click.echo(f"""Capella Diagram Cache Index-File exists: {echo}""")
         echo = ("YES", "NO")[self.synchronize_config_io.closed]
-        self.echo(f"""Synchronize Config-IO is open: {echo}""")
+        click.echo(f"""Synchronize Config-IO is open: {echo}""")
 
     def setup_logger(self) -> None:
         """Set the logger in the right mood."""

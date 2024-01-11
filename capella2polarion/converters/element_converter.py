@@ -157,6 +157,11 @@ class CapellaWorkItemSerializer:
                 self._generic_work_item,
             )
             converter_data.work_item = serializer(converter_data)
+            if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
+                converter_data.work_item.uuid_capella
+            ):
+                converter_data.work_item.id = old.id
+
             return converter_data.work_item
         except Exception as error:
             logger.error("Serializing model element failed. %s", error.args[0])
