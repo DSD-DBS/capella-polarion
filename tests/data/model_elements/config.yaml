@@ -3,7 +3,7 @@
 
 "*": # All layers
   "*": # All class types
-    links:
+    links: # Specify workitem links
       - parent
       - description_reference
   Class:
@@ -19,6 +19,7 @@
   CapabilityRealization:
     serializer: include_pre_and_post_condition
   Entity:
+  StateMachine:
 
 oa: # Specify below
   FunctionalExchange:
@@ -27,8 +28,33 @@ oa: # Specify below
       - exchange_items
   OperationalCapability:
     serializer: include_pre_and_post_condition
+    links:
+      - involved_activities
+      - involved_entities
+  OperationalActivity:
+  CommunicationMean:
+
+sa:
+  SystemComponent:
+    - links:
+        - allocated_functions
+    - is_actor: false
+      polarion_type: systemComponent
+    - is_actor: true
+      polarion_type: systemActor
+  SystemFunction:
+  ComponentExchange:
+    links:
+      - allocated_functional_exchanges
+  FunctionalExchange:
+    links:
+      - exchanged_items
+  ExchangeItem:
+
 pa:
   PhysicalComponent:
+    - links:
+        - allocated_functions
     - is_actor: false
       nature: UNSET
       polarion_type: physicalComponent
@@ -44,6 +70,7 @@ pa:
     - is_actor: true
       nature: BEHAVIOR
       polarion_type: physicalActorBehavior
+
 la:
   LogicalComponent:
     - is_actor: true
