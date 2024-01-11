@@ -44,7 +44,7 @@ configure a generic config and for each specific config you can also add a
 Polarion
 ========
 In general, if an attribute is not configured, it will not be accepted and the
-the Rest API will raise a 404 HTTPError since it expects a plain string
+the Rest API will raise a 400 HTTPError since it expects a plain string
 attribute. As we use rich text instead, you need to configure
 your Polarion project correctly. For that there is the `Polarion DBS Project
 Template`_ which includes icon, custom field and enumeration configuration for

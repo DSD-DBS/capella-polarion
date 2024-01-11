@@ -14,7 +14,7 @@ Migrate any model element from a ``capellambse.MelodyModel`` to Polarion as a
 work item. Diagrams are taken from a diagram cache (pipeline artifact from a
 `capella diagram cache`_) job run to Polarion as work items. The whole folder
 with the ``index.json`` and the SVGs is needed for the diagram synchronization.
-The SVG and a PNG of it are attached to the respective work item.
+The SVG is attached to the respective work item.
 
 With appropriate :ref:`configuration <capella2polarion-config>` on Polarion
 and an according :ref:`config YAML file <polarion-config>` for
