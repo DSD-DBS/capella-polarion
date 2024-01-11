@@ -20,7 +20,7 @@ class CapellaTypeConfig:
     converter: str | None = None
     links: list[str] = dataclasses.field(default_factory=list)
     actor: bool | None = None
-    nature: bool | None = None
+    nature: str | None = None
 
 
 def _default_type_conversion(c_type: str) -> str:
@@ -30,90 +30,106 @@ def _default_type_conversion(c_type: str) -> str:
 class ConverterConfig:
     """The overall Config for capella2polarion."""
 
-    def __init__(self, synchronize_config: t.TextIO):
-        config_dict = yaml.safe_load(synchronize_config)
+    def __init__(self):
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
         self.polarion_types = set[str]()
         self.diagram_config: CapellaTypeConfig | None = None
+        self.__global_config = CapellaTypeConfig()
 
+    def read_config_file(self, synchronize_config: t.TextIO):
+        """Read a given yaml file as config."""
+        config_dict = yaml.safe_load(synchronize_config)
         # We handle the cross layer config separately as global_configs
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config = CapellaTypeConfig(links=global_links)
+        self.set_global_links(global_links)
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
-            p_type = diagram_config.get("polarion_type") or "diagram"
-            self.polarion_types.add(p_type)
-            self.diagram_config = CapellaTypeConfig(
-                p_type,
-                diagram_config.get("serializer"),
-                diagram_config.get("links", []) + global_links,
-            )
-
-        def _read_capella_type_configs(conf: dict | list | None) -> list[dict]:
-            if conf is None:
-                return [{}]
-            if isinstance(conf, dict):
-                return [conf]
-
-            # We want to have the most generic config first followed by those
-            # having actor set to None
-            return sorted(
-                conf,
-                key=lambda c: int(c.get("actor", _C2P_DEFAULT) != _C2P_DEFAULT)
-                + 2 * int(c.get("nature", _C2P_DEFAULT) != _C2P_DEFAULT),
-            )
+            self.set_diagram_config(diagram_config)
 
         for c_type, type_config in global_config_dict.items():
             type_config = type_config or {}
-            p_type = type_config.get(
-                "polarion_type"
-            ) or _default_type_conversion(c_type)
-            self.polarion_types.add(p_type)
-            self._global_configs[c_type] = CapellaTypeConfig(
-                p_type,
-                type_config.get("serializer"),
-                type_config.get("links", []) + global_links,
-                type_config.get("actor", _C2P_DEFAULT),
-                type_config.get("nature", _C2P_DEFAULT),
-            )
+            self.set_global_config(c_type, type_config)
 
         for layer, type_configs in config_dict.items():
             type_configs = type_configs or {}
-            self._layer_configs[layer] = {}
+            self.add_layer(layer)
             for c_type, c_type_config in type_configs.items():
-                type_configs = _read_capella_type_configs(c_type_config)
-                self._layer_configs[layer][c_type] = []
-                for type_config in type_configs:
-                    closest_config = (
-                        self.get_type_config(
-                            layer,
-                            c_type,
-                            actor=type_config.get("actor", _C2P_DEFAULT),
-                            nature=type_config.get("nature", _C2P_DEFAULT),
-                        )
-                        or self.__global_config
-                    )
-                    p_type = (
-                        type_config.get("polarion_type")
-                        or closest_config.p_type
-                        or _default_type_conversion(c_type)
-                    )
-                    self.polarion_types.add(p_type)
-                    self._layer_configs[layer][c_type].append(
-                        CapellaTypeConfig(
-                            p_type,
-                            type_config.get("serializer")
-                            or closest_config.converter,
-                            type_config.get("links", [])
-                            + closest_config.links,
-                            type_config.get("actor", _C2P_DEFAULT),
-                            type_config.get("nature", _C2P_DEFAULT),
-                        )
-                    )
+                self.set_layer_config(c_type, c_type_config, layer)
+
+    def add_layer(self, layer: str):
+        """Add a new layer without configuring any types."""
+        self._layer_configs[layer] = {}
+
+    def set_layer_config(
+        self,
+        c_type: str,
+        c_type_config: dict[str, t.Any] | list[dict[str, t.Any]] | None,
+        layer: str,
+    ):
+        """Set one or multiple configs for a type to an existing layer."""
+        type_configs = _read_capella_type_configs(c_type_config)
+        self._layer_configs[layer][c_type] = []
+        for type_config in type_configs:
+            closest_config = (
+                self.get_type_config(
+                    layer,
+                    c_type,
+                    actor=type_config.get("actor", _C2P_DEFAULT),
+                    nature=type_config.get("nature", _C2P_DEFAULT),
+                )
+                or self.__global_config
+            )
+            p_type = (
+                type_config.get("polarion_type")
+                or closest_config.p_type
+                or _default_type_conversion(c_type)
+            )
+            self.polarion_types.add(p_type)
+            self._layer_configs[layer][c_type].append(
+                CapellaTypeConfig(
+                    p_type,
+                    type_config.get("serializer") or closest_config.converter,
+                    type_config.get("links", []) + closest_config.links,
+                    type_config.get("actor", _C2P_DEFAULT),
+                    type_config.get("nature", _C2P_DEFAULT),
+                )
+            )
+
+    def set_global_config(self, c_type: str, type_config: dict[str, t.Any]):
+        """Set a global config for a specific type."""
+        p_type = type_config.get("polarion_type") or _default_type_conversion(
+            c_type
+        )
+        self.polarion_types.add(p_type)
+        self._global_configs[c_type] = CapellaTypeConfig(
+            p_type,
+            type_config.get("serializer"),
+            type_config.get("links", []) + self.__global_config.links,
+            type_config.get("actor", _C2P_DEFAULT),
+            type_config.get("nature", _C2P_DEFAULT),
+        )
+
+    def set_diagram_config(self, diagram_config: dict[str, t.Any]):
+        """Set the diagram config."""
+        p_type = diagram_config.get("polarion_type") or "diagram"
+        self.polarion_types.add(p_type)
+        self.diagram_config = CapellaTypeConfig(
+            p_type,
+            diagram_config.get("serializer") or "diagram",
+            diagram_config.get("links", []) + self.__global_config.links,
+        )
+
+    def set_global_links(self, links: list[str]):
+        """Set links of the global config object.
+
+        Must be set before adding additional configs to enable
+        inheritance!
+        """
+        self.__global_config.links = links
 
     def get_type_config(
         self, layer: str, c_type: str, **attributes: t.Any
@@ -159,3 +175,20 @@ def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
         }:
             return False
     return True
+
+
+def _read_capella_type_configs(
+    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None
+) -> list[dict]:
+    if conf is None:
+        return [{}]
+    if isinstance(conf, dict):
+        return [conf]
+
+    # We want to have the most generic config first followed by those
+    # having actor set to None
+    return sorted(
+        conf,
+        key=lambda c: int(c.get("actor", _C2P_DEFAULT) != _C2P_DEFAULT)
+        + 2 * int(c.get("nature", _C2P_DEFAULT) != _C2P_DEFAULT),
+    )

@@ -100,12 +100,11 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.polarion_params.project_id,
     )
     capella_to_polarion_cli.load_synchronize_config()
-    capella_to_polarion_cli.load_capella_diagramm_cache_index()
+    capella_to_polarion_cli.load_capella_diagram_cache_index()
 
     assert (
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
-    assert capella_to_polarion_cli.config is not None
 
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,

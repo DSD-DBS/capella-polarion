@@ -1121,10 +1121,11 @@ class TestSerializers:
         expected: dict[str, t.Any],
     ):
         obj = model.by_uuid(uuid)
+        config = converter_config.ConverterConfig()
         with open(
             conftest.TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8"
         ) as f:
-            config = converter_config.ConverterConfig(f)
+            config.read_config_file(f)
 
         c_type = type(obj).__name__
         attributes = {

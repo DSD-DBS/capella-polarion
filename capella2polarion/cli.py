@@ -55,7 +55,7 @@ class Capella2PolarionCli:
         self.synchronize_config_content: dict[str, typing.Any] = {}
         self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.echo = click.echo
-        self.config: converter_config.ConverterConfig | None = None
+        self.config = converter_config.ConverterConfig()
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -131,11 +131,9 @@ class Capella2PolarionCli:
             raise RuntimeError("synchronize config io stream is closed ")
         if not self.synchronize_config_io.readable():
             raise RuntimeError("synchronize config io stream is not readable")
-        self.config = converter_config.ConverterConfig(
-            self.synchronize_config_io
-        )
+        self.config.read_config_file(self.synchronize_config_io)
 
-    def load_capella_diagramm_cache_index(self) -> None:
+    def load_capella_diagram_cache_index(self) -> None:
         """Load Capella Diagram Cache index file content."""
         if not self.capella_diagram_cache_index_file_path.is_file():
             raise ValueError(
