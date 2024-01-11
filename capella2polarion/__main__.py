@@ -77,8 +77,6 @@ def cli(
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
-    capella2polarion_cli.echo = click.echo
-    capella2polarion_cli.echo("Start")
 
 
 @cli.command()

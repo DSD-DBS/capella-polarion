@@ -25,12 +25,12 @@ from capella2polarion.converters import (
     link_converter,
     model_converter,
 )
-from tests import conftest
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
-from tests.conftest import (  # type: ignore[import]
+from .conftest import (  # type: ignore[import]
     TEST_DIAGRAM_CACHE,
     TEST_HOST,
+    TEST_MODEL_ELEMENTS_CONFIG,
 )
 
 # pylint: disable=redefined-outer-name
@@ -1147,9 +1147,7 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
         config = converter_config.ConverterConfig()
-        with open(
-            conftest.TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8"
-        ) as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)
 
         c_type = type(obj).__name__
