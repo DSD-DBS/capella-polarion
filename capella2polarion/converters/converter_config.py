@@ -44,7 +44,7 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.set_global_links(global_links)
+        self.__global_config.links = global_links
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
@@ -122,14 +122,6 @@ class ConverterConfig:
             diagram_config.get("serializer") or "diagram",
             diagram_config.get("links", []) + self.__global_config.links,
         )
-
-    def set_global_links(self, links: list[str]):
-        """Set links of the global config object.
-
-        Must be set before adding additional configs to enable
-        inheritance!
-        """
-        self.__global_config.links = links
 
     def get_type_config(
         self, layer: str, c_type: str, **attributes: t.Any

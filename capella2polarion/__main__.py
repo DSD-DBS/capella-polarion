@@ -107,13 +107,13 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.capella_diagram_cache_index_content is not None
     )
 
-    mc = model_converter.ModelConverter(
+    converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.capella_diagram_cache_folder_path,
         capella_to_polarion_cli.polarion_params.project_id,
     )
 
-    mc.read_model(
+    converter.read_model(
         capella_to_polarion_cli.config,
         capella_to_polarion_cli.capella_diagram_cache_index_content,
     )
@@ -124,15 +124,15 @@ def synchronize(ctx: click.core.Context) -> None:
 
     polarion_worker.load_polarion_work_item_map()
 
-    mc.generate_work_items(polarion_worker.polarion_data_repo)
+    converter.generate_work_items(polarion_worker.polarion_data_repo)
 
-    polarion_worker.delete_work_items(mc.converter_session)
-    polarion_worker.post_work_items(mc.converter_session)
+    polarion_worker.delete_work_items(converter.converter_session)
+    polarion_worker.post_work_items(converter.converter_session)
 
     # Create missing links for new work items
-    mc.generate_work_items(polarion_worker.polarion_data_repo, True)
+    converter.generate_work_items(polarion_worker.polarion_data_repo, True)
 
-    polarion_worker.patch_work_items(mc.converter_session)
+    polarion_worker.patch_work_items(converter.converter_session)
 
 
 if __name__ == "__main__":

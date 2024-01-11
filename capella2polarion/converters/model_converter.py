@@ -35,9 +35,7 @@ class ModelConverter:
         self.model = model
         self.diagram_cache_path = diagram_cache_path
         self.project_id = project_id
-        self.converter_session: data_session.ConverterSession = (
-            data_session.ConverterSession()
-        )
+        self.converter_session: data_session.ConverterSession = {}
 
     def read_model(
         self,
@@ -93,9 +91,10 @@ class ModelConverter:
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_links: bool = False,
     ) -> dict[str, data_models.CapellaWorkItem]:
-        """Generate a list of work items from known elements for Polarion.
+        """Return a work items mapping from model elements for Polarion.
 
-        In addition, it is ensured that neither title nor type are None,
+        The dictionary maps Capella UUIDs to ``CapellaWorkItem``s. In
+        addition, it is ensured that neither title nor type are None,
         Links are not created in this step by default.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
