@@ -60,14 +60,14 @@ class CapellaPolarionWorker:
         ):
             raise ValueError(
                 f"""ProjectId invalid. Value
-                '{self._save_value_string(self.polarion_params.project_id)}'"""
+                '{self.polarion_params.project_id}'"""
             )
 
         result_url = parse.urlparse(self.polarion_params.url)
         if not all([result_url.scheme, result_url.netloc]):
             raise ValueError(
                 f"""Polarion URL parameter is not a valid url.
-                Value {self._save_value_string(self.polarion_params.url)}"""
+                Value {self.polarion_params.url}"""
             )
         if self.polarion_params.private_access_token is None:
             raise ValueError(
@@ -84,15 +84,12 @@ class CapellaPolarionWorker:
         )
         self.check_client()
 
-    def _save_value_string(self, value: str | None) -> str | None:
-        return "None" if value is None else value
-
     def check_client(self) -> None:
         """Instantiate the polarion client as member."""
         if not self.client.project_exists():
             raise KeyError(
                 f"Miss Polarion project with id "
-                f"{self._save_value_string(self.polarion_params.project_id)}"
+                f"{self.polarion_params.project_id}"
             )
 
     def generate_converter_session(
