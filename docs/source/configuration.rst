@@ -8,23 +8,38 @@ YAML
 ====
 To control the migration of model elements, the following YAML file serves as a
 configuration for the capella2polarion service. In this file, you can specify
-the layer, the type in Polarion, the class type for matching objects in
-capellambse, the serializer to use. If an item is a dictionary, it means there
-are work item links to be migrated. Make sure to use the attribute names on the
-capellambse object correctly.
+the layer, class types and attributes for matching Capella model elements.
+Additionally you have the control of adding relationships with the links key.
+Underneath the links key use attributes on the matched capellambse model
+object. Make sure that the attribute name is correct, you can use
+`capellambse's documentation`__ for that.
+
+__ https://dsd-dbs.github.io/py-capellambse/code/capellambse.model.layers.html
 
 .. literalinclude:: ../../tests/data/model_elements/config.yaml
    :language: yaml
    :lines: 4-
 
-The first section is a general configuration where you can set links to be
+The "star" section is a general configuration where you can set links to be
 migrated for all class types. For example, ``parent`` and
 ``description_reference`` are links that will be applied to all specified class
-types. Since ``Class`` is a common type that exists in all layers, links
-specific to ``Class`` can be specified here to avoid duplication within the
-file.
+types. Since ``Class`` is a common class type that exists in all layers, links
+specific to ``Class`` can be specified here to avoid duplication. This will be
+merged into layer specific configuration for ``Class`` if there is any.
 
-.. _polarion-config:
+With ``serializer`` you can control which function is called to render the
+:py:class:`capella2polarion.data_models.CapellaWorkItem`. There is a generic
+serializer including title (name), description and requirement types, taken per
+default.
+
+Sometimes capellambse class types are not the same in Polarion. In order to
+handle this case you can use the ``polarion_type`` key to map capellambse types
+to the desired Polarion type. For the ``PhysicalComponent`` you can see this in
+action, where based on the different permutation of the attributes actor and
+nature different Polarion types are used. In capellambse however this is just a
+``PhysicalComponent``. Combining this with ``links`` is possible too. You can
+configure a generic config and for each specific config you can also add a
+``links`` section. Both will be merged.
 
 Polarion
 ========
