@@ -29,24 +29,24 @@ oa: # Specify below
     serializer: include_pre_and_post_condition
 pa:
   PhysicalComponent:
-    - actor: false
+    - is_actor: false
       nature: UNSET
       polarion_type: physicalComponent
-    - actor: false
+    - is_actor: false
       nature: NODE
       polarion_type: physicalComponentNode
-    - actor: false
+    - is_actor: false
       nature: BEHAVIOR
       polarion_type: physicalComponentBehavior
-    - actor: true
+    - is_actor: true
       nature: NODE
       polarion_type: physicalActorNode
-    - actor: true
+    - is_actor: true
       nature: BEHAVIOR
       polarion_type: physicalActorBehavior
 la:
   LogicalComponent:
-    - actor: true
+    - is_actor: true
       polarion_type: logicalActor
-    - actor: false
+    - is_actor: false
       polarion_type: logicalComponent

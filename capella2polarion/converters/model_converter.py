@@ -54,7 +54,7 @@ class ModelConverter:
             objects = self.model.search(c_type, below=below)
             for obj in objects:
                 attributes = {
-                    "actor": getattr(obj, "is_actor", None),
+                    "is_actor": getattr(obj, "is_actor", None),
                     "nature": getattr(obj, "nature", None),
                 }
                 if type_config := config.get_type_config(

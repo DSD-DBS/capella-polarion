@@ -1154,7 +1154,7 @@ class TestSerializers:
 
         c_type = type(obj).__name__
         attributes = {
-            "actor": getattr(obj, "is_actor", None),
+            "is_actor": getattr(obj, "is_actor", None),
             "nature": getattr(obj, "nature", None),
         }
         type_config = config.get_type_config(layer, c_type, **attributes)
