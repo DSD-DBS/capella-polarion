@@ -7,26 +7,37 @@ capella2polarion
 
 A tool to migrate Capella content to a Polarion project as work items.
 
-Diagrams
---------
-Migrate diagrams from a diagram cache (pipeline artifact from a capella diagram
-cache) job run to Polarion as work items. The whole folder with the
-``index.json`` and the SVGs is needed.
+Synchronization of Model-Elements
+---------------------------------
 
-Model-Elements
---------------
 Migrate any model element from a ``capellambse.MelodyModel`` to Polarion as a
-work item. With appropriate :ref:`configuration <config>` on Polarion and an
-according config YAML file, any attribute on the capellambse object can be
-migrated as a work item link if (and only if) the target object exists as a
-work item already. In order to generate diagram references, make sure to
-execute the model-elements migration after the diagram migration.
+work item. Diagrams are taken from a diagram cache (pipeline artifact from a
+`capella diagram cache`_) job run to Polarion as work items. The whole folder
+with the ``index.json`` and the SVGs is needed for the diagram synchronization.
+The SVG is attached to the respective work item.
+
+With appropriate :ref:`configuration <capella2polarion-config>` on Polarion
+and an according :ref:`config YAML file <polarion-config>` for
+capella2polarion any model element can be migrated from a Capella model to a
+Polarion project. Attributes are migrated as links and text from requirements
+and link groups are synchronized as custom fields.
+
+The synchronization works by comparing the checksum of work items. If they
+differ the old will be patched by the new one.
+
+.. _capella diagram cache: https://github.com/DSD-DBS/capella-dockerimages/blob/main/ci-templates/gitlab/diagram-cache.yml
 
 .. toctree::
    :maxdepth: 2
    :caption: Configuration:
 
    configuration
+
+.. toctree::
+   :maxdepth: 2
+   :caption: CI/CD Template:
+
+   pipeline templates/gitlab
 
 .. toctree::
    :maxdepth: 3

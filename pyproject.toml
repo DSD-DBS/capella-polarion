@@ -31,8 +31,8 @@ dependencies = [
   "capellambse",
   "click",
   "PyYAML",
-  "polarion-rest-api-client==0.2.1",
-  "requests",
+  "bidict",
+  "polarion-rest-api-client==0.2.1"
 ]
 
 [project.urls]
