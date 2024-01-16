@@ -30,6 +30,7 @@ class Capella2PolarionCli:
         capella_diagram_cache_folder_path: pathlib.Path | None,
         capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
+        force_update_work_items: bool = False,
     ) -> None:
         self.debug = debug
         self.polarion_params = pw.PolarionWorkerParams(
@@ -55,6 +56,7 @@ class Capella2PolarionCli:
         self.synchronize_config_content: dict[str, typing.Any] = {}
         self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.config = converter_config.ConverterConfig()
+        self.force_update_work_items = force_update_work_items
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value

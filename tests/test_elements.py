@@ -720,6 +720,38 @@ class TestModelElements:
         assert base_object.pw.client.update_work_item.call_count == 0
 
     @staticmethod
+    def test_update_work_items_same_checksum_force(
+        base_object: BaseObjectContainer,
+    ):
+        base_object.pw.force_update_work_items = True
+        base_object.pw.polarion_data_repo.update_work_items(
+            [
+                data_models.CapellaWorkItem(
+                    id="Obj-1",
+                    uuid_capella="uuid1",
+                    status="open",
+                    checksum=TEST_WI_CHECKSUM,
+                    type="fakeModelObject",
+                )
+            ]
+        )
+        base_object.mc.converter_session[
+            "uuid1"
+        ].work_item = data_models.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella="uuid1",
+            status="open",
+            type="fakeModelObject",
+        )
+
+        del base_object.mc.converter_session["uuid2"]
+
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
+
+        assert base_object.pw.client is not None
+        assert base_object.pw.client.update_work_item.call_count == 1
+
+    @staticmethod
     def test_update_links_with_no_elements(base_object: BaseObjectContainer):
         base_object.pw.polarion_data_repo = (
             polarion_repo.PolarionDataRepository()
