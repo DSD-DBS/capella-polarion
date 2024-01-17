@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import collections.abc as cabc
 import logging
+import typing as t
 from urllib import parse
 
 import polarion_rest_api_client as polarion_api
@@ -14,6 +15,13 @@ from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import converter_config, data_session
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
+    str: "",
+    int: 0,
+    bool: False,
+}
 
 
 class PolarionWorkerParams:
@@ -35,10 +43,12 @@ class CapellaPolarionWorker:
         self,
         params: PolarionWorkerParams,
         config: converter_config.ConverterConfig,
+        force_update: bool = False,
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.config = config
+        self.force_update = force_update
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -151,7 +161,7 @@ class CapellaPolarionWorker:
         """Patch a given WorkItem."""
         new = converter_session[uuid].work_item
         _, old = self.polarion_data_repo[uuid]
-        if new == old:
+        if not self.force_update and new == old:
             return
 
         assert old is not None
@@ -159,12 +169,32 @@ class CapellaPolarionWorker:
 
         log_args = (old.id, new.type, new.title)
         logger.info("Update work item %r for model %s %r...", *log_args)
-        if "uuid_capella" in new.additional_attributes:
-            del new.additional_attributes["uuid_capella"]
 
-        old.linked_work_items = self.client.get_all_work_item_links(old.id)
-        new.type = None
+        del new.additional_attributes["uuid_capella"]
+
+        old = self.client.get_work_item(old.id)
+
+        if old.linked_work_items_truncated:
+            old.linked_work_items = self.client.get_all_work_item_links(old.id)
+
+        del old.additional_attributes["uuid_capella"]
+
+        # Type will only be updated, if it is set and should be used carefully
+        if new.type == old.type:
+            new.type = None
         new.status = "open"
+
+        # If additional fields were present in the past, but aren't anymore,
+        # we have to set them to an empty value manually
+        defaults = DEFAULT_ATTRIBUTE_VALUES
+        for attribute, value in old.additional_attributes.items():
+            if attribute not in new.additional_attributes:
+                new.additional_attributes[attribute] = defaults.get(
+                    type(value)
+                )
+            elif new.additional_attributes[attribute] == value:
+                del new.additional_attributes[attribute]
+
         assert new.id is not None
         try:
             self.client.update_work_item(new)

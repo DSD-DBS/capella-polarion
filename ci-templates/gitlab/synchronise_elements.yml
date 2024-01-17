@@ -15,6 +15,7 @@ capella2polarion_synchronise_elements:
       python \
         -m capella2polarion \
         $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
+        $([[ $CAPELLA2POLARION_FORCE_UPDATE -eq 1 ]] && echo '--force-update') \
         --polarion-project-id=${CAPELLA2POLARION_PROJECT_ID:?} \
         --capella-model="${CAPELLA2POLARION_MODEL_JSON:?}" \
         --capella-diagram-cache-folder-path=./diagram_cache \
