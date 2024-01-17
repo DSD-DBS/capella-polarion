@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import collections.abc as cabc
 import logging
+import typing as t
 from urllib import parse
 
 import polarion_rest_api_client as polarion_api
@@ -161,12 +162,37 @@ class CapellaPolarionWorker:
 
         log_args = (old.id, new.type, new.title)
         logger.info("Update work item %r for model %s %r...", *log_args)
-        if "uuid_capella" in new.additional_attributes:
-            del new.additional_attributes["uuid_capella"]
 
-        old.linked_work_items = self.client.get_all_work_item_links(old.id)
-        new.type = None
+        del new.additional_attributes["uuid_capella"]
+
+        old = self.client.get_work_item(old.id)
+
+        # If there were to many linked work items, get them manually
+        if old.linked_work_items_truncated:
+            old.linked_work_items = self.client.get_all_work_item_links(old.id)
+
+        del old.additional_attributes["uuid_capella"]
+
+        # We should only send the type to be updated, if it really changed
+        if new.type == old.type:
+            new.type = None
         new.status = "open"
+
+        # If additional fields were present in the past, but aren't anymore,
+        # we have to set them to an empty value manually
+        for attribute, value in old.additional_attributes.items():
+            if attribute not in new.additional_attributes:
+                new_value: t.Any = None
+                if isinstance(value, str):
+                    new_value = ""
+                elif isinstance(value, int):
+                    new_value = 0
+                elif isinstance(value, bool):
+                    new_value = False
+                new.additional_attributes[attribute] = new_value
+            elif new.additional_attributes[attribute] == value:
+                del new.additional_attributes[attribute]
+
         assert new.id is not None
         try:
             self.client.update_work_item(new)

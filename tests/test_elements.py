@@ -672,12 +672,21 @@ class TestModelElements:
 
         del base_object.mc.converter_session["uuid2"]
 
+        get_work_item_mock = mock.MagicMock()
+        get_work_item_mock.return_value = polarion_work_item_list[0]
+        monkeypatch.setattr(
+            base_object.pw.client,
+            "get_work_item",
+            get_work_item_mock,
+        )
+
         base_object.pw.patch_work_items(base_object.mc.converter_session)
         assert base_object.pw.client is not None
-        assert base_object.pw.client.get_all_work_item_links.call_count == 1
+        assert base_object.pw.client.get_all_work_item_links.call_count == 0
         assert base_object.pw.client.delete_work_item_links.call_count == 0
         assert base_object.pw.client.create_work_item_links.call_count == 0
         assert base_object.pw.client.update_work_item.call_count == 1
+        assert base_object.pw.client.get_work_item.call_count == 1
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
@@ -806,6 +815,21 @@ class TestModelElements:
         base_object.mc.generate_work_item_links(
             base_object.pw.polarion_data_repo
         )
+
+        work_item_1 = data_models.CapellaWorkItem(
+            **base_object.pw.polarion_data_repo["uuid1"][1].to_dict()
+        )
+        work_item_2 = data_models.CapellaWorkItem(
+            **base_object.pw.polarion_data_repo["uuid2"][1].to_dict()
+        )
+        work_item_1.linked_work_items_truncated = True
+        work_item_2.linked_work_items_truncated = True
+
+        base_object.pw.client.get_work_item.side_effect = (
+            work_item_1,
+            work_item_2,
+        )
+
         base_object.pw.patch_work_items(base_object.mc.converter_session)
         assert base_object.pw.client is not None
         links = base_object.pw.client.get_all_work_item_links.call_args_list
