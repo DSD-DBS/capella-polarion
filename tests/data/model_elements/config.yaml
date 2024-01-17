@@ -2,43 +2,78 @@
 # SPDX-License-Identifier: Apache-2.0
 
 "*": # All layers
-      - "*": # All class types
-              - parent # Specify workitem links
-              - description_reference # Custom attribute
-      - Class:
-              - state_machines
-      - Diagram:
-              - diagram_elements
-      - Constraint
+  "*": # All class types
+    links: # Specify workitem links
+      - parent
+      - description_reference
+  Class:
+    links:
+      - state_machines
+  Diagram:
+    links:
+      - diagram_elements
+  Constraint:
+    serializer: linked_text_as_description
+  Scenario:
+    serializer: include_pre_and_post_condition
+  CapabilityRealization:
+    serializer: include_pre_and_post_condition
+  Entity:
+  StateMachine:
 
 oa: # Specify below
-      - OperationalCapability: # Capella Type with references
-              - involved_activities # Specify workitem links
-              - involved_entities
-
-      - OperationalActivity # Capella Type w/o references
-      - OperationalEntity # Custom Type maps to Entity
-      - OperationalInteraction # Custom Type maps to FunctionalExchange
-      - CommunicationMean
-      - Class
-      - StateMachine
+  FunctionalExchange:
+    polarion_type: operationalInteraction
+    links:
+      - exchange_items
+  OperationalCapability:
+    serializer: include_pre_and_post_condition
+    links:
+      - involved_activities
+      - involved_entities
+  OperationalActivity:
+  CommunicationMean:
 
 sa:
-      - SystemComponent:
-              - allocated_functions
-      - SystemActor: # Custom Type that doesn't exist in Capella
-              - allocated_functions
-      - SystemFunction
-      - ComponentExchange:
-              - allocated_functional_exchanges
-      - ComponentPort
-      - FunctionalExchange:
-              - exchanged_items
-      - ExchangeItem
-      - Class
+  SystemComponent:
+    - links:
+        - allocated_functions
+    - is_actor: false
+      polarion_type: systemComponent
+    - is_actor: true
+      polarion_type: systemActor
+  SystemFunction:
+  ComponentExchange:
+    links:
+      - allocated_functional_exchanges
+  FunctionalExchange:
+    links:
+      - exchanged_items
+  ExchangeItem:
 
 pa:
-      - PhysicalComponent:
-              - allocated_functions
-      - PhysicalActor:
-              - allocated_functions
+  PhysicalComponent:
+    - links:
+        - allocated_functions
+    - is_actor: false
+      nature: UNSET
+      polarion_type: physicalComponent
+    - is_actor: false
+      nature: NODE
+      polarion_type: physicalComponentNode
+    - is_actor: false
+      nature: BEHAVIOR
+      polarion_type: physicalComponentBehavior
+    - is_actor: true
+      nature: NODE
+      polarion_type: physicalActorNode
+    - is_actor: true
+      nature: BEHAVIOR
+      polarion_type: physicalActorBehavior
+
+la:
+  LogicalComponent:
+    - is_actor: true
+      polarion_type: logicalActor
+    - is_actor: false
+      polarion_type: logicalComponent
