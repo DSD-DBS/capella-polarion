@@ -179,7 +179,7 @@ class CapellaPolarionWorker:
 
         del old.additional_attributes["uuid_capella"]
 
-        # We should only send the type to be updated, if it really changed
+        # Type will only be updated, if it is set and should be used carefully
         if new.type == old.type:
             new.type = None
         new.status = "open"
