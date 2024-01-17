@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 @click.option("--debug", is_flag=True, default=False)
-@click.option("--force-update-work-items", is_flag=True, default=False)
+@click.option("--force-update", is_flag=True, default=False)
 @click.option(
     "--polarion-project-id",
     type=str,
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 def cli(
     ctx: click.core.Context,
     debug: bool,
-    force_update_work_items: bool,
+    force_update: bool,
     polarion_project_id: str,
     polarion_url: str,
     polarion_pat: str,
@@ -76,7 +76,7 @@ def cli(
         capella_diagram_cache_folder_path,
         capella_model,
         synchronize_config,
-        force_update_work_items,
+        force_update,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -122,7 +122,7 @@ def synchronize(ctx: click.core.Context) -> None:
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.config,
-        capella_to_polarion_cli.force_update_work_items,
+        capella_to_polarion_cli.force_update,
     )
 
     polarion_worker.load_polarion_work_item_map()

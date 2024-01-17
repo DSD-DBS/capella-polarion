@@ -36,12 +36,12 @@ class CapellaPolarionWorker:
         self,
         params: PolarionWorkerParams,
         config: converter_config.ConverterConfig,
-        force_update_work_items: bool = False,
+        force_update: bool = False,
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.config = config
-        self.force_update_work_items = force_update_work_items
+        self.force_update = force_update
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -154,7 +154,7 @@ class CapellaPolarionWorker:
         """Patch a given WorkItem."""
         new = converter_session[uuid].work_item
         _, old = self.polarion_data_repo[uuid]
-        if not self.force_update_work_items and new == old:
+        if not self.force_update and new == old:
             return
 
         assert old is not None
