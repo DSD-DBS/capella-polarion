@@ -1184,3 +1184,29 @@ class TestSerializers:
 
         assert work_item == data_models.CapellaWorkItem(**expected)
         assert status == "open"
+
+    def test_add_context_diagram(self, model: capellambse.MelodyModel):
+        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
+        type_config = converter_config.CapellaTypeConfig(
+            "test", "add_context_diagram", []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            pathlib.Path(""),
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                uuid: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(uuid),
+                )
+            },
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        assert "context_diagram" in work_item.additional_attributes
+        assert str(
+            work_item.additional_attributes["context_diagram"]["value"]
+        ).startswith('<img src="data:image/svg+xml;base64,')
