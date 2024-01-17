@@ -17,6 +17,13 @@ from capella2polarion.converters import converter_config, data_session
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
+    str: "",
+    int: 0,
+    bool: False,
+}
+
+
 class PolarionWorkerParams:
     """Container for Polarion Params."""
 
@@ -179,16 +186,12 @@ class CapellaPolarionWorker:
 
         # If additional fields were present in the past, but aren't anymore,
         # we have to set them to an empty value manually
+        defaults = DEFAULT_ATTRIBUTE_VALUES
         for attribute, value in old.additional_attributes.items():
             if attribute not in new.additional_attributes:
-                new_value: t.Any = None
-                if isinstance(value, str):
-                    new_value = ""
-                elif isinstance(value, int):
-                    new_value = 0
-                elif isinstance(value, bool):
-                    new_value = False
-                new.additional_attributes[attribute] = new_value
+                new.additional_attributes[attribute] = defaults.get(
+                    type(value)
+                )
             elif new.additional_attributes[attribute] == value:
                 del new.additional_attributes[attribute]
 
