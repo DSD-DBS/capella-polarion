@@ -167,7 +167,6 @@ class CapellaPolarionWorker:
 
         old = self.client.get_work_item(old.id)
 
-        # If there were to many linked work items, get them manually
         if old.linked_work_items_truncated:
             old.linked_work_items = self.client.get_all_work_item_links(old.id)
 
