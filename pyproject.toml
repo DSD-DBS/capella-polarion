@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
   "capellambse",
+  "capellambse_context_diagrams",
   "click",
   "PyYAML",
   "bidict",
