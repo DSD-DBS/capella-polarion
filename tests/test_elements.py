@@ -732,7 +732,7 @@ class TestModelElements:
     def test_update_work_items_same_checksum_force(
         base_object: BaseObjectContainer,
     ):
-        base_object.pw.force_update_work_items = True
+        base_object.pw.force_update = True
         base_object.pw.polarion_data_repo.update_work_items(
             [
                 data_models.CapellaWorkItem(
