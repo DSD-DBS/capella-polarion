@@ -29,10 +29,10 @@ classifiers = [
 ]
 dependencies = [
   "capellambse",
+  "capellambse_context_diagrams",
   "click",
   "PyYAML",
   "polarion-rest-api-client==0.3.0",
-  "requests",
   "bidict"
 ]
 

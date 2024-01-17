@@ -315,3 +315,15 @@ class CapellaWorkItemSerializer:
         # pylint: disable-next=attribute-defined-outside-init
         work_item.description = self._get_linked_text(converter_data)
         return work_item
+
+    def _add_context_diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field context diagram."""
+        work_item = self._generic_work_item(converter_data)
+        diagram = converter_data.capella_element.context_diagram
+        work_item.additional_attributes["context_diagram"] = {
+            "type": "text/html",
+            "value": diagram.as_html_img,
+        }
+        return work_item
