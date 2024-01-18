@@ -161,7 +161,16 @@ class CapellaWorkItemSerializer:
     ) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diag = converter_data.capella_element
-        description = _generate_image_html(diag.as_datauri_svg)
+
+        try:
+            src = diag.render("datauri_svg")
+        except Exception as error:
+            logger.exception(
+                "Failed to get diagram from cache. Error: %s", error
+            )
+            src = diag.as_datauri_svg
+
+        description = _generate_image_html(src)
         converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
             title=diag.name,
