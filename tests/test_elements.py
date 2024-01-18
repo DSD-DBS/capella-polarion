@@ -1265,4 +1265,4 @@ class TestSerializers:
         assert "context_diagram" in work_item.additional_attributes
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
-        ).startswith('<img src="data:image/svg+xml;base64,')
+        ).startswith(TEST_DIAG_DESCR)
