@@ -3,13 +3,12 @@
 """Main entry point into capella2polarion."""
 from __future__ import annotations
 
-import json
 import logging
-import pathlib
 import typing
 
 import capellambse
 import click
+from capellambse import cli_helpers
 
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
@@ -35,19 +34,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
 @click.option("--polarion-delete-work-items", is_flag=True, default=False)
-@click.option(
-    "--capella-diagram-cache-folder-path",
-    type=click.Path(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-        path_type=pathlib.Path,
-    ),
-    default=None,
-)
-@click.option("--capella-model", type=str, default=None)
+@click.option("--capella-model", type=cli_helpers.ModelCLI(), default=None)
 @click.option(
     "--synchronize-config",
     type=click.File(mode="r", encoding="utf8"),
@@ -62,20 +49,13 @@ def cli(
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
-    capella_diagram_cache_folder_path: pathlib.Path,
-    capella_model: str,
+    capella_model: capellambse.MelodyModel,
     synchronize_config: typing.TextIO,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
-    if capella_model.startswith("{"):
-        logger.warning(
-            "DEPRECATED: Providing the model as json will be removed in a future version."
-        )
-        capella_model = json.loads(capella_model)["path"]
-
-    model = capellambse.MelodyModel(
-        capella_model, diagram_cache=capella_diagram_cache_folder_path
-    )
+    # if capella_model.diagram_cache is None:
+    if not hasattr(capella_model, "_diagram_cache"):
+        logger.warning("It's highly recommended to define a diagram cache!")
 
     capella2polarion_cli = Capella2PolarionCli(
         debug,
@@ -83,7 +63,7 @@ def cli(
         polarion_url,
         polarion_pat,
         polarion_delete_work_items,
-        model,
+        capella_model,
         synchronize_config,
         force_update,
     )

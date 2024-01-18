@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from unittest import mock
 
 import polarion_rest_api_client as polarion_api
@@ -50,10 +51,8 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "--polarion-pat",
         "AlexandersPrivateAcessToken",
         "--polarion-delete-work-items",
-        "--capella-diagram-cache-folder-path",
-        str(TEST_DIAGRAM_CACHE),
         "--capella-model",
-        str(TEST_MODEL),
+        json.dumps(TEST_MODEL),
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
         "synchronize",

@@ -18,7 +18,10 @@ TEST_DATA_ROOT = pathlib.Path(__file__).parent / "data"
 TEST_DIAGRAM_CACHE = TEST_DATA_ROOT / "diagram_cache"
 TEST_MODEL_ELEMENTS = TEST_DATA_ROOT / "model_elements"
 TEST_MODEL_ELEMENTS_CONFIG = TEST_MODEL_ELEMENTS / "config.yaml"
-TEST_MODEL = TEST_DATA_ROOT / "model" / "Melody Model Test.aird"
+TEST_MODEL = {
+    "path": str(TEST_DATA_ROOT / "model" / "Melody Model Test.aird"),
+    "diagram_cache": str(TEST_DIAGRAM_CACHE),
+}
 TEST_HOST = "https://api.example.com"
 
 
@@ -32,7 +35,7 @@ def diagram_cache_index() -> list[dict[str, t.Any]]:
 @pytest.fixture
 def model() -> capellambse.MelodyModel:
     """Return the test model."""
-    return capellambse.MelodyModel(path=TEST_MODEL)
+    return capellambse.MelodyModel(**TEST_MODEL)
 
 
 @pytest.fixture
