@@ -53,8 +53,7 @@ def cli(
     synchronize_config: typing.TextIO,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
-    # if capella_model.diagram_cache is None:
-    if not hasattr(capella_model, "_diagram_cache"):
+    if capella_model.diagram_cache is None:
         logger.warning("It's highly recommended to define a diagram cache!")
 
     capella2polarion_cli = Capella2PolarionCli(
