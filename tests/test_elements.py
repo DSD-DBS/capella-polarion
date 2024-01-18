@@ -165,7 +165,6 @@ class TestDiagramElements:
             polarion_url=TEST_HOST,
             polarion_pat="PrivateAccessToken",
             polarion_delete_work_items=True,
-            capella_diagram_cache_folder_path=TEST_DIAGRAM_CACHE,
             capella_model=model,
             synchronize_config_io=MyIO(),
         )
@@ -179,9 +178,7 @@ class TestDiagramElements:
         c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
         mc = model_converter.ModelConverter(
-            model,
-            c2p_cli.capella_diagram_cache_folder_path,
-            c2p_cli.polarion_params.project_id,
+            model, c2p_cli.polarion_params.project_id
         )
 
         mc.converter_session = {
@@ -283,7 +280,6 @@ class TestModelElements:
             polarion_url=TEST_HOST,
             polarion_pat="PrivateAccessToken",
             polarion_delete_work_items=True,
-            capella_diagram_cache_folder_path=pathlib.Path(""),
             capella_model=model,
             synchronize_config_io=MyIO(),
         )
@@ -303,9 +299,7 @@ class TestModelElements:
         )
 
         mc = model_converter.ModelConverter(
-            model,
-            c2p_cli.capella_diagram_cache_folder_path,
-            c2p_cli.polarion_params.project_id,
+            model, c2p_cli.polarion_params.project_id
         )
 
         mc.converter_session = {
@@ -495,9 +489,6 @@ class TestModelElements:
             work_item_obj_2,
         )
 
-        base_object.c2pcli.synchronize_config_roles = {
-            "SystemFunction": ["input_exchanges"]
-        }
         expected = polarion_api.WorkItemLink(
             "Obj-1",
             "Obj-2",
@@ -1029,7 +1020,6 @@ class TestSerializers:
         diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
 
         serializer = element_converter.CapellaWorkItemSerializer(
-            TEST_DIAGRAM_CACHE,
             model,
             polarion_repo.PolarionDataRepository(),
             {
@@ -1051,14 +1041,6 @@ class TestSerializers:
             status="open",
             linked_work_items=[],
         )
-
-    @staticmethod
-    def test__decode_diagram():
-        diagram_path = TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg"
-
-        diagram = element_converter._decode_diagram(diagram_path)
-
-        assert diagram.startswith("data:image/svg+xml;base64,")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1215,7 +1197,6 @@ class TestSerializers:
         assert type_config is not None
 
         serializer = element_converter.CapellaWorkItemSerializer(
-            pathlib.Path(""),
             model,
             polarion_repo.PolarionDataRepository(
                 [
@@ -1247,7 +1228,6 @@ class TestSerializers:
             "test", "add_context_diagram", []
         )
         serializer = element_converter.CapellaWorkItemSerializer(
-            pathlib.Path(""),
             model,
             polarion_repo.PolarionDataRepository(),
             {

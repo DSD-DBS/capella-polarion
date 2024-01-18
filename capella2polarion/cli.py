@@ -3,7 +3,6 @@
 """Tool for CLI work."""
 from __future__ import annotations
 
-import json
 import logging
 import pathlib
 import typing
@@ -27,7 +26,6 @@ class Capella2PolarionCli:
         polarion_url: str,
         polarion_pat: str,
         polarion_delete_work_items: bool,
-        capella_diagram_cache_folder_path: pathlib.Path | None,
         capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
         force_update: bool = False,
@@ -39,22 +37,9 @@ class Capella2PolarionCli:
             polarion_pat,
             polarion_delete_work_items,
         )
-        if capella_diagram_cache_folder_path is None:
-            raise ValueError("CapellaDiagramCacheFolderPath not filled")
 
-        self.capella_diagram_cache_folder_path = (
-            capella_diagram_cache_folder_path
-        )
-        self.capella_diagram_cache_index_file_path = (
-            self.capella_diagram_cache_folder_path / "index.json"
-        )
-        self.capella_diagram_cache_index_content: list[
-            dict[str, typing.Any]
-        ] = []
         self.capella_model: capellambse.MelodyModel = capella_model
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
-        self.synchronize_config_content: dict[str, typing.Any] = {}
-        self.synchronize_config_roles: dict[str, list[str]] | None = None
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
 
@@ -99,10 +84,6 @@ class Capella2PolarionCli:
                 string_value = self._none_save_value_string(string_value)
                 click.echo(f"{lighted_member_var}: '{string_value}'")
 
-        echo = ("NO", "YES")[
-            self.capella_diagram_cache_index_file_path.is_file()
-        ]
-        click.echo(f"""Capella Diagram Cache Index-File exists: {echo}""")
         echo = ("YES", "NO")[self.synchronize_config_io.closed]
         click.echo(f"""Synchronize Config-IO is open: {echo}""")
 
@@ -133,15 +114,3 @@ class Capella2PolarionCli:
         if not self.synchronize_config_io.readable():
             raise RuntimeError("synchronize config io stream is not readable")
         self.config.read_config_file(self.synchronize_config_io)
-
-    def load_capella_diagram_cache_index(self) -> None:
-        """Load Capella Diagram Cache index file content."""
-        if not self.capella_diagram_cache_index_file_path.is_file():
-            raise ValueError(
-                "capella diagramm cache index.json file does not exist"
-            )
-
-        l_text_content = self.capella_diagram_cache_index_file_path.read_text(
-            encoding="utf8"
-        )
-        self.capella_diagram_cache_index_content = json.loads(l_text_content)

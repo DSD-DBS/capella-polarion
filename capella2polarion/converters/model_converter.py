@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import typing as t
 
 import capellambse
@@ -29,18 +28,15 @@ class ModelConverter:
     def __init__(
         self,
         model: capellambse.MelodyModel,
-        diagram_cache_path: pathlib.Path,
         project_id: str,
     ):
         self.model = model
-        self.diagram_cache_path = diagram_cache_path
         self.project_id = project_id
         self.converter_session: data_session.ConverterSession = {}
 
     def read_model(
         self,
         config: converter_config.ConverterConfig,
-        diagram_idx: list[dict[str, t.Any]],
     ):
         """Read the model using a given config and diagram_idx."""
         missing_types: set[tuple[str, str, dict[str, t.Any]]] = set()
@@ -65,16 +61,10 @@ class ModelConverter:
                     missing_types.add((layer, c_type, attributes))
 
         if config.diagram_config:
-            diagrams_from_cache = {
-                d["uuid"] for d in diagram_idx if d["success"]
-            }
             for d in self.model.diagrams:
-                if d.uuid in diagrams_from_cache:
-                    self.converter_session[
-                        d.uuid
-                    ] = data_session.ConverterData(
-                        "", config.diagram_config, d
-                    )
+                self.converter_session[d.uuid] = data_session.ConverterData(
+                    "", config.diagram_config, d
+                )
 
         if missing_types:
             for missing_type in missing_types:
@@ -99,10 +89,7 @@ class ModelConverter:
         Links are not created in this step by default.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
-            self.diagram_cache_path,
-            self.model,
-            polarion_data_repo,
-            self.converter_session,
+            self.model, polarion_data_repo, self.converter_session
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:
