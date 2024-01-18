@@ -119,6 +119,15 @@ def _condition(
     return {"type": _type, "value": value}
 
 
+def _generate_image_html(src: str) -> str:
+    """Generate an image as HTMl with the given source."""
+    style = "; ".join(
+        (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
+    )
+    description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
+    return description
+
+
 class CapellaWorkItemSerializer:
     """The general serializer class for CapellaWorkItems."""
 
@@ -174,12 +183,7 @@ class CapellaWorkItemSerializer:
         diag = converter_data.capella_element
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
-        style = "; ".join(
-            (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
-        )
-        description = (
-            f'<html><p><img style="{style}" src="{src}" /></p></html>'
-        )
+        description = _generate_image_html(src)
         return data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
             title=diag.name,
@@ -324,6 +328,6 @@ class CapellaWorkItemSerializer:
         diagram = converter_data.capella_element.context_diagram
         work_item.additional_attributes["context_diagram"] = {
             "type": "text/html",
-            "value": diagram.as_html_img,
+            "value": _generate_image_html(diagram.as_datauri_svg),
         }
         return work_item
