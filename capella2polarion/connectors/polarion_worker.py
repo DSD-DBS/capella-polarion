@@ -83,7 +83,7 @@ class CapellaPolarionWorker:
         """Instantiate the polarion client as member."""
         if not self.client.project_exists():
             raise KeyError(
-                f"Miss Polarion project with id "
+                "Miss Polarion project with id "
                 f"{self.polarion_params.project_id}"
             )
 
@@ -134,18 +134,17 @@ class CapellaPolarionWorker:
         """Post work items in a Polarion project."""
         missing_work_items: list[data_models.CapellaWorkItem] = []
         for uuid, converter_data in converter_session.items():
-            work_item = converter_data.work_item
-            if work_item is None:
+            if not (work_item := converter_data.work_item):
                 logger.warning(
                     "Expected to find a WorkItem for %s, but there is none",
                     uuid,
                 )
                 continue
 
+            assert work_item is not None
             if work_item.uuid_capella in self.polarion_data_repo:
                 continue
 
-            assert work_item is not None
             missing_work_items.append(work_item)
             logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
@@ -264,4 +263,5 @@ class CapellaPolarionWorker:
     ) -> None:
         """Update work items in a Polarion project."""
         for uuid in converter_session:
-            self.patch_work_item(uuid, converter_session)
+            if uuid in self.polarion_data_repo:
+                self.patch_work_item(uuid, converter_session)
