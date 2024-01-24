@@ -305,7 +305,10 @@ class CapellaWorkItemSerializer:
     ) -> markupsafe.Markup:
         """Return sanitized markup of the given ``obj`` linked text."""
         obj = converter_data.capella_element
-        description = obj.specification["capella:linkedText"].striptags()
+        default = {"capella:linkedText": markupsafe.Markup("")}
+        description = getattr(obj, "specification", default)[
+            "capella:linkedText"
+        ].striptags()
         uuids, value = self._sanitize_description(obj, description)
         if uuids:
             converter_data.description_references = uuids
