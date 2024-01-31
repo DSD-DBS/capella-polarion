@@ -9,7 +9,7 @@ import polarion_rest_api_client as polarion_api
 
 
 class CapellaWorkItem(polarion_api.WorkItem):
-    """A custom WorkItem class with additional capella related attributes."""
+    """A WorkItem class with additional Capella related attributes."""
 
     class Condition(t.TypedDict):
         """A class to describe a pre or post condition."""
