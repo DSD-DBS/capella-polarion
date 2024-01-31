@@ -1266,3 +1266,31 @@ class TestSerializers:
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
         ).startswith(TEST_DIAG_DESCR)
+
+    def test_multiple_serializers(self, model: capellambse.MelodyModel):
+        cap = model.by_uuid(TEST_OCAP_UUID)
+        type_config = converter_config.CapellaTypeConfig(
+            "test",
+            ["include_pre_and_post_condition", "add_context_diagram"],
+            [],
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            pathlib.Path(""),
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_OCAP_UUID: data_session.ConverterData(
+                    "pa", type_config, cap
+                )
+            },
+        )
+
+        work_item = serializer.serialize(TEST_OCAP_UUID)
+
+        assert work_item is not None
+        assert "preCondition" in work_item.additional_attributes
+        assert "postCondition" in work_item.additional_attributes
+        assert "context_diagram" in work_item.additional_attributes
+        assert str(
+            work_item.additional_attributes["context_diagram"]["value"]
+        ).startswith(TEST_DIAG_DESCR)

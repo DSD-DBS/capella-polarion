@@ -94,7 +94,7 @@ def _get_requirement_types_text(
     obj: common.GenericElement,
 ) -> dict[str, dict[str, str]]:
     type_texts = collections.defaultdict(list)
-    for req in obj.requirements:
+    for req in getattr(obj, "requirements", []):
         if req is None:
             logger.error(
                 "RequirementsRelation with broken target found %r", obj.name
@@ -146,35 +146,34 @@ class CapellaWorkItemSerializer:
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
 
-    def serialize_all(self):
+    def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
         work_items = [self.serialize(uuid) for uuid in self.converter_session]
         return list(filter(None, work_items))
 
-    def serialize(
-        self,
-        uuid: str,
-    ) -> data_models.CapellaWorkItem | None:
+    def serialize(self, uuid: str) -> data_models.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
         converter_data = self.converter_session[uuid]
-        try:
-            serializer: cabc.Callable[
-                [data_session.ConverterData], data_models.CapellaWorkItem
-            ] = getattr(
-                self,
-                f"_{converter_data.type_config.converter}",
-                self._generic_work_item,
-            )
-            converter_data.work_item = serializer(converter_data)
-            if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
-                converter_data.work_item.uuid_capella
-            ):
-                converter_data.work_item.id = old.id
+        work_item = data_models.CapellaWorkItem(uuid)
+        nothing = True
+        for converter in converter_data.type_config.converters or []:
+            try:
+                serializer: cabc.Callable[
+                    [data_session.ConverterData], data_models.CapellaWorkItem
+                ] = getattr(self, f"_{converter}", self._generic_work_item)
+                converter_data.work_item = serializer(converter_data)
+                work_item += converter_data.work_item
+                nothing = False
+            except Exception as error:
+                logger.error(
+                    "Serializing model element failed. %s", error.args[0]
+                )
+                return None  # Force to not overwrite on failure
 
-            return converter_data.work_item
-        except Exception as error:
-            logger.error("Serializing model element failed. %s", error.args[0])
-            return None
+        old = self.capella_polarion_mapping.get_work_item_by_capella_uuid(uuid)
+        if not nothing and old:
+            work_item.id = old.id
+        return work_item
 
     def _diagram(
         self, converter_data: data_session.ConverterData
@@ -330,6 +329,18 @@ class CapellaWorkItemSerializer:
         work_item = self._generic_work_item(converter_data)
         diagram = converter_data.capella_element.context_diagram
         work_item.additional_attributes["context_diagram"] = {
+            "type": "text/html",
+            "value": _generate_image_html(diagram.as_datauri_svg),
+        }
+        return work_item
+
+    def _add_tree_diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field tree diagram."""
+        work_item = self._generic_work_item(converter_data)
+        diagram = converter_data.capella_element.tree_view
+        work_item.additional_attributes["tree_view"] = {
             "type": "text/html",
             "value": _generate_image_html(diagram.as_datauri_svg),
         }
