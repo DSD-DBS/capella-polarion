@@ -94,7 +94,7 @@ class ModelConverter:
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
-        The dictionary maps Capella UUIDs to ``CapellaWorkItem``s. In
+        The dictionary maps Capella UUIDs to ``CapellaWorkItem`` s. In
         addition, it is ensured that neither title nor type are None,
         Links are not created in this step by default.
         """
