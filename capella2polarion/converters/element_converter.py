@@ -3,8 +3,8 @@
 """Objects for serialization of capella objects to workitems."""
 from __future__ import annotations
 
-import base64
 import collections
+import hashlib
 import logging
 import mimetypes
 import pathlib
@@ -14,6 +14,7 @@ from collections import abc as cabc
 
 import capellambse
 import markupsafe
+import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
 from capellambse.model.crosslayer import interaction
@@ -43,6 +44,7 @@ PrePostConditionElement = t.Union[
 ]
 
 logger = logging.getLogger(__name__)
+C2P_IMAGE_PREFIX = "__C2P__"
 
 
 def resolve_element_type(type_: str) -> str:
@@ -103,12 +105,12 @@ def _condition(
     return {"type": _type, "value": value}
 
 
-def _generate_image_html(src: str) -> str:
+def _generate_image_html(attachment_id: str) -> str:
     """Generate an image as HTMl with the given source."""
     style = "; ".join(
         (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
     )
-    description = f'<html><p><img style="{style}" src="{src}" /></p></html>'
+    description = f'<html><p><img style="{style}" src="attachment:{attachment_id}" /></p></html>'
     return description
 
 
@@ -160,24 +162,35 @@ class CapellaWorkItemSerializer:
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
-        diag = converter_data.capella_element
+        diagram = converter_data.capella_element
 
         try:
-            src = diag.render("datauri_svg")
+            diagram_svg = diagram.render("svg")
         except Exception as error:
             logger.exception(
                 "Failed to get diagram from cache. Error: %s", error
             )
-            src = diag.as_datauri_svg
+            diagram_svg = diagram.as_svg
 
-        description = _generate_image_html(src)
+        file_name = f"{C2P_IMAGE_PREFIX}_diagram.svg"
+
         converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
-            title=diag.name,
+            title=diagram.name,
             description_type="text/html",
-            description=description,
+            description=_generate_image_html(file_name),
             status="open",
-            uuid_capella=diag.uuid,
+            uuid_capella=diagram.uuid,
+            attachments=[
+                polarion_api.WorkItemAttachment(
+                    "",
+                    "",
+                    "Context Diagram",
+                    diagram_svg,
+                    "image/svg+xml",
+                    file_name,
+                )
+            ],
         )
         return converter_data.work_item
 
@@ -186,8 +199,9 @@ class CapellaWorkItemSerializer:
     ) -> data_models.CapellaWorkItem:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
-        uuids, value = self._sanitize_description(
-            obj, raw_description or markupsafe.Markup("")
+        uuids, value, attachments = self._sanitize_description(
+            obj, raw_description
+        or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
         requirement_types = _get_requirement_types_text(obj)
@@ -198,18 +212,23 @@ class CapellaWorkItemSerializer:
             description=value,
             status="open",
             uuid_capella=obj.uuid,
+            attachments=attachments,
             **requirement_types,
         )
         return converter_data.work_item
 
     def _sanitize_description(
         self, obj: common.GenericElement, descr: markupsafe.Markup
-    ) -> tuple[list[str], markupsafe.Markup]:
+    ) -> tuple[
+        list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
+    ]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
             lambda match: self._replace_markup(match, referenced_uuids, 2),
             descr,
         )
+
+        attachments: list[polarion_api.WorkItemAttachment] = []
 
         def repair_images(node: etree._Element) -> None:
             if node.tag != "img":
@@ -225,8 +244,20 @@ class CapellaWorkItemSerializer:
             ]
             try:
                 with filehandler.open(file_path, "r") as img:
-                    b64_img = base64.b64encode(img.read()).decode("utf8")
-                    node.attrib["src"] = f"data:{mime_type};base64,{b64_img}"
+                    content = img.read()
+                    file_name = f"{hashlib.md5(str(file_path).encode('utf8')).hexdigest()}.{file_path.suffix}"
+                    attachments.append(
+                        polarion_api.WorkItemAttachment(
+                            "",
+                            "",
+                            file_path.name,
+                            content,
+                            mime_type,
+                            file_name,
+                        )
+                    )
+                    node.attrib["src"] = f"attachment:{file_name}"
+
             except FileNotFoundError:
                 logger.error(
                     "Inline image can't be found from %r for %r",
@@ -237,7 +268,7 @@ class CapellaWorkItemSerializer:
         repaired_markup = chelpers.process_html_fragments(
             replaced_markup, repair_images
         )
-        return referenced_uuids, repaired_markup
+        return referenced_uuids, repaired_markup, attachments
 
     def _replace_markup(
         self,
@@ -294,17 +325,19 @@ class CapellaWorkItemSerializer:
 
     def _get_linked_text(
         self, converter_data: data_session.ConverterData
-    ) -> markupsafe.Markup:
+    ) -> tuple[markupsafe.Markup, list[polarion_api.WorkItemAttachment]]:
         """Return sanitized markup of the given ``obj`` linked text."""
         obj = converter_data.capella_element
         default = {"capella:linkedText": markupsafe.Markup("")}
         description = getattr(obj, "specification", default)[
             "capella:linkedText"
         ].striptags()
-        uuids, value = self._sanitize_description(obj, description)
+        uuids, value, attachments = self._sanitize_description(
+            obj, description
+        )
         if uuids:
             converter_data.description_references = uuids
-        return value
+        return value, attachments
 
     def _linked_text_as_description(
         self, converter_data: data_session.ConverterData
@@ -312,9 +345,10 @@ class CapellaWorkItemSerializer:
         """Return attributes for a ``Constraint``."""
         # pylint: disable-next=attribute-defined-outside-init
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.description = self._get_linked_text(
+        converter_data.work_item.description, attachments = self._get_linked_text(
             converter_data
         )
+        converter_data.work_item.attachments += attachments
         return converter_data.work_item
 
     def _add_context_diagram(
@@ -323,9 +357,20 @@ class CapellaWorkItemSerializer:
         """Add a new custom field context diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.context_diagram
+        file_name = f"{C2P_IMAGE_PREFIX}_context_diagram.svg"
+        converter_data.work_item.attachments.append(
+            polarion_api.WorkItemAttachment(
+                "",
+                "",
+                "Context Diagram",
+                diagram.as_svg,
+                "image/svg+xml",
+                file_name,
+            )
+        )
         converter_data.work_item.additional_attributes["context_diagram"] = {
             "type": "text/html",
-            "value": _generate_image_html(diagram.as_datauri_svg),
+            "value": _generate_image_html(file_name),
         }
         return converter_data.work_item
 
@@ -335,8 +380,19 @@ class CapellaWorkItemSerializer:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.tree_view
+        file_name = f"{C2P_IMAGE_PREFIX}_tree_view.svg"
+        converter_data.work_item.attachments.append(
+            polarion_api.WorkItemAttachment(
+                "",
+                "",
+                "Tree View",
+                diagram.as_svg,
+                "image/svg+xml",
+                file_name,
+            )
+        )
         converter_data.work_item.additional_attributes["tree_view"] = {
             "type": "text/html",
-            "value": _generate_image_html(diagram.as_datauri_svg),
+            "value": _generate_image_html(file_name),
         }
         return converter_data.work_item
