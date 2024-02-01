@@ -20,25 +20,3 @@ class CapellaWorkItem(polarion_api.WorkItem):
     uuid_capella: str
     preCondition: Condition | None
     postCondition: Condition | None
-
-    def __add__(self, other: CapellaWorkItem) -> CapellaWorkItem:
-        """Add a CapellaWorkItem to this one."""
-        if not isinstance(other, CapellaWorkItem):
-            raise TypeError("Can only merge WorkItems")
-
-        merged_data: dict[str, t.Any] = {}
-        self_dict = self.to_dict()
-        other_dict = other.to_dict()
-        for key in set(self_dict) | set(other_dict):
-            self_val: t.Any = self_dict.get(key)
-            other_val: t.Any = other_dict.get(key)
-
-            if isinstance(self_val, list) and isinstance(other_val, list):
-                merged_data[key] = self_val + other_val
-            elif isinstance(self_val, dict) and isinstance(other_val, dict):
-                merged_data[key] = {**self_val, **other_val}
-            else:
-                merged_data[key] = (
-                    other_val if other_val is not None else self_val
-                )
-        return CapellaWorkItem(**merged_data)
