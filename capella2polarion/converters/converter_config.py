@@ -17,10 +17,14 @@ class CapellaTypeConfig:
     """A single Capella Type configuration."""
 
     p_type: str | None = None
-    converter: str | None = None
+    converters: str | list[str] | None = None
     links: list[str] = dataclasses.field(default_factory=list)
     is_actor: bool | None = None
     nature: str | None = None
+
+    def __post_init__(self):
+        """Post processing for the initialization."""
+        self.converters = _force_list(self.converters) or ["generic_work_item"]
 
 
 def _default_type_conversion(c_type: str) -> str:
@@ -92,7 +96,7 @@ class ConverterConfig:
             self._layer_configs[layer][c_type].append(
                 CapellaTypeConfig(
                     p_type,
-                    type_config.get("serializer") or closest_config.converter,
+                    type_config.get("serializer") or closest_config.converters,
                     type_config.get("links", []) + closest_config.links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
@@ -184,3 +188,9 @@ def _read_capella_type_configs(
         key=lambda c: int(c.get("is_actor", _C2P_DEFAULT) != _C2P_DEFAULT)
         + 2 * int(c.get("nature", _C2P_DEFAULT) != _C2P_DEFAULT),
     )
+
+
+def _force_list(config: str | list[str] | None) -> list[str]:
+    if config is None:
+        return []
+    return [config] if not isinstance(config, list) else config

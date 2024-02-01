@@ -94,7 +94,7 @@ def _get_requirement_types_text(
     obj: common.GenericElement,
 ) -> dict[str, dict[str, str]]:
     type_texts = collections.defaultdict(list)
-    for req in obj.requirements:
+    for req in getattr(obj, "requirements", []):
         if req is None:
             logger.error(
                 "RequirementsRelation with broken target found %r", obj.name
@@ -146,35 +146,33 @@ class CapellaWorkItemSerializer:
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
 
-    def serialize_all(self):
+    def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
         work_items = [self.serialize(uuid) for uuid in self.converter_session]
         return list(filter(None, work_items))
 
-    def serialize(
-        self,
-        uuid: str,
-    ) -> data_models.CapellaWorkItem | None:
+    def serialize(self, uuid: str) -> data_models.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
         converter_data = self.converter_session[uuid]
-        try:
-            serializer: cabc.Callable[
-                [data_session.ConverterData], data_models.CapellaWorkItem
-            ] = getattr(
-                self,
-                f"_{converter_data.type_config.converter}",
-                self._generic_work_item,
-            )
-            converter_data.work_item = serializer(converter_data)
-            if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
-                converter_data.work_item.uuid_capella
-            ):
-                converter_data.work_item.id = old.id
+        self._generic_work_item(converter_data)
 
-            return converter_data.work_item
-        except Exception as error:
-            logger.error("Serializing model element failed. %s", error.args[0])
-            return None
+        for converter in converter_data.type_config.converters or []:
+            try:
+                serializer: cabc.Callable[
+                    [data_session.ConverterData], data_models.CapellaWorkItem
+                ] = getattr(self, f"_{converter}")
+                serializer(converter_data)
+            except Exception as error:
+                logger.error(
+                    "Serializing model element failed. %s", error.args[0]
+                )
+                converter_data.work_item = None
+                return None  # Force to not overwrite on failure
+        assert converter_data.work_item is not None
+        old = self.capella_polarion_mapping.get_work_item_by_capella_uuid(uuid)
+        if old:
+            converter_data.work_item.id = old.id
+        return converter_data.work_item
 
     def _diagram(
         self, converter_data: data_session.ConverterData
@@ -184,7 +182,7 @@ class CapellaWorkItemSerializer:
         diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
         src = _decode_diagram(diagram_path)
         description = _generate_image_html(src)
-        return data_models.CapellaWorkItem(
+        converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
             title=diag.name,
             description_type="text/html",
@@ -192,16 +190,19 @@ class CapellaWorkItemSerializer:
             status="open",
             uuid_capella=diag.uuid,
         )
+        return converter_data.work_item
 
     def _generic_work_item(
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         obj = converter_data.capella_element
-        raw_description = getattr(obj, "description", markupsafe.Markup(""))
-        uuids, value = self._sanitize_description(obj, raw_description)
+        raw_description = getattr(obj, "description", None)
+        uuids, value = self._sanitize_description(
+            obj, raw_description or markupsafe.Markup("")
+        )
         converter_data.description_references = uuids
         requirement_types = _get_requirement_types_text(obj)
-        return data_models.CapellaWorkItem(
+        converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
             title=obj.name,
             description_type="text/html",
@@ -210,6 +211,7 @@ class CapellaWorkItemSerializer:
             uuid_capella=obj.uuid,
             **requirement_types,
         )
+        return converter_data.work_item
 
     def _sanitize_description(
         self, obj: common.GenericElement, descr: markupsafe.Markup
@@ -287,7 +289,6 @@ class CapellaWorkItemSerializer:
         def matcher(match: re.Match) -> str:
             return strike_through(self._replace_markup(match, []))
 
-        work_item = self._generic_work_item(converter_data)
         pre_condition = RE_DESCR_DELETED_PATTERN.sub(
             matcher, get_condition(obj, "precondition")
         )
@@ -295,10 +296,12 @@ class CapellaWorkItemSerializer:
             matcher, get_condition(obj, "postcondition")
         )
 
-        work_item.preCondition = _condition(True, pre_condition)
-        work_item.postCondition = _condition(True, post_condition)
-
-        return work_item
+        assert converter_data.work_item, "No work item set yet"
+        converter_data.work_item.preCondition = _condition(True, pre_condition)
+        converter_data.work_item.postCondition = _condition(
+            True, post_condition
+        )
+        return converter_data.work_item
 
     def _get_linked_text(
         self, converter_data: data_session.ConverterData
@@ -318,19 +321,33 @@ class CapellaWorkItemSerializer:
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
-        work_item = self._generic_work_item(converter_data)
         # pylint: disable-next=attribute-defined-outside-init
-        work_item.description = self._get_linked_text(converter_data)
-        return work_item
+        assert converter_data.work_item, "No work item set yet"
+        converter_data.work_item.description = self._get_linked_text(
+            converter_data
+        )
+        return converter_data.work_item
 
     def _add_context_diagram(
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field context diagram."""
-        work_item = self._generic_work_item(converter_data)
+        assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.context_diagram
-        work_item.additional_attributes["context_diagram"] = {
+        converter_data.work_item.additional_attributes["context_diagram"] = {
             "type": "text/html",
             "value": _generate_image_html(diagram.as_datauri_svg),
         }
-        return work_item
+        return converter_data.work_item
+
+    def _add_tree_diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field tree diagram."""
+        assert converter_data.work_item, "No work item set yet"
+        diagram = converter_data.capella_element.tree_view
+        converter_data.work_item.additional_attributes["tree_view"] = {
+            "type": "text/html",
+            "value": _generate_image_html(diagram.as_datauri_svg),
+        }
+        return converter_data.work_item
