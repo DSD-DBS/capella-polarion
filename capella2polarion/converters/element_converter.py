@@ -110,7 +110,10 @@ def _generate_image_html(attachment_id: str) -> str:
     style = "; ".join(
         (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
     )
-    description = f'<html><p><img style="{style}" src="attachment:{attachment_id}" /></p></html>'
+    description = (
+        f'<html><p><img style="{style}" '
+        f'src="attachment:{attachment_id}" /></p></html>'
+    )
     return description
 
 
@@ -245,7 +248,9 @@ class CapellaWorkItemSerializer:
             try:
                 with filehandler.open(file_path, "r") as img:
                     content = img.read()
-                    file_name = f"{hashlib.md5(str(file_path).encode('utf8')).hexdigest()}.{file_path.suffix}"
+                    file_name = hashlib.md5(
+                        str(file_path).encode("utf8")
+                    ).hexdigest()
                     attachments.append(
                         polarion_api.WorkItemAttachment(
                             "",
@@ -253,7 +258,7 @@ class CapellaWorkItemSerializer:
                             file_path.name,
                             content,
                             mime_type,
-                            file_name,
+                            f"{file_name}.{file_path.suffix}",
                         )
                     )
                     node.attrib["src"] = f"attachment:{file_name}"

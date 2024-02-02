@@ -138,7 +138,8 @@ class LinkSerializer:
             ref_links = self._create(work_item_id, role_id, refs, links)
         except Exception as err:
             logger.exception(
-                "Could not create links for diagram %r, because an error occured %s",
+                "Could not create links for diagram %r, "
+                "because an error occured %s",
                 obj._short_repr_(),
                 err,
             )

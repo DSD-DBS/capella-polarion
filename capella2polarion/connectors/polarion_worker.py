@@ -163,11 +163,13 @@ class CapellaPolarionWorker:
         """Patch a given WorkItem."""
         new = converter_session[uuid].work_item
         _, old = self.polarion_data_repo[uuid]
-        if not self.force_update and new == old:
-            return
 
         assert old is not None
         assert new is not None
+
+        new.calculate_checksum()
+        if not self.force_update and new == old:
+            return
 
         log_args = (old.id, new.type, new.title)
         logger.info("Update work item %r for model %s %r...", *log_args)
@@ -208,17 +210,19 @@ class CapellaPolarionWorker:
             old = self.client.get_work_item(old.id)
 
             del new.additional_attributes["uuid_capella"]
+            del old.additional_attributes["uuid_capella"]
+
             if old.linked_work_items_truncated:
                 old.linked_work_items = self.client.get_all_work_item_links(
                     old.id
                 )
 
-            # Type will only be updated, if it is set and should be used carefully
+            # Type will only be updated, if set and should be used carefully
             if new.type == old.type:
                 new.type = None
             new.status = "open"
 
-            # If additional fields were present in the past, but aren't anymore,
+            # If additional fields were present, but aren't anymore,
             # we have to set them to an empty value manually
             defaults = DEFAULT_ATTRIBUTE_VALUES
             for attribute, value in old.additional_attributes.items():
@@ -284,12 +288,13 @@ class CapellaPolarionWorker:
                             node.attrib["src"] = f"attachment:{attachment.id}"
                             return
 
-        new.description = chelpers.process_html_fragments(
-            new.description, set_attachment_id
-        )
+        if new.description:
+            new.description = chelpers.process_html_fragments(
+                new.description, set_attachment_id
+            )
         for _, value in new.additional_attributes.items():
             if isinstance(value, dict):
-                if value.get("type") == "text/html":
+                if value.get("type") == "text/html" and value.get("value"):
                     value["value"] = chelpers.process_html_fragments(
                         value["value"], set_attachment_id
                     )
