@@ -277,3 +277,64 @@ def test_add_context_diagram(
         == '<p><img style="max-width: 100%" '
         'src="attachment:1-__C2P__context_diagram.svg"/></p>'
     )
+
+
+def test_diagram_delete_attachments(
+    model: capellambse.MelodyModel,
+    worker: polarion_worker.CapellaPolarionWorker,
+):
+    converter = model_converter.ModelConverter(model, "TEST")
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [
+            data_models.CapellaWorkItem(
+                "TEST-ID",
+                uuid_capella=TEST_DIAG_UUID,
+                checksum=json.dumps(
+                    {
+                        "__C2P__WORK_ITEM": DIAGRAM_WI_CHECKSUM,
+                        "__C2P__diagram.png": DIAGRAM_PNG_CHECKSUM,
+                        "delete_me.png": "123",
+                    }
+                ),
+            )
+        ]
+    )
+    worker.client.get_all_work_item_attachments = mock.MagicMock()
+    worker.client.get_all_work_item_attachments.return_value = [
+        polarion_api.WorkItemAttachment(
+            "TEST-ID", "SVG-ATTACHMENT", "test", file_name="__C2P__diagram.svg"
+        ),
+        polarion_api.WorkItemAttachment(
+            "TEST-ID", "PNG-ATTACHMENT", "test", file_name="__C2P__diagram.png"
+        ),
+        polarion_api.WorkItemAttachment(
+            "TEST-ID", "SVG-DELETE", "test", file_name="delete_me.svg"
+        ),
+        polarion_api.WorkItemAttachment(
+            "TEST-ID", "PNG-DELETE", "test", file_name="delete_me.png"
+        ),
+    ]
+
+    converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        model.diagrams.by_uuid(TEST_DIAG_UUID),
+    )
+
+    converter.generate_work_items(worker.polarion_data_repo, False, True)
+
+    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+
+    assert worker.client.update_work_item.call_count == 1
+    assert worker.client.create_work_item_attachments.call_count == 0
+    assert worker.client.update_work_item_attachment.call_count == 0
+    assert worker.client.delete_work_item_attachment.call_count == 2
+
+    work_item: data_models.CapellaWorkItem = (
+        worker.client.update_work_item.call_args.args[0]
+    )
+
+    assert work_item.description is None
+    assert work_item.additional_attributes == {}
+    assert work_item.title is None
+    assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
