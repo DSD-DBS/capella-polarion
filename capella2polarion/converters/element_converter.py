@@ -175,7 +175,10 @@ class CapellaWorkItemSerializer:
             )
             diagram_svg = diagram.as_svg
 
-        file_name = f"{C2P_IMAGE_PREFIX}_diagram.svg"
+        if isinstance(diagram_svg, str):
+            diagram_svg = diagram_svg.encode("utf8")
+
+        file_name = f"{C2P_IMAGE_PREFIX}diagram.svg"
 
         converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
@@ -188,7 +191,7 @@ class CapellaWorkItemSerializer:
                 polarion_api.WorkItemAttachment(
                     "",
                     "",
-                    "Context Diagram",
+                    "Diagram",
                     diagram_svg,
                     "image/svg+xml",
                     file_name,
@@ -362,13 +365,18 @@ class CapellaWorkItemSerializer:
         """Add a new custom field context diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.context_diagram
-        file_name = f"{C2P_IMAGE_PREFIX}_context_diagram.svg"
+        file_name = f"{C2P_IMAGE_PREFIX}context_diagram.svg"
+
+        diagram_svg = diagram.as_svg
+        if isinstance(diagram_svg, str):
+            diagram_svg = diagram_svg.encode("utf8")
+
         converter_data.work_item.attachments.append(
             polarion_api.WorkItemAttachment(
                 "",
                 "",
                 "Context Diagram",
-                diagram.as_svg,
+                diagram_svg,
                 "image/svg+xml",
                 file_name,
             )
@@ -386,12 +394,17 @@ class CapellaWorkItemSerializer:
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.tree_view
         file_name = f"{C2P_IMAGE_PREFIX}_tree_view.svg"
+
+        diagram_svg = diagram.as_svg
+        if isinstance(diagram_svg, str):
+            diagram_svg = diagram_svg.encode("utf8")
+
         converter_data.work_item.attachments.append(
             polarion_api.WorkItemAttachment(
                 "",
                 "",
                 "Tree View",
-                diagram.as_svg,
+                diagram_svg,
                 "image/svg+xml",
                 file_name,
             )

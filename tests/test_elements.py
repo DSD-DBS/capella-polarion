@@ -1029,16 +1029,23 @@ class TestSerializers:
         )
 
         serialized_diagram = serializer.serialize(TEST_DIAG_UUID)
-        if serialized_diagram is not None:
-            serialized_diagram.description = None
 
         assert serialized_diagram == data_models.CapellaWorkItem(
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
             description_type="text/html",
+            description='<html><p><img style="max-width: 100%" '
+            'src="attachment:__C2P__diagram.svg" /></p></html>',
             status="open",
             linked_work_items=[],
+        )
+
+        attachment = serialized_diagram.attachments[0]
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "", "", "Diagram", None, "image/svg+xml", "__C2P__diagram.svg"
         )
 
     @staticmethod
@@ -1245,6 +1252,18 @@ class TestSerializers:
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
         ).startswith(TEST_DIAG_DESCR)
+
+        attachment = work_item.attachments[0]
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "",
+            "",
+            "Context Diagram",
+            None,
+            "image/svg+xml",
+            "__C2P__context_diagram.svg",
+        )
 
     def test_multiple_serializers(self, model: capellambse.MelodyModel):
         cap = model.by_uuid(TEST_OCAP_UUID)
