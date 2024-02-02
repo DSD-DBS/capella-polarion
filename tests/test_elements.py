@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import typing as t
 from unittest import mock
 

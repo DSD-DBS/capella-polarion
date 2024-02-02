@@ -341,17 +341,18 @@ class CapellaPolarionWorker:
             attachment = new_attachment_dict[common_attachment_file_name]
             attachment.id = old_attachment_dict[common_attachment_file_name].id
             if (
-                new_checksums[attachment.file_name]
+                new_checksums.get(attachment.file_name)
                 != old_checksums.get(attachment.file_name)
                 or self.force_update
+                or attachment.mime_type == "image/svg+xml"
             ):
                 attachments_for_update[attachment.file_name] = attachment
 
-        for file_name, attachment in attachments_for_update:
+        for file_name, attachment in attachments_for_update.items():
             # SVGs should only be updated if their PNG differs
             if (
                 attachment.mime_type == "image/svg+xml"
-                and file_name[:3] + "png" not in attachments_for_update
+                and file_name[:-3] + "png" not in attachments_for_update
             ):
                 continue
 
