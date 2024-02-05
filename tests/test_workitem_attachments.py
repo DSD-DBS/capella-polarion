@@ -1,9 +1,11 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
-
+import base64
+import hashlib
 import json
 from unittest import mock
 
+import cairosvg
 import capellambse
 import polarion_rest_api_client as polarion_api
 import pytest
@@ -16,14 +18,32 @@ from capella2polarion.converters import (
     model_converter,
 )
 
-from .test_elements import TEST_DIAG_UUID
+from .conftest import TEST_DIAGRAM_CACHE
 
 DIAGRAM_WI_CHECKSUM = (
     "37121e4c32bfae03ab387051f676f976de3b5b8b92c22351d906534ddf0a3ee8"
 )
-DIAGRAM_PNG_CHECKSUM = (
-    "c6d7880529ae26da4f1643740e235a44e71099dfd5e646849026445d9fb5024b"
-)
+
+TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
+
+with open(
+    TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg", "r", encoding="utf8"
+) as f:
+    diagram_svg = f.read()
+
+wia_dict = {
+    "work_item_id": "",
+    "title": "Diagram",
+    "content_bytes": base64.b64encode(cairosvg.svg2png(diagram_svg)).decode(
+        "utf8"
+    ),
+    "mime_type": "image/png",
+    "file_name": "__C2P__diagram.png",
+}
+
+DIAGRAM_PNG_CHECKSUM = hashlib.sha256(
+    json.dumps(wia_dict).encode("utf8")
+).hexdigest()
 DIAGRAM_CHECKSUM = json.dumps(
     {
         "__C2P__WORK_ITEM": DIAGRAM_WI_CHECKSUM,
