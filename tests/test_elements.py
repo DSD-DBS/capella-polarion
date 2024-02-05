@@ -1255,7 +1255,6 @@ class TestSerializers:
             [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
-            pathlib.Path(""),
             model,
             polarion_repo.PolarionDataRepository(),
             {
