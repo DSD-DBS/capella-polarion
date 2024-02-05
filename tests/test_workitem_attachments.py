@@ -19,7 +19,7 @@ from capella2polarion.converters import (
 from .test_elements import TEST_DIAG_UUID
 
 DIAGRAM_WI_CHECKSUM = (
-    "e03b0295aacbc8211eb6c9801afefa036f080f56a2785331732ad5e23fd4cf4f"
+    "37121e4c32bfae03ab387051f676f976de3b5b8b92c22351d906534ddf0a3ee8"
 )
 DIAGRAM_PNG_CHECKSUM = (
     "c6d7880529ae26da4f1643740e235a44e71099dfd5e646849026445d9fb5024b"
@@ -98,7 +98,7 @@ def test_diagram_attachments_new(
 
     assert (
         work_item.description == '<p><img style="max-width: 100%" '
-        'src="attachment:1-__C2P__diagram.svg"/>'
+        'src="workitemimg:1-__C2P__diagram.svg"/>'
         "</p>"
     )
     assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
@@ -142,7 +142,7 @@ def test_diagram_attachments_updated(
 
     assert (
         work_item.description == '<p><img style="max-width: 100%" '
-        'src="attachment:SVG-ATTACHMENT"/>'
+        'src="workitemimg:SVG-ATTACHMENT"/>'
         "</p>"
     )
 
@@ -196,7 +196,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
 
     assert (
         work_item.description == '<p><img style="max-width: 100%" '
-        'src="attachment:SVG-ATTACHMENT"/>'
+        'src="workitemimg:SVG-ATTACHMENT"/>'
         "</p>"
     )
 
@@ -275,7 +275,7 @@ def test_add_context_diagram(
     assert (
         str(work_item.additional_attributes["context_diagram"]["value"])
         == '<p><img style="max-width: 100%" '
-        'src="attachment:1-__C2P__context_diagram.svg"/></p>'
+        'src="workitemimg:1-__C2P__context_diagram.svg"/></p>'
     )
 
 

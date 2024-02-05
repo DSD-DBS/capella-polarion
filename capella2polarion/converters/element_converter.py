@@ -112,7 +112,7 @@ def _generate_image_html(attachment_id: str) -> str:
     )
     description = (
         f'<html><p><img style="{style}" '
-        f'src="attachment:{attachment_id}" /></p></html>'
+        f'src="workitemimg:{attachment_id}" /></p></html>'
     )
     return description
 
@@ -264,7 +264,7 @@ class CapellaWorkItemSerializer:
                             f"{file_name}.{file_path.suffix}",
                         )
                     )
-                    node.attrib["src"] = f"attachment:{file_name}"
+                    node.attrib["src"] = f"workitemimg:{file_name}"
 
             except FileNotFoundError:
                 logger.error(

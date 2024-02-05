@@ -195,7 +195,7 @@ class CapellaPolarionWorker:
             )
         except polarion_api.PolarionApiException as error:
             logger.error(
-                "Getting Attachments for WorkItem %r (%s %s) failed. %s",
+                "Updating attachments for WorkItem %r (%s %s) failed. %s",
                 *log_args,
                 error.args[0],
             )
@@ -241,8 +241,8 @@ class CapellaPolarionWorker:
             )
         else:
             new.additional_attributes = {}
-            del new.type
-            del new.status
+            new.type = None
+            new.status = None
             new.description = None
             new.description_type = None
             new.title = None
@@ -281,12 +281,17 @@ class CapellaPolarionWorker:
             if node.tag != "img":
                 return
             if img_src := node.attrib.get("src"):
-                if img_src.startswith("attachment:"):
-                    file_name = img_src[11:]
+                if img_src.startswith("workitemimg:"):
+                    file_name = img_src[12:]
                     for attachment in new.attachments:
                         if attachment.file_name == file_name:
-                            node.attrib["src"] = f"attachment:{attachment.id}"
+                            node.attrib["src"] = f"workitemimg:{attachment.id}"
                             return
+
+                    logger.error(
+                        "Did not find attachment ID for file name %s",
+                        file_name,
+                    )
 
         if new.description:
             new.description = chelpers.process_html_fragments(
@@ -317,6 +322,21 @@ class CapellaPolarionWorker:
         old_attachment_dict = {
             attachment.file_name: attachment for attachment in old_attachments
         }
+
+        duplicate_attachments = [
+            attachment
+            for attachment in old_attachments
+            if attachment not in old_attachment_dict.values()
+        ]
+        for attachment in duplicate_attachments:
+            logger.error(
+                "There are already multiple attachments named %s. "
+                "Attachment with ID %s will be deleted for that reason"
+                " - please report this as issue.",
+                attachment.file_name,
+                attachment.id,
+            )
+            self.client.delete_work_item_attachment(attachment)
 
         old_attachment_file_names = set(old_attachment_dict)
         new_attachment_file_names = set(new_attachment_dict)
