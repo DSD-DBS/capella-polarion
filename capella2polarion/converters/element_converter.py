@@ -206,8 +206,7 @@ class CapellaWorkItemSerializer:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
         uuids, value, attachments = self._sanitize_description(
-            obj, raw_description
-        or markupsafe.Markup("")
+            obj, raw_description or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
         requirement_types = _get_requirement_types_text(obj)
@@ -353,9 +352,10 @@ class CapellaWorkItemSerializer:
         """Return attributes for a ``Constraint``."""
         # pylint: disable-next=attribute-defined-outside-init
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.description, attachments = self._get_linked_text(
-            converter_data
-        )
+        (
+            converter_data.work_item.description,
+            attachments,
+        ) = self._get_linked_text(converter_data)
         converter_data.work_item.attachments += attachments
         return converter_data.work_item
 
