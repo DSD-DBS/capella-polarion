@@ -199,6 +199,8 @@ class CapellaWorkItemSerializer:
         old = self.capella_polarion_mapping.get_work_item_by_capella_uuid(uuid)
         if old:
             converter_data.work_item.id = old.id
+            for attachment in converter_data.work_item.attachments:
+                attachment.work_item_id = old.id
         return converter_data.work_item
 
     def _diagram(
