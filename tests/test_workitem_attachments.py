@@ -34,9 +34,9 @@ with open(
 wia_dict = {
     "work_item_id": "",
     "title": "Diagram",
-    "content_bytes": base64.b64encode(cairosvg.svg2png(diagram_svg)).decode(
-        "utf8"
-    ),
+    "content_bytes": base64.b64encode(
+        cairosvg.svg2png(diagram_svg, dpi=400)
+    ).decode("utf8"),
     "mime_type": "image/png",
     "file_name": "__C2P__diagram.png",
 }
