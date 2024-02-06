@@ -204,6 +204,7 @@ class TestDiagramElements:
         assert isinstance(work_item, data_models.CapellaWorkItem)
         description = work_item.description
         work_item.description = None
+        work_item.attachments = []
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
         assert description.startswith(TEST_DIAG_DESCR)
@@ -1030,6 +1031,17 @@ class TestSerializers:
 
         serialized_diagram = serializer.serialize(TEST_DIAG_UUID)
 
+        assert serialized_diagram is not None
+
+        attachment = serialized_diagram.attachments[0]
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "", "", "Diagram", None, "image/svg+xml", "__C2P__diagram.svg"
+        )
+
+        serialized_diagram.attachments = []
+
         assert serialized_diagram == data_models.CapellaWorkItem(
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
@@ -1039,13 +1051,6 @@ class TestSerializers:
             'src="workitemimg:__C2P__diagram.svg" /></p></html>',
             status="open",
             linked_work_items=[],
-        )
-
-        attachment = serialized_diagram.attachments[0]
-        attachment.content_bytes = None
-
-        assert attachment == polarion_api.WorkItemAttachment(
-            "", "", "Diagram", None, "image/svg+xml", "__C2P__diagram.svg"
         )
 
     @staticmethod
