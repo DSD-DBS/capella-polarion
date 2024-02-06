@@ -117,6 +117,46 @@ def _generate_image_html(attachment_id: str) -> str:
     return description
 
 
+def _draw_diagram(
+    diagram: capellambse.model.diagram.Diagram, file_name: str, title: str
+) -> tuple[str, polarion_api.WorkItemAttachment]:
+    file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
+
+    try:
+        diagram_svg = diagram.render("svg")
+    except Exception as error:
+        logger.exception("Failed to get diagram from cache. Error: %s", error)
+        diagram_svg = diagram.as_svg
+
+    if isinstance(diagram_svg, str):
+        diagram_svg = diagram_svg.encode("utf8")
+
+    attachment = polarion_api.WorkItemAttachment(
+        "",
+        "",
+        title,
+        diagram_svg,
+        "image/svg+xml",
+        file_name,
+    )
+
+    return _generate_image_html(file_name), attachment
+
+
+def _draw_additional_attributes_diagram(
+    work_item: data_models.CapellaWorkItem,
+    diagram: capellambse.model.diagram.Diagram,
+    attribute: str,
+    title: str,
+):
+    diagram_html, attachment = _draw_diagram(diagram, attribute, title)
+    work_item.attachments.append(attachment)
+    work_item.additional_attributes[attribute] = {
+        "type": "text/html",
+        "value": diagram_html,
+    }
+
+
 class CapellaWorkItemSerializer:
     """The general serializer class for CapellaWorkItems."""
 
@@ -167,36 +207,16 @@ class CapellaWorkItemSerializer:
         """Serialize a diagram for Polarion."""
         diagram = converter_data.capella_element
 
-        try:
-            diagram_svg = diagram.render("svg")
-        except Exception as error:
-            logger.exception(
-                "Failed to get diagram from cache. Error: %s", error
-            )
-            diagram_svg = diagram.as_svg
-
-        if isinstance(diagram_svg, str):
-            diagram_svg = diagram_svg.encode("utf8")
-
-        file_name = f"{C2P_IMAGE_PREFIX}diagram.svg"
+        diagram_html, attachment = _draw_diagram(diagram, "diagram", "Diagram")
 
         converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,
             title=diagram.name,
             description_type="text/html",
-            description=_generate_image_html(file_name),
+            description=diagram_html,
             status="open",
             uuid_capella=diagram.uuid,
-            attachments=[
-                polarion_api.WorkItemAttachment(
-                    "",
-                    "",
-                    "Diagram",
-                    diagram_svg,
-                    "image/svg+xml",
-                    file_name,
-                )
-            ],
+            attachments=[attachment],
         )
         return converter_data.work_item
 
@@ -365,26 +385,14 @@ class CapellaWorkItemSerializer:
         """Add a new custom field context diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.context_diagram
-        file_name = f"{C2P_IMAGE_PREFIX}context_diagram.svg"
 
-        diagram_svg = diagram.as_svg
-        if isinstance(diagram_svg, str):
-            diagram_svg = diagram_svg.encode("utf8")
-
-        converter_data.work_item.attachments.append(
-            polarion_api.WorkItemAttachment(
-                "",
-                "",
-                "Context Diagram",
-                diagram_svg,
-                "image/svg+xml",
-                file_name,
-            )
+        _draw_additional_attributes_diagram(
+            converter_data.work_item,
+            diagram,
+            "context_diagram",
+            "Context Diagram",
         )
-        converter_data.work_item.additional_attributes["context_diagram"] = {
-            "type": "text/html",
-            "value": _generate_image_html(file_name),
-        }
+
         return converter_data.work_item
 
     def _add_tree_diagram(
@@ -393,24 +401,9 @@ class CapellaWorkItemSerializer:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.tree_view
-        file_name = f"{C2P_IMAGE_PREFIX}_tree_view.svg"
 
-        diagram_svg = diagram.as_svg
-        if isinstance(diagram_svg, str):
-            diagram_svg = diagram_svg.encode("utf8")
-
-        converter_data.work_item.attachments.append(
-            polarion_api.WorkItemAttachment(
-                "",
-                "",
-                "Tree View",
-                diagram_svg,
-                "image/svg+xml",
-                file_name,
-            )
+        _draw_additional_attributes_diagram(
+            converter_data.work_item, diagram, "tree_view", "Tree View"
         )
-        converter_data.work_item.additional_attributes["tree_view"] = {
-            "type": "text/html",
-            "value": _generate_image_html(file_name),
-        }
+
         return converter_data.work_item
