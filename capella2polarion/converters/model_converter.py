@@ -126,7 +126,7 @@ class ModelConverter:
                         attachment.work_item_id,
                         "",
                         attachment.title,
-                        cairosvg.svg2png(attachment.content_bytes, dpi=400),
+                        cairosvg.svg2png(attachment.content_bytes),
                         "image/png",
                         attachment.file_name[:-3] + "png",
                     )
