@@ -25,6 +25,7 @@ DIAGRAM_WI_CHECKSUM = (
 )
 
 TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
+WORKITEM_ID = "TEST-ID"
 
 with open(
     TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg", "r", encoding="utf8"
@@ -32,11 +33,11 @@ with open(
     diagram_svg = f.read()
 
 wia_dict = {
-    "work_item_id": "",
+    "work_item_id": WORKITEM_ID,
     "title": "Diagram",
-    "content_bytes": base64.b64encode(
-        cairosvg.svg2png(diagram_svg, dpi=400)
-    ).decode("utf8"),
+    "content_bytes": base64.b64encode(cairosvg.svg2png(diagram_svg)).decode(
+        "utf8"
+    ),
     "mime_type": "image/png",
     "file_name": "__C2P__diagram.png",
 }
@@ -84,7 +85,7 @@ def test_diagram_attachments_new(
 ):
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem("TEST-ID", uuid_capella=TEST_DIAG_UUID)]
+        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
     worker.client.create_work_item_attachments = mock.MagicMock()
     worker.client.create_work_item_attachments.side_effect = set_attachment_ids
@@ -130,15 +131,21 @@ def test_diagram_attachments_updated(
 ):
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem("TEST-ID", uuid_capella=TEST_DIAG_UUID)]
+        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
     worker.client.get_all_work_item_attachments = mock.MagicMock()
     worker.client.get_all_work_item_attachments.return_value = [
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "SVG-ATTACHMENT", "test", file_name="__C2P__diagram.svg"
+            WORKITEM_ID,
+            "SVG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.svg",
         ),
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "PNG-ATTACHMENT", "test", file_name="__C2P__diagram.png"
+            WORKITEM_ID,
+            "PNG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.png",
         ),
     ]
 
@@ -175,7 +182,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
             data_models.CapellaWorkItem(
-                "TEST-ID",
+                WORKITEM_ID,
                 uuid_capella=TEST_DIAG_UUID,
                 checksum=json.dumps(
                     {
@@ -189,10 +196,16 @@ def test_diagram_attachments_unchanged_work_item_changed(
     worker.client.get_all_work_item_attachments = mock.MagicMock()
     worker.client.get_all_work_item_attachments.return_value = [
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "SVG-ATTACHMENT", "test", file_name="__C2P__diagram.svg"
+            WORKITEM_ID,
+            "SVG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.svg",
         ),
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "PNG-ATTACHMENT", "test", file_name="__C2P__diagram.png"
+            WORKITEM_ID,
+            "PNG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.png",
         ),
     ]
 
@@ -229,7 +242,7 @@ def test_diagram_attachments_fully_unchanged(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
             data_models.CapellaWorkItem(
-                "TEST-ID",
+                WORKITEM_ID,
                 uuid_capella=TEST_DIAG_UUID,
                 checksum=DIAGRAM_CHECKSUM,
             )
@@ -259,7 +272,7 @@ def test_add_context_diagram(
     uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem("TEST-ID", uuid_capella=uuid)]
+        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
     )
 
     converter.converter_session[uuid] = data_session.ConverterData(
@@ -307,7 +320,7 @@ def test_diagram_delete_attachments(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
             data_models.CapellaWorkItem(
-                "TEST-ID",
+                WORKITEM_ID,
                 uuid_capella=TEST_DIAG_UUID,
                 checksum=json.dumps(
                     {
@@ -322,16 +335,22 @@ def test_diagram_delete_attachments(
     worker.client.get_all_work_item_attachments = mock.MagicMock()
     worker.client.get_all_work_item_attachments.return_value = [
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "SVG-ATTACHMENT", "test", file_name="__C2P__diagram.svg"
+            WORKITEM_ID,
+            "SVG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.svg",
         ),
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "PNG-ATTACHMENT", "test", file_name="__C2P__diagram.png"
+            WORKITEM_ID,
+            "PNG-ATTACHMENT",
+            "test",
+            file_name="__C2P__diagram.png",
         ),
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "SVG-DELETE", "test", file_name="delete_me.svg"
+            WORKITEM_ID, "SVG-DELETE", "test", file_name="delete_me.svg"
         ),
         polarion_api.WorkItemAttachment(
-            "TEST-ID", "PNG-DELETE", "test", file_name="delete_me.png"
+            WORKITEM_ID, "PNG-DELETE", "test", file_name="delete_me.png"
         ),
     ]
 
