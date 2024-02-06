@@ -53,7 +53,7 @@ TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
 TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
-TEST_DIAG_DESCR = '<html><p><img style="max-width: 100%" src="workitemimg:'
+TEST_DIAG_DESCR = '<html><p><img src="workitemimg:'
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": "Diag-1",
     "title": "[CC] Capability",
@@ -1047,7 +1047,7 @@ class TestSerializers:
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
             description_type="text/html",
-            description='<html><p><img style="max-width: 100%" '
+            description="<html><p><img "
             'src="workitemimg:__C2P__diagram.svg" /></p></html>',
             status="open",
             linked_work_items=[],

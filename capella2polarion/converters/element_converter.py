@@ -108,12 +108,8 @@ def _condition(
 
 def _generate_image_html(attachment_id: str) -> str:
     """Generate an image as HTMl with the given source."""
-    style = "; ".join(
-        (f"{key}: {value}" for key, value in DIAGRAM_STYLES.items())
-    )
     description = (
-        f'<html><p><img style="{style}" '
-        f'src="workitemimg:{attachment_id}" /></p></html>'
+        f'<html><p><img src="workitemimg:{attachment_id}" /></p></html>'
     )
     return description
 
@@ -144,11 +140,12 @@ class CapellaWorkItemSerializer:
     def serialize(self, uuid: str) -> data_models.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""
         converter_data = self.converter_session[uuid]
-        self._generic_work_item(converter_data)
-        old = self.capella_polarion_mapping.get_work_item_by_capella_uuid(uuid)
-        if old:
-            assert converter_data.work_item is not None
-            converter_data.work_item.id = old.id
+        work_item_id = None
+        if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
+            uuid
+        ):
+            work_item_id = old.id
+        self.__generic_work_item(converter_data, work_item_id)
 
         for converter in converter_data.type_config.converters or []:
             try:
@@ -171,11 +168,12 @@ class CapellaWorkItemSerializer:
         work_item: data_models.CapellaWorkItem,
         attachment: polarion_api.WorkItemAttachment,
     ):
+        attachment.work_item_id = work_item.id or ""
         work_item.attachments.append(attachment)
         if attachment.mime_type == "image/svg+xml":
             work_item.attachments.append(
                 polarion_api.WorkItemAttachment(
-                    work_item.id,
+                    attachment.work_item_id,
                     "",
                     attachment.title,
                     cairosvg.svg2png(attachment.content_bytes),
@@ -259,8 +257,8 @@ class CapellaWorkItemSerializer:
             self._add_attachment(converter_data.work_item, attachment)
         return converter_data.work_item
 
-    def _generic_work_item(
-        self, converter_data: data_session.ConverterData
+    def __generic_work_item(
+        self, converter_data: data_session.ConverterData, work_item_id
     ) -> data_models.CapellaWorkItem:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
@@ -270,6 +268,7 @@ class CapellaWorkItemSerializer:
         converter_data.description_references = uuids
         requirement_types = _get_requirement_types_text(obj)
         converter_data.work_item = data_models.CapellaWorkItem(
+            id=work_item_id,
             type=converter_data.type_config.p_type,
             title=obj.name,
             description_type="text/html",
