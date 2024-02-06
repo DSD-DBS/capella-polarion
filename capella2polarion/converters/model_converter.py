@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 import typing as t
 
-import cairosvg
 import capellambse
 import polarion_rest_api_client as polarion_api
 
@@ -55,9 +54,9 @@ class ModelConverter:
                 if type_config := config.get_type_config(
                     layer, c_type, **attributes
                 ):
-                    self.converter_session[obj.uuid] = (
-                        data_session.ConverterData(layer, type_config, obj)
-                    )
+                    self.converter_session[
+                        obj.uuid
+                    ] = data_session.ConverterData(layer, type_config, obj)
                 else:
                     missing_types.add((layer, c_type, attributes))
 
@@ -102,7 +101,10 @@ class ModelConverter:
             attachments, PNGs are generated and attached automatically.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
-            self.model, polarion_data_repo, self.converter_session
+            self.model,
+            polarion_data_repo,
+            self.converter_session,
+            generate_attachments,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:
@@ -112,27 +114,7 @@ class ModelConverter:
         if generate_links:
             self.generate_work_item_links(polarion_data_repo)
 
-        if generate_attachments:
-            self.generate_pngs_for_svgs()
-
         return {wi.uuid_capella: wi for wi in work_items}
-
-    def generate_pngs_for_svgs(self):
-        """Generate PNG files for all SVGs for all work items."""
-        for converter_data in self.converter_session.values():
-            if converter_data.work_item is not None:
-                converter_data.work_item.attachments += [
-                    polarion_api.WorkItemAttachment(
-                        attachment.work_item_id,
-                        "",
-                        attachment.title,
-                        cairosvg.svg2png(attachment.content_bytes),
-                        "image/png",
-                        attachment.file_name[:-3] + "png",
-                    )
-                    for attachment in converter_data.work_item.attachments
-                    if attachment.mime_type == "image/svg+xml"
-                ]
 
     def generate_work_item_links(
         self, polarion_data_repo: polarion_repo.PolarionDataRepository

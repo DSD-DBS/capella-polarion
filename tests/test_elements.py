@@ -197,7 +197,7 @@ class TestDiagramElements:
         pw = base_object.pw
         new_work_items: dict[str, data_models.CapellaWorkItem]
         new_work_items = base_object.mc.generate_work_items(
-            pw.polarion_data_repo
+            pw.polarion_data_repo, generate_attachments=True
         )
         assert len(new_work_items) == 1
         work_item = new_work_items[TEST_DIAG_UUID]
@@ -1025,6 +1025,7 @@ class TestSerializers:
                     "", DIAGRAM_CONFIG, diag
                 )
             },
+            True,
         )
 
         serialized_diagram = serializer.serialize(TEST_DIAG_UUID)
@@ -1217,6 +1218,7 @@ class TestSerializers:
                     obj,
                 )
             },
+            False,
         )
 
         work_item = serializer.serialize(uuid)
@@ -1242,6 +1244,7 @@ class TestSerializers:
                     model.by_uuid(uuid),
                 )
             },
+            True,
         )
 
         work_item = serializer.serialize(uuid)
@@ -1279,6 +1282,7 @@ class TestSerializers:
                     "pa", type_config, cap
                 )
             },
+            True,
         )
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
