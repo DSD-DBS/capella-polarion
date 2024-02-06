@@ -55,9 +55,9 @@ class ModelConverter:
                 if type_config := config.get_type_config(
                     layer, c_type, **attributes
                 ):
-                    self.converter_session[
-                        obj.uuid
-                    ] = data_session.ConverterData(layer, type_config, obj)
+                    self.converter_session[obj.uuid] = (
+                        data_session.ConverterData(layer, type_config, obj)
+                    )
                 else:
                     missing_types.add((layer, c_type, attributes))
 
@@ -82,13 +82,24 @@ class ModelConverter:
         self,
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_links: bool = False,
-        pngs_for_svgs: bool = False,
+        generate_attachments: bool = False,
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
         The dictionary maps Capella UUIDs to ``CapellaWorkItem`` s. In
         addition, it is ensured that neither title nor type are None,
         Links are not created in this step by default.
+
+        Parameters
+        ----------
+        polarion_data_repo
+            The PolarionDataRepository object storing current work item
+            data.
+        generate_links
+            A boolean flag to control linked work item generation.
+        generate_attachments
+            A boolean flag to control attachments generation. For SVG
+            attachments, PNGs are generated and attached automatically.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
             self.model, polarion_data_repo, self.converter_session
@@ -101,7 +112,7 @@ class ModelConverter:
         if generate_links:
             self.generate_work_item_links(polarion_data_repo)
 
-        if pngs_for_svgs:
+        if generate_attachments:
             self.generate_pngs_for_svgs()
 
         return {wi.uuid_capella: wi for wi in work_items}

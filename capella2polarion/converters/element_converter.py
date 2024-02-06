@@ -32,7 +32,7 @@ RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
-DIAGRAM_STYLES = {"max-width": "100%"}
+DIAGRAM_STYLES = {"max-width": "100px"}
 POLARION_WORK_ITEM_URL = (
     '<span class="polarion-rte-link" data-type="workItem" '
     'id="fake" data-item-id="{pid}" data-option-id="long">'

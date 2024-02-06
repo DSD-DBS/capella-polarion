@@ -106,8 +106,8 @@ class CapellaPolarionWorker:
     ) -> None:
         """Delete work items in a Polarion project.
 
-        If the delete flag is set to ``False`` in the context work items are
-        marked as ``to be deleted`` via the status attribute.
+        If the delete flag is set to ``False`` in the context work items
+        are marked as ``to be deleted`` via the status attribute.
         """
 
         def serialize_for_delete(uuid: str) -> str:
@@ -172,9 +172,11 @@ class CapellaPolarionWorker:
             return
 
         log_args = (old.id, new.type, new.title)
-        logger.info("Update work item %r for model %s %r...", *log_args)
+        logger.info(
+            "Update work item %r for model element %s %r...", *log_args
+        )
 
-        if old.get_current_checksum()[0] != "{":
+        if old.get_current_checksum()[0] != "{":  # XXX: Remove in next release
             old_checksums = {"__C2P__WORK_ITEM": old.get_current_checksum()}
         else:
             old_checksums = json.loads(old.get_current_checksum())
@@ -297,12 +299,15 @@ class CapellaPolarionWorker:
             new.description = chelpers.process_html_fragments(
                 new.description, set_attachment_id
             )
-        for _, value in new.additional_attributes.items():
-            if isinstance(value, dict):
-                if value.get("type") == "text/html" and value.get("value"):
-                    value["value"] = chelpers.process_html_fragments(
-                        value["value"], set_attachment_id
-                    )
+        for _, attributes in new.additional_attributes.items():
+            if (
+                isinstance(attributes, dict)
+                and attributes.get("type") == "text/html"
+                and attributes.get("value") is not None
+            ):
+                attributes["value"] = chelpers.process_html_fragments(
+                    attributes["value"], set_attachment_id
+                )
 
     def update_attachments(
         self,
@@ -323,24 +328,19 @@ class CapellaPolarionWorker:
             attachment.file_name: attachment for attachment in old_attachments
         }
 
-        duplicate_attachments = [
-            attachment
-            for attachment in old_attachments
-            if attachment not in old_attachment_dict.values()
-        ]
-        for attachment in duplicate_attachments:
-            logger.error(
-                "There are already multiple attachments named %s. "
-                "Attachment with ID %s will be deleted for that reason"
-                " - please report this as issue.",
-                attachment.file_name,
-                attachment.id,
-            )
-            self.client.delete_work_item_attachment(attachment)
+        for attachment in old_attachments:
+            if attachment not in old_attachment_dict.values():
+                logger.error(
+                    "There are already multiple attachments named %s. "
+                    "Attachment with ID %s will be deleted for that reason"
+                    " - please report this as issue.",
+                    attachment.file_name,
+                    attachment.id,
+                )
+                self.client.delete_work_item_attachment(attachment)
 
         old_attachment_file_names = set(old_attachment_dict)
         new_attachment_file_names = set(new_attachment_dict)
-
         for file_name in old_attachment_file_names - new_attachment_file_names:
             self.client.delete_work_item_attachment(
                 old_attachment_dict[file_name]
