@@ -33,7 +33,7 @@ RE_DESCR_DELETED_PATTERN = re.compile(
     f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
-DIAGRAM_STYLES = {"max-width": "100%"}
+
 POLARION_WORK_ITEM_URL = (
     '<span class="polarion-rte-link" data-type="workItem" '
     'id="fake" data-item-id="{pid}" data-option-id="long">'
@@ -107,11 +107,11 @@ def _condition(
 
 
 def _generate_image_html(
-    title: str, attachment_id: str, max_width: int
+    title: str, attachment_id: str, max_width: int, cls: str
 ) -> str:
     """Generate an image as HTMl with the given source."""
     description = (
-        f'<span><img title="{title}" '
+        f'<span><img title="{title}" class="{cls}" '
         f'src="workitemimg:{attachment_id}" '
         f'style="max-width: {max_width}px;"/></span>'
     )
@@ -192,6 +192,7 @@ class CapellaWorkItemSerializer:
         file_name: str,
         title: str,
         max_width: int,
+        cls: str,
     ) -> tuple[str, polarion_api.WorkItemAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
@@ -218,7 +219,10 @@ class CapellaWorkItemSerializer:
         else:
             attachment = None
 
-        return _generate_image_html(title, file_name, max_width), attachment
+        return (
+            _generate_image_html(title, file_name, max_width, cls),
+            attachment,
+        )
 
     def _draw_additional_attributes_diagram(
         self,
@@ -228,7 +232,7 @@ class CapellaWorkItemSerializer:
         title: str,
     ):
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, attribute, title, 650
+            diagram, attribute, title, 650, "additional-attributes-diagram"
         )
         if attachment:
             self._add_attachment(work_item, attachment)
@@ -246,7 +250,7 @@ class CapellaWorkItemSerializer:
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram", 750
+            diagram, "diagram", "Diagram", 750, "diagram"
         )
 
         converter_data.work_item = data_models.CapellaWorkItem(

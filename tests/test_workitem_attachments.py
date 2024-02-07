@@ -22,7 +22,7 @@ from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR
 
 DIAGRAM_WI_CHECKSUM = (
-    "9815d6136d0354dac455e4759d0fdb119a1c384e010b71d4d139472a5331f2fd"
+    "122dc8471ac3135a1af1e3b44ac76a9acd888a9e4add162e7433a94aa498598d"
 )
 
 TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
@@ -119,7 +119,10 @@ def test_diagram_attachments_new(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="1-__C2P__diagram.svg", width=750
+        title="Diagram",
+        attachment_id="1-__C2P__diagram.svg",
+        width=750,
+        cls="diagram",
     )
     assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
 
@@ -167,7 +170,10 @@ def test_diagram_attachments_updated(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="SVG-ATTACHMENT", width=750
+        title="Diagram",
+        attachment_id="SVG-ATTACHMENT",
+        width=750,
+        cls="diagram",
     )
 
 
@@ -225,7 +231,10 @@ def test_diagram_attachments_unchanged_work_item_changed(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="SVG-ATTACHMENT", width=750
+        title="Diagram",
+        attachment_id="SVG-ATTACHMENT",
+        width=750,
+        cls="diagram",
     )
 
 
@@ -306,6 +315,7 @@ def test_add_context_diagram(
         title="Context Diagram",
         attachment_id="1-__C2P__context_diagram.svg",
         width=650,
+        cls="additional-attributes-diagram",
     )
 
 

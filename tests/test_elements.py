@@ -54,7 +54,7 @@ TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_DIAG_DESCR = (
-    '<span><img title="{title}" '
+    '<span><img title="{title}" class="{cls}" '
     'src="workitemimg:{attachment_id}" '
     'style="max-width: {width}px;"/></span>'
 )
@@ -212,7 +212,10 @@ class TestDiagramElements:
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
         assert description == TEST_DIAG_DESCR.format(
-            title="Diagram", attachment_id="__C2P__diagram.svg", width=750
+            title="Diagram",
+            attachment_id="__C2P__diagram.svg",
+            width=750,
+            cls="diagram",
         )
 
     @staticmethod
@@ -1054,7 +1057,10 @@ class TestSerializers:
             title="[CC] Capability",
             description_type="text/html",
             description=TEST_DIAG_DESCR.format(
-                title="Diagram", attachment_id="__C2P__diagram.svg", width=750
+                title="Diagram",
+                attachment_id="__C2P__diagram.svg",
+                width=750,
+                cls="diagram",
             ),
             status="open",
             linked_work_items=[],
@@ -1269,6 +1275,7 @@ class TestSerializers:
             title="Context Diagram",
             attachment_id="__C2P__context_diagram.svg",
             width=650,
+            cls="additional-attributes-diagram",
         )
 
         attachment = work_item.attachments[0]
@@ -1313,4 +1320,5 @@ class TestSerializers:
             title="Context Diagram",
             attachment_id="__C2P__context_diagram.svg",
             width=650,
+            cls="additional-attributes-diagram",
         )
