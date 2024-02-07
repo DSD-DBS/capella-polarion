@@ -119,7 +119,7 @@ def test_diagram_attachments_new(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="1-__C2P__diagram.svg", width=800
+        title="Diagram", attachment_id="1-__C2P__diagram.svg", width=750
     )
     assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
 
@@ -167,7 +167,7 @@ def test_diagram_attachments_updated(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="SVG-ATTACHMENT", width=800
+        title="Diagram", attachment_id="SVG-ATTACHMENT", width=750
     )
 
 
@@ -225,7 +225,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
-        title="Diagram", attachment_id="SVG-ATTACHMENT", width=800
+        title="Diagram", attachment_id="SVG-ATTACHMENT", width=750
     )
 
 

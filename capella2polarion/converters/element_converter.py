@@ -246,7 +246,7 @@ class CapellaWorkItemSerializer:
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram", 800
+            diagram, "diagram", "Diagram", 750
         )
 
         converter_data.work_item = data_models.CapellaWorkItem(

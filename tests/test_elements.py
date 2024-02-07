@@ -212,7 +212,7 @@ class TestDiagramElements:
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
         assert description == TEST_DIAG_DESCR.format(
-            title="Diagram", attachment_id="__C2P__diagram.svg", width=800
+            title="Diagram", attachment_id="__C2P__diagram.svg", width=750
         )
 
     @staticmethod
@@ -1054,7 +1054,7 @@ class TestSerializers:
             title="[CC] Capability",
             description_type="text/html",
             description=TEST_DIAG_DESCR.format(
-                title="Diagram", attachment_id="__C2P__diagram.svg", width=800
+                title="Diagram", attachment_id="__C2P__diagram.svg", width=750
             ),
             status="open",
             linked_work_items=[],
