@@ -106,10 +106,14 @@ def _condition(
     return {"type": _type, "value": value}
 
 
-def _generate_image_html(attachment_id: str) -> str:
+def _generate_image_html(
+    title: str, attachment_id: str, max_width: int
+) -> str:
     """Generate an image as HTMl with the given source."""
     description = (
-        f'<html><p><img src="workitemimg:{attachment_id}" /></p></html>'
+        f'<span><img title="{title}" '
+        f'src="workitemimg:{attachment_id}" '
+        f'style="max-width: {max_width}px;"/></span>'
     )
     return description
 
@@ -187,6 +191,7 @@ class CapellaWorkItemSerializer:
         diagram: capellambse.model.diagram.Diagram,
         file_name: str,
         title: str,
+        max_width: int,
     ) -> tuple[str, polarion_api.WorkItemAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
@@ -213,7 +218,7 @@ class CapellaWorkItemSerializer:
         else:
             attachment = None
 
-        return _generate_image_html(file_name), attachment
+        return _generate_image_html(title, file_name, max_width), attachment
 
     def _draw_additional_attributes_diagram(
         self,
@@ -223,7 +228,7 @@ class CapellaWorkItemSerializer:
         title: str,
     ):
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, attribute, title
+            diagram, attribute, title, 650
         )
         if attachment:
             self._add_attachment(work_item, attachment)
@@ -241,7 +246,7 @@ class CapellaWorkItemSerializer:
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram"
+            diagram, "diagram", "Diagram", 800
         )
 
         converter_data.work_item = data_models.CapellaWorkItem(

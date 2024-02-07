@@ -19,9 +19,10 @@ from capella2polarion.converters import (
 )
 
 from .conftest import TEST_DIAGRAM_CACHE
+from .test_elements import TEST_DIAG_DESCR
 
 DIAGRAM_WI_CHECKSUM = (
-    "77ace573c3fb71db26b502f3cbb931b032432fe27290703c476707723a1e360d"
+    "9815d6136d0354dac455e4759d0fdb119a1c384e010b71d4d139472a5331f2fd"
 )
 
 TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
@@ -117,10 +118,8 @@ def test_diagram_attachments_new(
         == created_attachments[0].file_name[:3]
     )
 
-    assert (
-        work_item.description == "<p><img "
-        'src="workitemimg:1-__C2P__diagram.svg"/>'
-        "</p>"
+    assert work_item.description == TEST_DIAG_DESCR.format(
+        title="Diagram", attachment_id="1-__C2P__diagram.svg", width=800
     )
     assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
 
@@ -167,10 +166,8 @@ def test_diagram_attachments_updated(
         worker.client.update_work_item.call_args.args[0]
     )
 
-    assert (
-        work_item.description == "<p><img "
-        'src="workitemimg:SVG-ATTACHMENT"/>'
-        "</p>"
+    assert work_item.description == TEST_DIAG_DESCR.format(
+        title="Diagram", attachment_id="SVG-ATTACHMENT", width=800
     )
 
 
@@ -227,10 +224,8 @@ def test_diagram_attachments_unchanged_work_item_changed(
         worker.client.update_work_item.call_args.args[0]
     )
 
-    assert (
-        work_item.description == "<p><img "
-        'src="workitemimg:SVG-ATTACHMENT"/>'
-        "</p>"
+    assert work_item.description == TEST_DIAG_DESCR.format(
+        title="Diagram", attachment_id="SVG-ATTACHMENT", width=800
     )
 
 
@@ -305,10 +300,12 @@ def test_add_context_diagram(
         == created_attachments[0].file_name[:3]
     )
 
-    assert (
-        str(work_item.additional_attributes["context_diagram"]["value"])
-        == "<p><img "
-        'src="workitemimg:1-__C2P__context_diagram.svg"/></p>'
+    assert str(
+        work_item.additional_attributes["context_diagram"]["value"]
+    ) == TEST_DIAG_DESCR.format(
+        title="Context Diagram",
+        attachment_id="1-__C2P__context_diagram.svg",
+        width=650,
     )
 
 

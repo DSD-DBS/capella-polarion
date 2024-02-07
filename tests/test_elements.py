@@ -53,7 +53,11 @@ TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
 TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
-TEST_DIAG_DESCR = '<html><p><img src="workitemimg:'
+TEST_DIAG_DESCR = (
+    '<span><img title="{title}" '
+    'src="workitemimg:{attachment_id}" '
+    'style="max-width: {width}px;"/></span>'
+)
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": "Diag-1",
     "title": "[CC] Capability",
@@ -207,7 +211,9 @@ class TestDiagramElements:
         work_item.attachments = []
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
-        assert description.startswith(TEST_DIAG_DESCR)
+        assert description == TEST_DIAG_DESCR.format(
+            title="Diagram", attachment_id="__C2P__diagram.svg", width=800
+        )
 
     @staticmethod
     def test_create_diagrams_filters_non_diagram_elements(
@@ -1047,8 +1053,9 @@ class TestSerializers:
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
             description_type="text/html",
-            description="<html><p><img "
-            'src="workitemimg:__C2P__diagram.svg" /></p></html>',
+            description=TEST_DIAG_DESCR.format(
+                title="Diagram", attachment_id="__C2P__diagram.svg", width=800
+            ),
             status="open",
             linked_work_items=[],
         )
@@ -1258,7 +1265,11 @@ class TestSerializers:
         assert "context_diagram" in work_item.additional_attributes
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
-        ).startswith(TEST_DIAG_DESCR)
+        ) == TEST_DIAG_DESCR.format(
+            title="Context Diagram",
+            attachment_id="__C2P__context_diagram.svg",
+            width=650,
+        )
 
         attachment = work_item.attachments[0]
         attachment.content_bytes = None
@@ -1298,4 +1309,8 @@ class TestSerializers:
         assert "context_diagram" in work_item.additional_attributes
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
-        ).startswith(TEST_DIAG_DESCR)
+        ) == TEST_DIAG_DESCR.format(
+            title="Context Diagram",
+            attachment_id="__C2P__context_diagram.svg",
+            width=650,
+        )
