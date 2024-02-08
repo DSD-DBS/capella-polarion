@@ -187,14 +187,25 @@ class CapellaPolarionWorker:
         old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
 
         work_item_changed = new_work_item_check_sum != old_work_item_check_sum
-
         try:
-            old_attachments = self.client.get_all_work_item_attachments(
-                work_item_id=old.id
-            )
-            self.update_attachments(
-                new, old_checksums, new_checksums, old_attachments
-            )
+            if work_item_changed or self.force_update:
+                old = self.client.get_work_item(old.id)
+                if old.attachments:
+                    old_attachments = (
+                        self.client.get_all_work_item_attachments(
+                            work_item_id=old.id
+                        )
+                    )
+                else:
+                    old_attachments = []
+            else:
+                old_attachments = self.client.get_all_work_item_attachments(
+                    work_item_id=old.id
+                )
+            if old_attachments or new.attachments:
+                self.update_attachments(
+                    new, old_checksums, new_checksums, old_attachments
+                )
         except polarion_api.PolarionApiException as error:
             logger.error(
                 "Updating attachments for WorkItem %r (%s %s) failed. %s",
@@ -203,13 +214,13 @@ class CapellaPolarionWorker:
             )
             return
 
-        self._refactor_attached_images(new)
         assert new.id is not None
         delete_links = None
         create_links = None
 
         if work_item_changed or self.force_update:
-            old = self.client.get_work_item(old.id)
+            if new.attachments:
+                self._refactor_attached_images(new)
 
             del new.additional_attributes["uuid_capella"]
             del old.additional_attributes["uuid_capella"]

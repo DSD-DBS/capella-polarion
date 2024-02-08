@@ -59,7 +59,7 @@ def worker(monkeypatch: pytest.MonkeyPatch):
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     config = mock.Mock(converter_config.ConverterConfig)
-    worker = polarion_worker.CapellaPolarionWorker(
+    return polarion_worker.CapellaPolarionWorker(
         polarion_worker.PolarionWorkerParams(
             "TEST",
             "http://localhost",
@@ -68,8 +68,6 @@ def worker(monkeypatch: pytest.MonkeyPatch):
         ),
         config,
     )
-
-    return worker
 
 
 def set_attachment_ids(attachments: list[polarion_api.WorkItemAttachment]):
@@ -80,6 +78,37 @@ def set_attachment_ids(attachments: list[polarion_api.WorkItemAttachment]):
         counter += 1
 
 
+def test_diagram_no_attachments(model: capellambse.MelodyModel):
+    converter = model_converter.ModelConverter(model, "TEST")
+    converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        model.diagrams.by_uuid(TEST_DIAG_UUID),
+    )
+    converter.generate_work_items(
+        polarion_repo.PolarionDataRepository(), False, False
+    )
+    work_item = converter.converter_session[TEST_DIAG_UUID].work_item
+    assert work_item is not None
+    assert work_item.attachments == []
+
+
+def test_diagram_has_attachments(model: capellambse.MelodyModel):
+    converter = model_converter.ModelConverter(model, "TEST")
+    converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        model.diagrams.by_uuid(TEST_DIAG_UUID),
+    )
+    converter.generate_work_items(
+        polarion_repo.PolarionDataRepository(), False, True
+    )
+
+    work_item = converter.converter_session[TEST_DIAG_UUID].work_item
+    assert work_item is not None
+    assert len(work_item.attachments) == 2
+
+
 def test_diagram_attachments_new(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
@@ -87,6 +116,10 @@ def test_diagram_attachments_new(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
+    )
+
+    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
+        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID
     )
     worker.client.create_work_item_attachments = mock.MagicMock()
     worker.client.create_work_item_attachments.side_effect = set_attachment_ids
@@ -103,6 +136,7 @@ def test_diagram_attachments_new(
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
+    assert worker.client.get_all_work_item_attachments.call_count == 0
 
     created_attachments: list[
         polarion_api.WorkItemAttachment
@@ -135,8 +169,7 @@ def test_diagram_attachments_updated(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
-    worker.client.get_all_work_item_attachments = mock.MagicMock()
-    worker.client.get_all_work_item_attachments.return_value = [
+    existing_attachments = [
         polarion_api.WorkItemAttachment(
             WORKITEM_ID,
             "SVG-ATTACHMENT",
@@ -151,6 +184,17 @@ def test_diagram_attachments_updated(
         ),
     ]
 
+    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
+        WORKITEM_ID,
+        uuid_capella=TEST_DIAG_UUID,
+        attachments=existing_attachments,
+    )
+
+    worker.client.get_all_work_item_attachments = mock.MagicMock()
+    worker.client.get_all_work_item_attachments.return_value = (
+        existing_attachments
+    )
+
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
@@ -164,6 +208,7 @@ def test_diagram_attachments_updated(
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
     assert worker.client.update_work_item_attachment.call_count == 2
+    assert worker.client.get_all_work_item_attachments.call_count == 1
 
     work_item: data_models.CapellaWorkItem = (
         worker.client.update_work_item.call_args.args[0]

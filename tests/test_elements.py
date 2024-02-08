@@ -686,6 +686,9 @@ class TestModelElements:
         assert base_object.pw.client.create_work_item_links.call_count == 0
         assert base_object.pw.client.update_work_item.call_count == 1
         assert base_object.pw.client.get_work_item.call_count == 1
+        assert (
+            base_object.pw.client.get_all_work_item_attachments.call_count == 0
+        )
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
