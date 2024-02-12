@@ -57,22 +57,6 @@ def strike_through(string: str) -> str:
     return f'<span style="text-decoration: line-through;">{string}</span>'
 
 
-def _decode_diagram(diagram_path: pathlib.Path) -> str:
-    mime_type, _ = mimetypes.guess_type(diagram_path)
-    if mime_type is None:
-        logger.error(
-            "Do not understand the MIME subtype for the diagram '%s'!",
-            diagram_path,
-        )
-        return ""
-    content = diagram_path.read_bytes()
-    content_encoded = base64.standard_b64encode(content)
-    assert mime_type is not None
-    image_data = b"data:" + mime_type.encode() + b";base64," + content_encoded
-    src = image_data.decode()
-    return src
-
-
 def _format_texts(
     type_texts: dict[str, list[str]]
 ) -> dict[str, dict[str, str]]:
@@ -136,12 +120,10 @@ class CapellaWorkItemSerializer:
 
     def __init__(
         self,
-        diagram_cache_path: pathlib.Path,
         model: capellambse.MelodyModel,
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         converter_session: data_session.ConverterSession,
     ):
-        self.diagram_cache_path = diagram_cache_path
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
@@ -179,8 +161,15 @@ class CapellaWorkItemSerializer:
     ) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diag = converter_data.capella_element
-        diagram_path = self.diagram_cache_path / f"{diag.uuid}.svg"
-        src = _decode_diagram(diagram_path)
+
+        try:
+            src = diag.render("datauri_svg")
+        except Exception as error:
+            logger.exception(
+                "Failed to get diagram from cache. Error: %s", error
+            )
+            src = diag.as_datauri_svg
+
         description = _generate_image_html(src)
         converter_data.work_item = data_models.CapellaWorkItem(
             type=converter_data.type_config.p_type,

@@ -136,9 +136,11 @@ class LinkSerializer:
             refs = set(self._collect_uuids(obj.nodes))
             refs = set(self._get_work_item_ids(work_item_id, refs, role_id))
             ref_links = self._create(work_item_id, role_id, refs, links)
-        except StopIteration:
+        except Exception as err:
             logger.exception(
-                "Could not create links for diagram %r", obj._short_repr_()
+                "Could not create links for diagram %r, because an error occured %s",
+                obj._short_repr_(),
+                err,
             )
             ref_links = []
         return ref_links

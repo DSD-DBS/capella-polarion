@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import typing
 
 import capellambse
@@ -35,18 +34,6 @@ logger = logging.getLogger(__name__)
 )
 @click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
 @click.option("--polarion-delete-work-items", is_flag=True, default=False)
-@click.option(
-    "--capella-diagram-cache-folder-path",
-    type=click.Path(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-        path_type=pathlib.Path,
-    ),
-    default=None,
-)
 @click.option("--capella-model", type=cli_helpers.ModelCLI(), default=None)
 @click.option(
     "--synchronize-config",
@@ -62,18 +49,19 @@ def cli(
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
-    capella_diagram_cache_folder_path: pathlib.Path,
     capella_model: capellambse.MelodyModel,
     synchronize_config: typing.TextIO,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
+    if capella_model.diagram_cache is None:
+        logger.warning("It's highly recommended to define a diagram cache!")
+
     capella2polarion_cli = Capella2PolarionCli(
         debug,
         polarion_project_id,
         polarion_url,
         polarion_pat,
         polarion_delete_work_items,
-        capella_diagram_cache_folder_path,
         capella_model,
         synchronize_config,
         force_update,
@@ -96,28 +84,17 @@ def synchronize(ctx: click.core.Context) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
     logger.info(
-        "Synchronising diagrams from diagram cache at "
-        "%s to Polarion project with id %s...",
-        str(capella_to_polarion_cli.capella_diagram_cache_folder_path),
+        "Synchronising model elements to Polarion project with id %s...",
         capella_to_polarion_cli.polarion_params.project_id,
     )
     capella_to_polarion_cli.load_synchronize_config()
-    capella_to_polarion_cli.load_capella_diagram_cache_index()
-
-    assert (
-        capella_to_polarion_cli.capella_diagram_cache_index_content is not None
-    )
 
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
-        capella_to_polarion_cli.capella_diagram_cache_folder_path,
         capella_to_polarion_cli.polarion_params.project_id,
     )
 
-    converter.read_model(
-        capella_to_polarion_cli.config,
-        capella_to_polarion_cli.capella_diagram_cache_index_content,
-    )
+    converter.read_model(capella_to_polarion_cli.config)
 
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
