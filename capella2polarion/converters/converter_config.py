@@ -24,7 +24,7 @@ class CapellaTypeConfig:
 
     def __post_init__(self):
         """Post processing for the initialization."""
-        self.converters = _force_list(self.converters) or ["generic_work_item"]
+        self.converters = _force_list(self.converters)
 
 
 def _default_type_conversion(c_type: str) -> str:

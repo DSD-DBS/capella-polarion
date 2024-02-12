@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import collections.abc as cabc
+import json
 import logging
 import typing as t
 from urllib import parse
 
 import polarion_rest_api_client as polarion_api
+from capellambse import helpers as chelpers
+from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
@@ -103,8 +106,8 @@ class CapellaPolarionWorker:
     ) -> None:
         """Delete work items in a Polarion project.
 
-        If the delete flag is set to ``False`` in the context work items are
-        marked as ``to be deleted`` via the status attribute.
+        If the delete flag is set to ``False`` in the context work items
+        are marked as ``to be deleted`` via the status attribute.
         """
 
         def serialize_for_delete(uuid: str) -> str:
@@ -160,60 +163,116 @@ class CapellaPolarionWorker:
         """Patch a given WorkItem."""
         new = converter_session[uuid].work_item
         _, old = self.polarion_data_repo[uuid]
-        if not self.force_update and new == old:
-            return
 
         assert old is not None
         assert new is not None
 
+        new.calculate_checksum()
+        if not self.force_update and new == old:
+            return
+
         log_args = (old.id, new.type, new.title)
-        logger.info("Update work item %r for model %s %r...", *log_args)
+        logger.info(
+            "Update work item %r for model element %s %r...", *log_args
+        )
 
-        del new.additional_attributes["uuid_capella"]
+        if old.get_current_checksum()[0] != "{":  # XXX: Remove in next release
+            old_checksums = {"__C2P__WORK_ITEM": old.get_current_checksum()}
+        else:
+            old_checksums = json.loads(old.get_current_checksum())
 
-        old = self.client.get_work_item(old.id)
+        new_checksums = json.loads(new.get_current_checksum())
 
-        if old.linked_work_items_truncated:
-            old.linked_work_items = self.client.get_all_work_item_links(old.id)
+        new_work_item_check_sum = new_checksums.pop("__C2P__WORK_ITEM")
+        old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
 
-        del old.additional_attributes["uuid_capella"]
-
-        # Type will only be updated, if it is set and should be used carefully
-        if new.type == old.type:
-            new.type = None
-        new.status = "open"
-
-        # If additional fields were present in the past, but aren't anymore,
-        # we have to set them to an empty value manually
-        defaults = DEFAULT_ATTRIBUTE_VALUES
-        for attribute, value in old.additional_attributes.items():
-            if attribute not in new.additional_attributes:
-                new.additional_attributes[attribute] = defaults.get(
-                    type(value)
+        work_item_changed = new_work_item_check_sum != old_work_item_check_sum
+        try:
+            if work_item_changed or self.force_update:
+                old = self.client.get_work_item(old.id)
+                if old.attachments:
+                    old_attachments = (
+                        self.client.get_all_work_item_attachments(
+                            work_item_id=old.id
+                        )
+                    )
+                else:
+                    old_attachments = []
+            else:
+                old_attachments = self.client.get_all_work_item_attachments(
+                    work_item_id=old.id
                 )
-            elif new.additional_attributes[attribute] == value:
-                del new.additional_attributes[attribute]
+            if old_attachments or new.attachments:
+                self.update_attachments(
+                    new, old_checksums, new_checksums, old_attachments
+                )
+        except polarion_api.PolarionApiException as error:
+            logger.error(
+                "Updating attachments for WorkItem %r (%s %s) failed. %s",
+                *log_args,
+                error.args[0],
+            )
+            return
 
         assert new.id is not None
+        delete_links = None
+        create_links = None
+
+        if work_item_changed or self.force_update:
+            if new.attachments:
+                self._refactor_attached_images(new)
+
+            del new.additional_attributes["uuid_capella"]
+            del old.additional_attributes["uuid_capella"]
+
+            if old.linked_work_items_truncated:
+                old.linked_work_items = self.client.get_all_work_item_links(
+                    old.id
+                )
+
+            # Type will only be updated, if set and should be used carefully
+            if new.type == old.type:
+                new.type = None
+            new.status = "open"
+
+            # If additional fields were present, but aren't anymore,
+            # we have to set them to an empty value manually
+            defaults = DEFAULT_ATTRIBUTE_VALUES
+            for attribute, value in old.additional_attributes.items():
+                if attribute not in new.additional_attributes:
+                    new.additional_attributes[attribute] = defaults.get(
+                        type(value)
+                    )
+                elif new.additional_attributes[attribute] == value:
+                    del new.additional_attributes[attribute]
+
+            delete_links = CapellaPolarionWorker.get_missing_link_ids(
+                old.linked_work_items, new.linked_work_items
+            )
+            create_links = CapellaPolarionWorker.get_missing_link_ids(
+                new.linked_work_items, old.linked_work_items
+            )
+        else:
+            new.additional_attributes = {}
+            new.type = None
+            new.status = None
+            new.description = None
+            new.description_type = None
+            new.title = None
+
         try:
             self.client.update_work_item(new)
-            if delete_link_ids := CapellaPolarionWorker.get_missing_link_ids(
-                old.linked_work_items, new.linked_work_items
-            ):
-                id_list_str = ", ".join(delete_link_ids.keys())
+            if delete_links:
+                id_list_str = ", ".join(delete_links.keys())
                 logger.info(
                     "Delete work item links %r for model %s %r",
                     id_list_str,
                     new.type,
                     new.title,
                 )
-                self.client.delete_work_item_links(
-                    list(delete_link_ids.values())
-                )
+                self.client.delete_work_item_links(list(delete_links.values()))
 
-            if create_links := CapellaPolarionWorker.get_missing_link_ids(
-                new.linked_work_items, old.linked_work_items
-            ):
+            if create_links:
                 id_list_str = ", ".join(create_links.keys())
                 logger.info(
                     "Create work item links %r for model %s %r",
@@ -229,6 +288,106 @@ class CapellaPolarionWorker:
                 *log_args,
                 error.args[0],
             )
+
+    def _refactor_attached_images(self, new: data_models.CapellaWorkItem):
+        def set_attachment_id(node: etree._Element) -> None:
+            if node.tag != "img":
+                return
+            if img_src := node.attrib.get("src"):
+                if img_src.startswith("workitemimg:"):
+                    file_name = img_src[12:]
+                    for attachment in new.attachments:
+                        if attachment.file_name == file_name:
+                            node.attrib["src"] = f"workitemimg:{attachment.id}"
+                            return
+
+                    logger.error(
+                        "Did not find attachment ID for file name %s",
+                        file_name,
+                    )
+
+        if new.description:
+            new.description = chelpers.process_html_fragments(
+                new.description, set_attachment_id
+            )
+        for _, attributes in new.additional_attributes.items():
+            if (
+                isinstance(attributes, dict)
+                and attributes.get("type") == "text/html"
+                and attributes.get("value") is not None
+            ):
+                attributes["value"] = chelpers.process_html_fragments(
+                    attributes["value"], set_attachment_id
+                )
+
+    def update_attachments(
+        self,
+        new: data_models.CapellaWorkItem,
+        old_checksums: dict[str, str],
+        new_checksums: dict[str, str],
+        old_attachments: list[polarion_api.WorkItemAttachment],
+    ):
+        """Delete, create and update attachments in one go.
+
+        After execution all attachments of the new work item should have
+        IDs.
+        """
+        new_attachment_dict = {
+            attachment.file_name: attachment for attachment in new.attachments
+        }
+        old_attachment_dict = {
+            attachment.file_name: attachment for attachment in old_attachments
+        }
+
+        for attachment in old_attachments:
+            if attachment not in old_attachment_dict.values():
+                logger.error(
+                    "There are already multiple attachments named %s. "
+                    "Attachment with ID %s will be deleted for that reason"
+                    " - please report this as issue.",
+                    attachment.file_name,
+                    attachment.id,
+                )
+                self.client.delete_work_item_attachment(attachment)
+
+        old_attachment_file_names = set(old_attachment_dict)
+        new_attachment_file_names = set(new_attachment_dict)
+        for file_name in old_attachment_file_names - new_attachment_file_names:
+            self.client.delete_work_item_attachment(
+                old_attachment_dict[file_name]
+            )
+
+        if new_attachments := list(
+            map(
+                new_attachment_dict.get,
+                new_attachment_file_names - old_attachment_file_names,
+            )
+        ):
+            self.client.create_work_item_attachments(new_attachments)
+
+        attachments_for_update = {}
+        for common_attachment_file_name in (
+            old_attachment_file_names & new_attachment_file_names
+        ):
+            attachment = new_attachment_dict[common_attachment_file_name]
+            attachment.id = old_attachment_dict[common_attachment_file_name].id
+            if (
+                new_checksums.get(attachment.file_name)
+                != old_checksums.get(attachment.file_name)
+                or self.force_update
+                or attachment.mime_type == "image/svg+xml"
+            ):
+                attachments_for_update[attachment.file_name] = attachment
+
+        for file_name, attachment in attachments_for_update.items():
+            # SVGs should only be updated if their PNG differs
+            if (
+                attachment.mime_type == "image/svg+xml"
+                and file_name[:-3] + "png" not in attachments_for_update
+            ):
+                continue
+
+            self.client.update_work_item_attachment(attachment)
 
     @staticmethod
     def get_missing_link_ids(

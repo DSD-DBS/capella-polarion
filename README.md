@@ -16,6 +16,8 @@ Synchronise Capella models with Polarion projects
 Read the [full documentation on GitLab pages](https://dsd-dbs.github.io/capella-polarion).
 
 # Installation
+We have a dependency on [cairosvg](https://cairosvg.org/). Please check their
+[documentation](https://cairosvg.org/documentation/) for OS specific dependencies.
 
 You can install the latest released version directly from PyPI (**Not yet**).
 

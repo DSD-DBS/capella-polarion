@@ -110,7 +110,11 @@ def synchronize(ctx: click.core.Context) -> None:
     polarion_worker.post_work_items(converter.converter_session)
 
     # Create missing links for new work items
-    converter.generate_work_items(polarion_worker.polarion_data_repo, True)
+    converter.generate_work_items(
+        polarion_worker.polarion_data_repo,
+        generate_links=True,
+        generate_attachments=True,
+    )
 
     polarion_worker.patch_work_items(converter.converter_session)
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 import typing as t
 from unittest import mock
 
@@ -55,7 +54,9 @@ TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_DIAG_DESCR = (
-    '<html><p><img style="max-width: 100%" src="data:image/svg+xml;base64,'
+    '<span><img title="{title}" class="{cls}" '
+    'src="workitemimg:{attachment_id}" '
+    'style="max-width: {width}px;"/></span>'
 )
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": "Diag-1",
@@ -68,7 +69,8 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
     },
 }
 TEST_WI_CHECKSUM = (
-    "d7916c4c529d588dcfdfa30c78a04dcf5b50089440a767ca962e24b94fb65c5d"
+    '{"__C2P__WORK_ITEM": '
+    '"be783ea9b9144856394222dde865ebc925f31e497e8aabb93aa53b97adf22035"}'
 )
 TEST_REQ_TEXT = (
     "<p>Test requirement 1 really l o n g text that is&nbsp;way too long to "
@@ -199,16 +201,22 @@ class TestDiagramElements:
         pw = base_object.pw
         new_work_items: dict[str, data_models.CapellaWorkItem]
         new_work_items = base_object.mc.generate_work_items(
-            pw.polarion_data_repo
+            pw.polarion_data_repo, generate_attachments=True
         )
         assert len(new_work_items) == 1
         work_item = new_work_items[TEST_DIAG_UUID]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         description = work_item.description
         work_item.description = None
+        work_item.attachments = []
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
         assert isinstance(description, str)
-        assert description.startswith(TEST_DIAG_DESCR)
+        assert description == TEST_DIAG_DESCR.format(
+            title="Diagram",
+            attachment_id="__C2P__diagram.svg",
+            width=750,
+            cls="diagram",
+        )
 
     @staticmethod
     def test_create_diagrams_filters_non_diagram_elements(
@@ -678,6 +686,9 @@ class TestModelElements:
         assert base_object.pw.client.create_work_item_links.call_count == 0
         assert base_object.pw.client.update_work_item.call_count == 1
         assert base_object.pw.client.get_work_item.call_count == 1
+        assert (
+            base_object.pw.client.get_all_work_item_attachments.call_count == 0
+        )
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
@@ -1027,17 +1038,33 @@ class TestSerializers:
                     "", DIAGRAM_CONFIG, diag
                 )
             },
+            True,
         )
 
         serialized_diagram = serializer.serialize(TEST_DIAG_UUID)
-        if serialized_diagram is not None:
-            serialized_diagram.description = None
+
+        assert serialized_diagram is not None
+
+        attachment = serialized_diagram.attachments[0]
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "", "", "Diagram", None, "image/svg+xml", "__C2P__diagram.svg"
+        )
+
+        serialized_diagram.attachments = []
 
         assert serialized_diagram == data_models.CapellaWorkItem(
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
             description_type="text/html",
+            description=TEST_DIAG_DESCR.format(
+                title="Diagram",
+                attachment_id="__C2P__diagram.svg",
+                width=750,
+                cls="diagram",
+            ),
             status="open",
             linked_work_items=[],
         )
@@ -1212,6 +1239,7 @@ class TestSerializers:
                     obj,
                 )
             },
+            False,
         )
 
         work_item = serializer.serialize(uuid)
@@ -1237,6 +1265,7 @@ class TestSerializers:
                     model.by_uuid(uuid),
                 )
             },
+            True,
         )
 
         work_item = serializer.serialize(uuid)
@@ -1245,7 +1274,24 @@ class TestSerializers:
         assert "context_diagram" in work_item.additional_attributes
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
-        ).startswith(TEST_DIAG_DESCR)
+        ) == TEST_DIAG_DESCR.format(
+            title="Context Diagram",
+            attachment_id="__C2P__context_diagram.svg",
+            width=650,
+            cls="additional-attributes-diagram",
+        )
+
+        attachment = work_item.attachments[0]
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "",
+            "",
+            "Context Diagram",
+            None,
+            "image/svg+xml",
+            "__C2P__context_diagram.svg",
+        )
 
     def test_multiple_serializers(self, model: capellambse.MelodyModel):
         cap = model.by_uuid(TEST_OCAP_UUID)
@@ -1262,6 +1308,7 @@ class TestSerializers:
                     "pa", type_config, cap
                 )
             },
+            True,
         )
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
@@ -1272,4 +1319,9 @@ class TestSerializers:
         assert "context_diagram" in work_item.additional_attributes
         assert str(
             work_item.additional_attributes["context_diagram"]["value"]
-        ).startswith(TEST_DIAG_DESCR)
+        ) == TEST_DIAG_DESCR.format(
+            title="Context Diagram",
+            attachment_id="__C2P__context_diagram.svg",
+            width=650,
+            cls="additional-attributes-diagram",
+        )
