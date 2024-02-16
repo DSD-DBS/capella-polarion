@@ -34,7 +34,7 @@ class PolarionDataRepository:
             },
         )
         self._id_mapping.on_dup = bidict.OnDup(
-            key=bidict.DROP_OLD, val=bidict.DROP_OLD, kv=bidict.DROP_OLD
+            key=bidict.DROP_OLD, val=bidict.DROP_OLD
         )
         self._work_items = {
             work_item.uuid_capella: work_item
