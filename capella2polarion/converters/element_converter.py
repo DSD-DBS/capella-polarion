@@ -105,7 +105,7 @@ def _condition(
     _type = "text/html" if html else "text/plain"
     return {
         "type": _type,
-        "value": f'<span style="text-align: center;">{value}</span>',
+        "value": f'<div style="text-align: center;">{value}</div>',
     }
 
 

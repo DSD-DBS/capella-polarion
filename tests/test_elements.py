@@ -1101,11 +1101,11 @@ class TestSerializers:
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;"></span>',
+                            "value": '<div style="text-align: center;"></div>',
                         },
                         "postCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;"></span>',
+                            "value": '<div style="text-align: center;"></div>',
                         },
                     },
                 },
@@ -1174,11 +1174,11 @@ class TestSerializers:
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;">hehe<br/></span>',
+                            "value": '<div style="text-align: center;">hehe<br/></div>',
                         },
                         "postCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;"></span>',
+                            "value": '<div style="text-align: center;"></div>',
                         },
                     },
                 },
@@ -1196,11 +1196,11 @@ class TestSerializers:
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;"></span>',
+                            "value": '<div style="text-align: center;"></div>',
                         },
                         "postCondition": {
                             "type": "text/html",
-                            "value": '<span style="text-align: center;"></span>',
+                            "value": '<div style="text-align: center;"></div>',
                         },
                     },
                 },
