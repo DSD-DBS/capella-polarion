@@ -193,16 +193,15 @@ class CapellaWorkItemSerializer:
         title: str,
         max_width: int,
         cls: str,
+        **render_kwargs,
     ) -> tuple[str, polarion_api.WorkItemAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
         if self.generate_attachments:
             try:
-                diagram_svg = diagram.render("svg")
+                diagram_svg = diagram.render("svg", **render_kwargs)
             except Exception as error:
-                logger.exception(
-                    "Failed to get diagram from cache. Error: %s", error
-                )
+                logger.exception("Failed to render diagram. Error: %s", error)
                 diagram_svg = diagram.as_svg
 
             if isinstance(diagram_svg, str):
@@ -230,9 +229,15 @@ class CapellaWorkItemSerializer:
         diagram: capellambse.model.diagram.Diagram,
         attribute: str,
         title: str,
+        **render_kwargs,
     ):
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, attribute, title, 650, "additional-attributes-diagram"
+            diagram,
+            attribute,
+            title,
+            650,
+            "additional-attributes-diagram",
+            **render_kwargs,
         )
         if attachment:
             self._add_attachment(work_item, attachment)
@@ -453,6 +458,26 @@ class CapellaWorkItemSerializer:
 
         self._draw_additional_attributes_diagram(
             converter_data.work_item, diagram, "tree_view", "Tree View"
+        )
+
+        return converter_data.work_item
+
+    def _add_realization_diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field realization diagram."""
+        assert converter_data.work_item, "No work item set yet"
+        diagram = converter_data.capella_element.realization_view
+
+        self._draw_additional_attributes_diagram(
+            converter_data.work_item,
+            diagram,
+            "realization_view",
+            "Realization View",
+            depth=3,  # 1-3
+            search_direction="ALL",  # BELOW; ABOVE and ALL
+            show_owners=True,
+            layer_sizing="UNION",  # UNION; WIDTH and HEIGHT
         )
 
         return converter_data.work_item

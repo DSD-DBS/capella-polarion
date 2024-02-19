@@ -1293,6 +1293,52 @@ class TestSerializers:
             "__C2P__context_diagram.svg",
         )
 
+    def test_add_realization_diagram(self, model: capellambse.MelodyModel):
+        uuid = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
+        type_config = converter_config.CapellaTypeConfig(
+            "test", "add_realization_diagram", []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                uuid: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(uuid),
+                )
+            },
+            True,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        assert "realization_view" in work_item.additional_attributes
+        assert str(
+            work_item.additional_attributes["realization_view"]["value"]
+        ) == TEST_DIAG_DESCR.format(
+            title="Realization View",
+            attachment_id="__C2P__realization_view.svg",
+            width=650,
+            cls="additional-attributes-diagram",
+        )
+
+        attachment = work_item.attachments[0]
+
+        with open("real.svg", "wb") as f:
+            f.write(attachment.content_bytes)
+        attachment.content_bytes = None
+
+        assert attachment == polarion_api.WorkItemAttachment(
+            "",
+            "",
+            "Realization View",
+            None,
+            "image/svg+xml",
+            "__C2P__realization_view.svg",
+        )
+
     def test_multiple_serializers(self, model: capellambse.MelodyModel):
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
