@@ -1099,8 +1099,14 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
                     "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": ""},
-                        "postCondition": {"type": "text/html", "value": ""},
+                        "preCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;"></span>',
+                        },
+                        "postCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;"></span>',
+                        },
                     },
                 },
                 id="operationalCapability",
@@ -1166,8 +1172,14 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
                     "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": "hehe"},
-                        "postCondition": {"type": "text/html", "value": ""},
+                        "preCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;">hehe<br/></span>',
+                        },
+                        "postCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;"></span>',
+                        },
                     },
                 },
                 id="scenario",
@@ -1182,8 +1194,14 @@ class TestSerializers:
                     "description_type": "text/html",
                     "description": markupsafe.Markup(""),
                     "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": ""},
-                        "postCondition": {"type": "text/html", "value": ""},
+                        "preCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;"></span>',
+                        },
+                        "postCondition": {
+                            "type": "text/html",
+                            "value": '<span style="text-align: center;"></span>',
+                        },
                     },
                 },
                 id="capabilityRealization",

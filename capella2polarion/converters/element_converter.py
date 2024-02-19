@@ -26,11 +26,11 @@ from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import data_session
 
+RE_DESCR_DELETED_PATTERN = re.compile(
+    f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
+)
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
-)
-RE_DESCR_DELETED_PATTERN = re.compile(
-    f"<deleted element ({chelpers.RE_VALID_UUID.pattern})>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 
@@ -103,7 +103,10 @@ def _condition(
     html: bool, value: str
 ) -> data_models.CapellaWorkItem.Condition:
     _type = "text/html" if html else "text/plain"
-    return {"type": _type, "value": value}
+    return {
+        "type": _type,
+        "value": f'<span style="text-align: center;">{value}</span>',
+    }
 
 
 def _generate_image_html(
@@ -166,6 +169,8 @@ class CapellaWorkItemSerializer:
         assert converter_data.work_item is not None
 
         return converter_data.work_item
+
+    # General helper functions
 
     def _add_attachment(
         self,
@@ -241,65 +246,30 @@ class CapellaWorkItemSerializer:
             "value": diagram_html,
         }
 
-    def _diagram(
-        self, converter_data: data_session.ConverterData
-    ) -> data_models.CapellaWorkItem:
-        """Serialize a diagram for Polarion."""
-        diagram = converter_data.capella_element
-        assert converter_data.work_item is not None
-        work_item_id = converter_data.work_item.id
-
-        diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram", 750, "diagram"
+    def _sanitize_linked_text(
+        self, obj: common.GenericElement
+    ) -> tuple[
+        list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
+    ]:
+        linked_text = getattr(
+            obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
+        )["capella:linkedText"]
+        linked_text = RE_DESCR_DELETED_PATTERN.sub(
+            lambda match: strike_through(self._replace_markup(match, [])),
+            linked_text,
         )
+        linked_text = linked_text.replace("\n", "<br>")
+        return self._sanitize_text(obj, linked_text)
 
-        converter_data.work_item = data_models.CapellaWorkItem(
-            id=work_item_id,
-            type=converter_data.type_config.p_type,
-            title=diagram.name,
-            description_type="text/html",
-            description=diagram_html,
-            status="open",
-            uuid_capella=diagram.uuid,
-        )
-        if attachment:
-            self._add_attachment(converter_data.work_item, attachment)
-        return converter_data.work_item
-
-    def __generic_work_item(
-        self, converter_data: data_session.ConverterData, work_item_id
-    ) -> data_models.CapellaWorkItem:
-        obj = converter_data.capella_element
-        raw_description = getattr(obj, "description", None)
-        uuids, value, attachments = self._sanitize_description(
-            obj, raw_description or markupsafe.Markup("")
-        )
-        converter_data.description_references = uuids
-        requirement_types = _get_requirement_types_text(obj)
-        converter_data.work_item = data_models.CapellaWorkItem(
-            id=work_item_id,
-            type=converter_data.type_config.p_type,
-            title=obj.name,
-            description_type="text/html",
-            description=value,
-            status="open",
-            uuid_capella=obj.uuid,
-            **requirement_types,
-        )
-        for attachment in attachments:
-            self._add_attachment(converter_data.work_item, attachment)
-
-        return converter_data.work_item
-
-    def _sanitize_description(
-        self, obj: common.GenericElement, descr: markupsafe.Markup
+    def _sanitize_text(
+        self, obj: common.GenericElement, text: markupsafe.Markup | str
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
             lambda match: self._replace_markup(match, referenced_uuids, 2),
-            descr,
+            text,
         )
 
         attachments: list[polarion_api.WorkItemAttachment] = []
@@ -369,6 +339,58 @@ class CapellaWorkItemSerializer:
         logger.warning("Found reference to non-existing work item: %r", uuid)
         return match.group(default_group)
 
+    # Serializer implementation starts below
+
+    def __generic_work_item(
+        self, converter_data: data_session.ConverterData, work_item_id
+    ) -> data_models.CapellaWorkItem:
+        obj = converter_data.capella_element
+        raw_description = getattr(obj, "description", None)
+        uuids, value, attachments = self._sanitize_text(
+            obj, raw_description or markupsafe.Markup("")
+        )
+        converter_data.description_references = uuids
+        requirement_types = _get_requirement_types_text(obj)
+        converter_data.work_item = data_models.CapellaWorkItem(
+            id=work_item_id,
+            type=converter_data.type_config.p_type,
+            title=obj.name,
+            description_type="text/html",
+            description=value,
+            status="open",
+            uuid_capella=obj.uuid,
+            **requirement_types,
+        )
+        for attachment in attachments:
+            self._add_attachment(converter_data.work_item, attachment)
+
+        return converter_data.work_item
+
+    def _diagram(
+        self, converter_data: data_session.ConverterData
+    ) -> data_models.CapellaWorkItem:
+        """Serialize a diagram for Polarion."""
+        diagram = converter_data.capella_element
+        assert converter_data.work_item is not None
+        work_item_id = converter_data.work_item.id
+
+        diagram_html, attachment = self._draw_diagram_svg(
+            diagram, "diagram", "Diagram", 750, "diagram"
+        )
+
+        converter_data.work_item = data_models.CapellaWorkItem(
+            id=work_item_id,
+            type=converter_data.type_config.p_type,
+            title=diagram.name,
+            description_type="text/html",
+            description=diagram_html,
+            status="open",
+            uuid_capella=diagram.uuid,
+        )
+        if attachment:
+            self._add_attachment(converter_data.work_item, attachment)
+        return converter_data.work_item
+
     def _include_pre_and_post_condition(
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
@@ -380,17 +402,11 @@ class CapellaWorkItemSerializer:
         def get_condition(cap: PrePostConditionElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
                 return ""
-            return condition.specification["capella:linkedText"].striptags()
+            _, value, _ = self._sanitize_linked_text(condition)
+            return value
 
-        def matcher(match: re.Match) -> str:
-            return strike_through(self._replace_markup(match, []))
-
-        pre_condition = RE_DESCR_DELETED_PATTERN.sub(
-            matcher, get_condition(obj, "precondition")
-        )
-        post_condition = RE_DESCR_DELETED_PATTERN.sub(
-            matcher, get_condition(obj, "postcondition")
-        )
+        pre_condition = get_condition(obj, "precondition")
+        post_condition = get_condition(obj, "postcondition")
 
         assert converter_data.work_item, "No work item set yet"
         converter_data.work_item.preCondition = _condition(True, pre_condition)
@@ -399,22 +415,6 @@ class CapellaWorkItemSerializer:
         )
         return converter_data.work_item
 
-    def _get_linked_text(
-        self, converter_data: data_session.ConverterData
-    ) -> tuple[markupsafe.Markup, list[polarion_api.WorkItemAttachment]]:
-        """Return sanitized markup of the given ``obj`` linked text."""
-        obj = converter_data.capella_element
-        default = {"capella:linkedText": markupsafe.Markup("")}
-        description = getattr(obj, "specification", default)[
-            "capella:linkedText"
-        ].striptags()
-        uuids, value, attachments = self._sanitize_description(
-            obj, description
-        )
-        if uuids:
-            converter_data.description_references = uuids
-        return value, attachments
-
     def _linked_text_as_description(
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
@@ -422,9 +422,13 @@ class CapellaWorkItemSerializer:
         # pylint: disable-next=attribute-defined-outside-init
         assert converter_data.work_item, "No work item set yet"
         (
+            uuids,
             converter_data.work_item.description,
             attachments,
-        ) = self._get_linked_text(converter_data)
+        ) = self._sanitize_linked_text(converter_data.capella_element)
+        if uuids:
+            converter_data.description_references = uuids
+
         converter_data.work_item.attachments += attachments
         return converter_data.work_item
 
