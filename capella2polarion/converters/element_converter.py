@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import collections
+import datetime
 import hashlib
 import logging
 import mimetypes
@@ -149,9 +150,15 @@ class CapellaWorkItemSerializer:
             uuid
         ):
             work_item_id = old.id
+        start = datetime.datetime.now()
         self.__generic_work_item(converter_data, work_item_id)
-
+        logger.debug(
+            "Generic Serializer %r Time: %d",
+            uuid,
+            datetime.datetime.now() - start,
+        )
         for converter in converter_data.type_config.converters or []:
+            c_start = datetime.datetime.now()
             try:
                 serializer: cabc.Callable[
                     [data_session.ConverterData], data_models.CapellaWorkItem
@@ -163,8 +170,17 @@ class CapellaWorkItemSerializer:
                 )
                 converter_data.work_item = None
                 return None  # Force to not overwrite on failure
+            finally:
+                logger.debug(
+                    "%s %r Time: %d",
+                    converter,
+                    uuid,
+                    datetime.datetime.now() - c_start,
+                )
         assert converter_data.work_item is not None
-
+        logger.debug(
+            "Total Time %r: %d", uuid, datetime.datetime.now() - start
+        )
         return converter_data.work_item
 
     def _add_attachment(
