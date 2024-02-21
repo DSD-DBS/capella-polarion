@@ -153,9 +153,9 @@ class CapellaWorkItemSerializer:
         start = datetime.datetime.now()
         self.__generic_work_item(converter_data, work_item_id)
         logger.debug(
-            "Generic Serializer %r Time: %d",
+            "Generic Serializer %r Time: %f ms",
             uuid,
-            datetime.datetime.now() - start,
+            (datetime.datetime.now() - start).total_seconds() * 1000,
         )
         for converter in converter_data.type_config.converters or []:
             c_start = datetime.datetime.now()
@@ -172,14 +172,16 @@ class CapellaWorkItemSerializer:
                 return None  # Force to not overwrite on failure
             finally:
                 logger.debug(
-                    "%s %r Time: %d",
+                    "%s %r Time: %f ms",
                     converter,
                     uuid,
-                    datetime.datetime.now() - c_start,
+                    (datetime.datetime.now() - c_start).total_seconds() * 1000,
                 )
         assert converter_data.work_item is not None
         logger.debug(
-            "Total Time %r: %d", uuid, datetime.datetime.now() - start
+            "Total Time %r: %f ms",
+            uuid,
+            (datetime.datetime.now() - start).total_seconds() * 1000,
         )
         return converter_data.work_item
 
