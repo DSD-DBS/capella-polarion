@@ -198,16 +198,16 @@ class CapellaWorkItemSerializer:
         title: str,
         max_width: int,
         cls: str,
+        render_params: dict[str, t.Any] | None = None,
     ) -> tuple[str, polarion_api.WorkItemAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
         if self.generate_attachments:
             try:
-                diagram_svg = diagram.render("svg")
+                render_params = render_params or {}
+                diagram_svg = diagram.render("svg", **render_params)
             except Exception as error:
-                logger.exception(
-                    "Failed to get diagram from cache. Error: %s", error
-                )
+                logger.exception("Failed to render diagram. Error: %s", error)
                 diagram_svg = diagram.as_svg
 
             if isinstance(diagram_svg, str):
@@ -235,9 +235,15 @@ class CapellaWorkItemSerializer:
         diagram: capellambse.model.diagram.Diagram,
         attribute: str,
         title: str,
+        render_params: dict[str, t.Any] | None = None,
     ):
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, attribute, title, 650, "additional-attributes-diagram"
+            diagram,
+            attribute,
+            title,
+            650,
+            "additional-attributes-diagram",
+            render_params,
         )
         if attachment:
             self._add_attachment(work_item, attachment)
