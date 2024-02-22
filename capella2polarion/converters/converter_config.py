@@ -17,14 +17,14 @@ class CapellaTypeConfig:
     """A single Capella Type configuration."""
 
     p_type: str | None = None
-    converters: str | list[str] | None = None
+    converters: str | list[str] | dict[str, dict[str, t.Any]] | None = None
     links: list[str] = dataclasses.field(default_factory=list)
     is_actor: bool | None = None
     nature: str | None = None
 
     def __post_init__(self):
         """Post processing for the initialization."""
-        self.converters = _force_list(self.converters)
+        self.converters = _force_dict(self.converters)
 
 
 def _default_type_conversion(c_type: str) -> str:
@@ -190,7 +190,17 @@ def _read_capella_type_configs(
     )
 
 
-def _force_list(config: str | list[str] | None) -> list[str]:
-    if config is None:
-        return []
-    return [config] if not isinstance(config, list) else config
+def _force_dict(
+    config: str | list[str] | dict[str, dict[str, t.Any]] | None
+) -> dict[str, dict[str, t.Any]]:
+    match config:
+        case None:
+            return {}
+        case str():
+            return {config: {}}
+        case list():
+            return {c: {} for c in config}
+        case dict():
+            return config
+        case _:
+            raise TypeError("Unsupported Type")

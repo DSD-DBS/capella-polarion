@@ -154,12 +154,14 @@ class CapellaWorkItemSerializer:
             work_item_id = old.id
         self.__generic_work_item(converter_data, work_item_id)
 
-        for converter in converter_data.type_config.converters or []:
+        assert isinstance(converter_data.type_config.converters, dict)
+        for converter, params in converter_data.type_config.converters.items():
             try:
                 serializer: cabc.Callable[
-                    [data_session.ConverterData], data_models.CapellaWorkItem
+                    ...,
+                    data_models.CapellaWorkItem,
                 ] = getattr(self, f"_{converter}")
-                serializer(converter_data)
+                serializer(converter_data, **params)
             except Exception as error:
                 logger.error(
                     "Serializing model element failed. %s", error.args[0]
@@ -373,7 +375,9 @@ class CapellaWorkItemSerializer:
         return converter_data.work_item
 
     def _diagram(
-        self, converter_data: data_session.ConverterData
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
     ) -> data_models.CapellaWorkItem:
         """Serialize a diagram for Polarion."""
         diagram = converter_data.capella_element
@@ -381,7 +385,7 @@ class CapellaWorkItemSerializer:
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram", 750, "diagram"
+            diagram, "diagram", "Diagram", 750, "diagram", render_params
         )
 
         converter_data.work_item = data_models.CapellaWorkItem(
@@ -439,7 +443,9 @@ class CapellaWorkItemSerializer:
         return converter_data.work_item
 
     def _add_context_diagram(
-        self, converter_data: data_session.ConverterData
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field context diagram."""
         assert converter_data.work_item, "No work item set yet"
@@ -450,19 +456,26 @@ class CapellaWorkItemSerializer:
             diagram,
             "context_diagram",
             "Context Diagram",
+            render_params,
         )
 
         return converter_data.work_item
 
     def _add_tree_diagram(
-        self, converter_data: data_session.ConverterData
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
         diagram = converter_data.capella_element.tree_view
 
         self._draw_additional_attributes_diagram(
-            converter_data.work_item, diagram, "tree_view", "Tree View"
+            converter_data.work_item,
+            diagram,
+            "tree_view",
+            "Tree View",
+            render_params,
         )
 
         return converter_data.work_item

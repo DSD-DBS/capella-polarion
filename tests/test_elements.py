@@ -8,6 +8,7 @@ import typing as t
 from unittest import mock
 
 import capellambse
+import capellambse_context_diagrams.context
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
@@ -1343,3 +1344,37 @@ class TestSerializers:
             width=650,
             cls="additional-attributes-diagram",
         )
+
+    def test_read_config_with_custom_params(
+        self, model: capellambse.MelodyModel
+    ):
+        cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        type_config = config.get_type_config("la", "Class")
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert "add_tree_diagram" in type_config.converters
+        assert type_config.converters["add_tree_diagram"]["render_params"] == {
+            "depth": 1
+        }
+
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_OCAP_UUID: data_session.ConverterData(
+                    "pa", type_config, cap
+                )
+            },
+            True,
+        )
+
+        with mock.patch.object(
+            capellambse_context_diagrams.context.ContextDiagram, "render"
+        ) as wrapped_render:
+            serializer.serialize_all()
+            assert wrapped_render.call_count == 1
+            assert wrapped_render.call_args_list[0][1] == {"depth": 1}
