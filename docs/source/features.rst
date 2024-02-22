@@ -44,8 +44,11 @@ specific serializer alone:
 +--------------------------------------+------------------------------------------------------+
 | diagram                              | A serializer for Capella diagrams. Currently the     |
 |                                      | diagram is taken from the diagram_cache, served      |
-|                                      | from a GitLab artifact URL and embedded as a b64     |
-|                                      | encoded SVG.                                         |
+|                                      | from a GitLab artifact URL and attached as SVG and   |
+|                                      | PNG.                                                 |
+|                                      | You can provider ``render_params`` in the config and |
+|                                      | these will be passed to the render function of       |
+|                                      | capellambse.                                         |
 +--------------------------------------+------------------------------------------------------+
 | include_pre_and_post_condition       | A serializer adding post- and precondition           |
 |                                      | fields. Usually taken for ``Capability`` s.          |
@@ -58,10 +61,16 @@ specific serializer alone:
 |                                      | The Capella objects where ``context_diagram`` is     |
 |                                      | available can be seen in the `context-diagrams       |
 |                                      | documentation`_.                                     |
+|                                      | You can provider ``render_params`` in the config and |
+|                                      | these will be passed to the render function of       |
+|                                      | capellambse.                                         |
 +--------------------------------------+------------------------------------------------------+
 | add_tree_view                        | A serializer adding a tree view diagram to the       |
 |                                      | work item. Same requirements as for                  |
 |                                      | ``add_context_diagram``. `Tree View Documentation`_. |
+|                                      | You can provider ``render_params`` in the config and |
+|                                      | these will be passed to the render function of       |
+|                                      | capellambse.                                         |
 +--------------------------------------+------------------------------------------------------+
 
 .. _context-diagrams documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/#context-diagram-extension-for-capellambse
