@@ -700,6 +700,71 @@ class TestModelElements:
         assert work_item.uuid_capella is None
 
     @staticmethod
+    def test_update_deleted_work_item(
+        monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
+    ):
+        polarion_work_item_list: list[data_models.CapellaWorkItem] = [
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                type="type",
+                uuid_capella="uuid1",
+                status="deleted",
+                checksum="123",
+            )
+        ]
+        polarion_api_get_all_work_items = mock.MagicMock()
+        polarion_api_get_all_work_items.return_value = polarion_work_item_list
+        monkeypatch.setattr(
+            base_object.pw.client,
+            "get_all_work_items",
+            polarion_api_get_all_work_items,
+        )
+        config = mock.Mock(converter_config.ConverterConfig)
+        config.polarion_types = set()
+        base_object.pw.config = config
+
+        base_object.pw.load_polarion_work_item_map()
+
+        base_object.mc.converter_session[
+            "uuid1"
+        ].work_item = data_models.CapellaWorkItem(
+            id="Obj-1",
+            type="type",
+            uuid_capella="uuid1",
+            status="open",
+            title="Something",
+            description_type="text/html",
+            description=markupsafe.Markup("Test"),
+            checksum="123",
+        )
+
+        del base_object.mc.converter_session["uuid2"]
+
+        get_work_item_mock = mock.MagicMock()
+        get_work_item_mock.return_value = polarion_work_item_list[0]
+        monkeypatch.setattr(
+            base_object.pw.client,
+            "get_work_item",
+            get_work_item_mock,
+        )
+        base_object.pw.delete_work_items(base_object.mc.converter_session)
+        assert base_object.pw.client.update_work_item.called is False
+
+        base_object.pw.post_work_items(base_object.mc.converter_session)
+        assert base_object.pw.client.create_work_items.called is False
+
+        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        work_item = base_object.pw.client.update_work_item.call_args[0][0]
+        assert isinstance(work_item, data_models.CapellaWorkItem)
+        assert work_item.id == "Obj-1"
+        assert work_item.title == "Something"
+        assert work_item.description_type == "text/html"
+        assert work_item.description == markupsafe.Markup("Test")
+        assert work_item.type is None
+        assert work_item.status == "open"
+        assert work_item.uuid_capella is None
+
+    @staticmethod
     def test_update_work_items_filters_work_items_with_same_checksum(
         base_object: BaseObjectContainer,
     ):
