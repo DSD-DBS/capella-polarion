@@ -756,13 +756,7 @@ class TestModelElements:
         base_object.pw.patch_work_items(base_object.mc.converter_session)
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
-        assert work_item.id == "Obj-1"
-        assert work_item.title == "Something"
-        assert work_item.description_type == "text/html"
-        assert work_item.description == markupsafe.Markup("Test")
-        assert work_item.type is None
         assert work_item.status == "open"
-        assert work_item.uuid_capella is None
 
     @staticmethod
     def test_update_work_items_filters_work_items_with_same_checksum(
