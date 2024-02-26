@@ -77,28 +77,6 @@ def _format_texts(
     return requirement_types
 
 
-def _get_requirement_types_text(
-    obj: common.GenericElement,
-) -> dict[str, dict[str, str]]:
-    type_texts = collections.defaultdict(list)
-    for req in getattr(obj, "requirements", []):
-        if req is None:
-            logger.error(
-                "RequirementsRelation with broken target found %r", obj.name
-            )
-            continue
-
-        if not (req.type and req.text):
-            identifier = req.long_name or req.name or req.summary or req.uuid
-            logger.warning(
-                "Requirement without text or type found %r", identifier
-            )
-            continue
-
-        type_texts[req.type.long_name].append(req.text)
-    return _format_texts(type_texts)
-
-
 def _condition(
     html: bool, value: str
 ) -> data_models.CapellaWorkItem.Condition:
@@ -163,15 +141,12 @@ class CapellaWorkItemSerializer:
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
             except Exception as error:
-                logger.error(
-                    "Serializing model element %r failed. %s",
-                    uuid,
-                    error.args[0],
-                )
+                converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
                 return None  # Force to not overwrite on failure
         assert converter_data.work_item is not None
-
+        for finding in converter_data.errors:
+            logger.warning("Serialization failed: %s (%r).", finding, uuid)
         return converter_data.work_item
 
     # General helper functions
@@ -265,7 +240,9 @@ class CapellaWorkItemSerializer:
             obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
         )["capella:linkedText"]
         linked_text = RE_DESCR_DELETED_PATTERN.sub(
-            lambda match: strike_through(self._replace_markup(match, [])),
+            lambda match: strike_through(
+                self._replace_markup(obj.uuid, match, [])
+            ),
             linked_text,
         )
         linked_text = linked_text.replace("\n", "<br>")
@@ -278,7 +255,9 @@ class CapellaWorkItemSerializer:
     ]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-            lambda match: self._replace_markup(match, referenced_uuids, 2),
+            lambda match: self._replace_markup(
+                obj.uuid, match, referenced_uuids, 2
+            ),
             text,
         )
 
@@ -315,10 +294,9 @@ class CapellaWorkItemSerializer:
                     node.attrib["src"] = f"workitemimg:{file_name}"
 
             except FileNotFoundError:
-                logger.error(
-                    "Inline image can't be found from %r for %r",
-                    file_path,
-                    obj._short_repr_(),
+                self.converter_session[obj.uuid].errors.add(
+                    f"Inline image can't be found from {file_path!r} "
+                    f"for {obj._short_repr_()!r}"
                 )
 
         repaired_markup = chelpers.process_html_fragments(
@@ -328,6 +306,7 @@ class CapellaWorkItemSerializer:
 
     def _replace_markup(
         self,
+        origin_uuid: str,
         match: re.Match,
         referenced_uuids: list[str],
         default_group: int = 1,
@@ -341,13 +320,42 @@ class CapellaWorkItemSerializer:
         try:
             self.model.by_uuid(uuid)
         except KeyError:
-            logger.error("Found link to non-existing model element: %r", uuid)
+            self.converter_session[origin_uuid].errors.add(
+                "Non-existing model element referenced in description"
+            )
             return strike_through(match.group(default_group))
         if pid := self.capella_polarion_mapping.get_work_item_id(uuid):
             referenced_uuids.append(uuid)
             return POLARION_WORK_ITEM_URL.format(pid=pid)
-        logger.warning("Found reference to non-existing work item: %r", uuid)
+
+        self.converter_session[origin_uuid].errors.add(
+            "Non-existing work item referenced in description"
+        )
         return match.group(default_group)
+
+    def _get_requirement_types_text(
+        self,
+        obj: common.GenericElement,
+    ) -> dict[str, dict[str, str]]:
+        type_texts = collections.defaultdict(list)
+        for req in getattr(obj, "requirements", []):
+            if req is None:
+                self.converter_session[obj.uuid].errors.add(
+                    "Found RequirementsRelation with broken target"
+                )
+                continue
+
+            if not (req.type and req.text):
+                identifier = (
+                    req.long_name or req.name or req.summary or req.uuid
+                )
+                self.converter_session[obj.uuid].errors.add(
+                    f"Found Requirement without text or type on {identifier!r}"
+                )
+                continue
+
+            type_texts[req.type.long_name].append(req.text)
+        return _format_texts(type_texts)
 
     # Serializer implementation starts below
 
@@ -360,7 +368,7 @@ class CapellaWorkItemSerializer:
             obj, raw_description or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
-        requirement_types = _get_requirement_types_text(obj)
+        requirement_types = self._get_requirement_types_text(obj)
         converter_data.work_item = data_models.CapellaWorkItem(
             id=work_item_id,
             type=converter_data.type_config.p_type,
