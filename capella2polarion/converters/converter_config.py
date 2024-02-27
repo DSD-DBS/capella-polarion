@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing capella2polarion config class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -283,7 +284,7 @@ def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
 
 
 def _read_capella_type_configs(
-    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None
+    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None,
 ) -> list[dict]:
     if conf is None:
         return [{}]
@@ -300,7 +301,7 @@ def _read_capella_type_configs(
 
 
 def _force_dict(
-    config: str | list[str] | dict[str, dict[str, t.Any]] | None
+    config: str | list[str] | dict[str, dict[str, t.Any]] | None,
 ) -> dict[str, dict[str, t.Any]]:
     match config:
         case None:
@@ -323,7 +324,7 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
 
 
 def _filter_converter_config(
-    config: dict[str, dict[str, t.Any]]
+    config: dict[str, dict[str, t.Any]],
 ) -> dict[str, dict[str, t.Any]]:
     custom_converters = (
         "include_pre_and_post_condition",
