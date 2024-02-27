@@ -2124,7 +2124,6 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-
             wis = serializer.serialize_all()
             _ = wis[0].attachments[0].content_bytes
 
