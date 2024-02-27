@@ -157,15 +157,13 @@ class CapellaPolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
 
-    def patch_work_item(
-        self, uuid: str, converter_session: data_session.ConverterSession
-    ):
+    def patch_work_item(self, converter_data: data_session.ConverterData):
         """Patch a given WorkItem."""
-        new = converter_session[uuid].work_item
-        _, old = self.polarion_data_repo[uuid]
-
-        assert old is not None
+        new = converter_data.work_item
         assert new is not None
+        uuid = new.uuid_capella
+        _, old = self.polarion_data_repo[uuid]
+        assert old is not None
 
         new.calculate_checksum()
         if not self.force_update and new == old:
@@ -421,6 +419,6 @@ class CapellaPolarionWorker:
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
-        for uuid in converter_session:
-            if uuid in self.polarion_data_repo:
-                self.patch_work_item(uuid, converter_session)
+        for uuid, data in converter_session.items():
+            if uuid in self.polarion_data_repo and data.work_item is not None:
+                self.patch_work_item(data)

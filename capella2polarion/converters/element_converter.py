@@ -164,7 +164,9 @@ class CapellaWorkItemSerializer:
                 serializer(converter_data, **params)
             except Exception as error:
                 logger.error(
-                    "Serializing model element failed. %s", error.args[0]
+                    "Serializing model element %r failed. %s",
+                    uuid,
+                    error.args[0],
                 )
                 converter_data.work_item = None
                 return None  # Force to not overwrite on failure

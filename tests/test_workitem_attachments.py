@@ -132,15 +132,15 @@ def test_diagram_attachments_new(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
     assert worker.client.get_all_work_item_attachments.call_count == 0
 
-    created_attachments: list[
-        polarion_api.WorkItemAttachment
-    ] = worker.client.create_work_item_attachments.call_args.args[0]
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.client.create_work_item_attachments.call_args.args[0]
+    )
     work_item: data_models.CapellaWorkItem = (
         worker.client.update_work_item.call_args.args[0]
     )
@@ -203,7 +203,7 @@ def test_diagram_attachments_updated(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -265,7 +265,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -306,7 +306,7 @@ def test_diagram_attachments_fully_unchanged(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
 
     assert worker.client.update_work_item.call_count == 0
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -335,14 +335,14 @@ def test_add_context_diagram(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(uuid, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[uuid])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
 
-    created_attachments: list[
-        polarion_api.WorkItemAttachment
-    ] = worker.client.create_work_item_attachments.call_args.args[0]
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.client.create_work_item_attachments.call_args.args[0]
+    )
     work_item: data_models.CapellaWorkItem = (
         worker.client.update_work_item.call_args.args[0]
     )
@@ -414,7 +414,7 @@ def test_diagram_delete_attachments(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(TEST_DIAG_UUID, converter.converter_session)
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
