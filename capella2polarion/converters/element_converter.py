@@ -479,3 +479,22 @@ class CapellaWorkItemSerializer:
         )
 
         return converter_data.work_item
+
+    def _add_realization_diagram(
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field realization diagram."""
+        assert converter_data.work_item, "No work item set yet"
+        diagram = converter_data.capella_element.realization_view
+
+        self._draw_additional_attributes_diagram(
+            converter_data.work_item,
+            diagram,
+            "realization_view",
+            "Realization View",
+            render_params,
+        )
+
+        return converter_data.work_item
