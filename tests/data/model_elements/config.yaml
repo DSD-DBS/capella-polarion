@@ -7,6 +7,10 @@
       - parent
       - description_reference
   Class:
+    serializer:
+      add_tree_diagram:
+        render_params:
+          depth: 1
     links:
       - state_machines
   Diagram:

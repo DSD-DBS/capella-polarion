@@ -30,7 +30,12 @@ merged into layer specific configuration for ``Class`` if there is any.
 With ``serializer`` you can control which function is called to render the
 :py:class:`capella2polarion.data_models.CapellaWorkItem`. There is a generic
 serializer including title (name), description and requirement types, taken per
-default.
+default. You may also define multiple serializers by providing a list of
+serializers in the configs. These will be called in the order provided in the
+list. Some serializers also support additional configuration. This can be
+done by providing a dictionary of serializers with the serializer as key and
+the configuration of the serializer as value. If a serializer supports
+configuration this will be documented in :ref:`features and roadmap <features>`.
 
 Sometimes capellambse class types are not the same in Polarion. In order to
 handle this case you can use the ``polarion_type`` key to map capellambse types
