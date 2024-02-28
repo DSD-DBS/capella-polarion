@@ -143,10 +143,13 @@ class CapellaWorkItemSerializer:
             except Exception as error:
                 converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
-                return None  # Force to not overwrite on failure
-        assert converter_data.work_item is not None
-        for finding in converter_data.errors:
-            logger.warning("Serialization failed: %s (%r).", finding, uuid)
+
+        if converter_data.errors:
+            logger.error(
+                "Serialization of %r successful, but with warnings: \n\t %s",
+                converter_data.capella_element._short_repr_(),
+                "\n\t".join(converter_data.errors),
+            )
         return converter_data.work_item
 
     # General helper functions
@@ -295,8 +298,7 @@ class CapellaWorkItemSerializer:
 
             except FileNotFoundError:
                 self.converter_session[obj.uuid].errors.add(
-                    f"Inline image can't be found from {file_path!r} "
-                    f"for {obj._short_repr_()!r}"
+                    f"Inline image can't be found from {file_path!r}."
                 )
 
         repaired_markup = chelpers.process_html_fragments(
