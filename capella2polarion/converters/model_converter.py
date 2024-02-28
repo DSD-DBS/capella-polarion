@@ -54,9 +54,9 @@ class ModelConverter:
                 if type_config := config.get_type_config(
                     layer, c_type, **attributes
                 ):
-                    self.converter_session[
-                        obj.uuid
-                    ] = data_session.ConverterData(layer, type_config, obj)
+                    self.converter_session[obj.uuid] = (
+                        data_session.ConverterData(layer, type_config, obj)
+                    )
                 else:
                     missing_types.add((layer, c_type, attributes))
 
