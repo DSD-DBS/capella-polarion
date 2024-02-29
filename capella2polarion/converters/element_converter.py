@@ -145,11 +145,18 @@ class CapellaWorkItemSerializer:
                 converter_data.work_item = None
 
         if converter_data.errors:
-            logger.error(
-                "Serialization of %r successful, but with warnings: \n\t %s",
+            log_args = (
                 converter_data.capella_element._short_repr_(),
                 "\n\t".join(converter_data.errors),
             )
+            if converter_data.work_item is None:
+                logger.error("Serialization of %r failed:\n\t %s", *log_args)
+            else:
+                logger.warning(
+                    "Serialization of %r successful, but with warnings:"
+                    "\n\t %s",
+                    *log_args,
+                )
         return converter_data.work_item
 
     # General helper functions
