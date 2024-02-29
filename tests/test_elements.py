@@ -479,15 +479,15 @@ class TestModelElements:
         base_object.pw.polarion_data_repo.update_work_items(
             [work_item_obj_1, work_item_obj_2]
         )
-        base_object.mc.converter_session[
-            function_uuid
-        ] = data_session.ConverterData(
-            "fa",
-            converter_config.CapellaTypeConfig(
-                type(funtion_obj).__name__, links=["input_exchanges"]
-            ),
-            funtion_obj,
-            work_item_obj_1,
+        base_object.mc.converter_session[function_uuid] = (
+            data_session.ConverterData(
+                "fa",
+                converter_config.CapellaTypeConfig(
+                    type(funtion_obj).__name__, links=["input_exchanges"]
+                ),
+                funtion_obj,
+                work_item_obj_1,
+            )
         )
         base_object.mc.converter_session[uuid] = data_session.ConverterData(
             "fa",
@@ -563,13 +563,13 @@ class TestModelElements:
         ]
         base_object.pw.polarion_data_repo.update_work_items(work_items)
         for work_item in work_items:
-            base_object.mc.converter_session[
-                work_item.uuid_capella
-            ] = data_session.ConverterData(
-                "",
-                base_object.mc.converter_session["uuid1"].type_config,
-                fake_objects[work_item.uuid_capella],
-                work_item,
+            base_object.mc.converter_session[work_item.uuid_capella] = (
+                data_session.ConverterData(
+                    "",
+                    base_object.mc.converter_session["uuid1"].type_config,
+                    fake_objects[work_item.uuid_capella],
+                    work_item,
+                )
             )
 
         expected_link = polarion_api.WorkItemLink(
@@ -659,15 +659,15 @@ class TestModelElements:
 
         base_object.pw.load_polarion_work_item_map()
 
-        base_object.mc.converter_session[
-            "uuid1"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            title="Fake 1",
-            type="type",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+        base_object.mc.converter_session["uuid1"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                title="Fake 1",
+                type="type",
+                description_type="text/html",
+                description=markupsafe.Markup(""),
+            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -726,17 +726,17 @@ class TestModelElements:
 
         base_object.pw.load_polarion_work_item_map()
 
-        base_object.mc.converter_session[
-            "uuid1"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-1",
-            type="type",
-            uuid_capella="uuid1",
-            status="open",
-            title="Something",
-            description_type="text/html",
-            description=markupsafe.Markup("Test"),
-            checksum="123",
+        base_object.mc.converter_session["uuid1"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                type="type",
+                uuid_capella="uuid1",
+                status="open",
+                title="Something",
+                description_type="text/html",
+                description=markupsafe.Markup("Test"),
+                checksum="123",
+            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -774,13 +774,13 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session[
-            "uuid1"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            status="open",
-            type="fakeModelObject",
+        base_object.mc.converter_session["uuid1"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                status="open",
+                type="fakeModelObject",
+            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -806,13 +806,13 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session[
-            "uuid1"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            status="open",
-            type="fakeModelObject",
+        base_object.mc.converter_session["uuid1"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                status="open",
+                type="fakeModelObject",
+            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -849,21 +849,21 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session[
-            "uuid1"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-1",
-            uuid_capella="uuid1",
-            status="open",
-            type="fakeModelObject",
+        base_object.mc.converter_session["uuid1"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                status="open",
+                type="fakeModelObject",
+            )
         )
-        base_object.mc.converter_session[
-            "uuid2"
-        ].work_item = data_models.CapellaWorkItem(
-            id="Obj-2",
-            uuid_capella="uuid2",
-            status="open",
-            type="fakeModelObject",
+        base_object.mc.converter_session["uuid2"].work_item = (
+            data_models.CapellaWorkItem(
+                id="Obj-2",
+                uuid_capella="uuid2",
+                status="open",
+                type="fakeModelObject",
+            )
         )
 
         assert base_object.pw.client is not None

@@ -138,9 +138,9 @@ def test_diagram_attachments_new(
     assert worker.client.create_work_item_attachments.call_count == 1
     assert worker.client.get_all_work_item_attachments.call_count == 0
 
-    created_attachments: list[
-        polarion_api.WorkItemAttachment
-    ] = worker.client.create_work_item_attachments.call_args.args[0]
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.client.create_work_item_attachments.call_args.args[0]
+    )
     work_item: data_models.CapellaWorkItem = (
         worker.client.update_work_item.call_args.args[0]
     )
@@ -340,9 +340,9 @@ def test_add_context_diagram(
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
 
-    created_attachments: list[
-        polarion_api.WorkItemAttachment
-    ] = worker.client.create_work_item_attachments.call_args.args[0]
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.client.create_work_item_attachments.call_args.args[0]
+    )
     work_item: data_models.CapellaWorkItem = (
         worker.client.update_work_item.call_args.args[0]
     )

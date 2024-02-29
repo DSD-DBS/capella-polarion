@@ -20,6 +20,7 @@ class ConverterData:
     capella_element: diagram.Diagram | common.GenericElement
     work_item: dm.CapellaWorkItem | None = None
     description_references: list[str] = dataclasses.field(default_factory=list)
+    errors: set[str] = dataclasses.field(default_factory=set)
 
 
 ConverterSession = dict[str, ConverterData]

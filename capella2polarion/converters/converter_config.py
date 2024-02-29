@@ -201,6 +201,6 @@ def _force_dict(
         case list():
             return {c: {} for c in config}
         case dict():
-            return config
+            return {k: v or {} for k, v in config.items()}
         case _:
             raise TypeError("Unsupported Type")
