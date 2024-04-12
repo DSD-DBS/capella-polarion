@@ -29,6 +29,7 @@ class Capella2PolarionCli:
         capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
         force_update: bool = False,
+        id_prefix: str = "",
     ) -> None:
         self.debug = debug
         self.polarion_params = pw.PolarionWorkerParams(
@@ -42,6 +43,7 @@ class Capella2PolarionCli:
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
+        self.id_prefix = id_prefix
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value

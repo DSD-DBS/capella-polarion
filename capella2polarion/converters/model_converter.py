@@ -82,6 +82,7 @@ class ModelConverter:
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_links: bool = False,
         generate_attachments: bool = False,
+        id_prefix: str = "",
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
@@ -99,12 +100,16 @@ class ModelConverter:
         generate_attachments
             A boolean flag to control attachments generation. For SVG
             attachments, PNGs are generated and attached automatically.
+        id_prefix
+            A string that is used as a prefix for IDs of types, roles
+            and links.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
             self.model,
             polarion_data_repo,
             self.converter_session,
             generate_attachments,
+            id_prefix,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:

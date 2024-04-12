@@ -34,7 +34,7 @@ from .conftest import (  # type: ignore[import]
 )
 
 # pylint: disable=redefined-outer-name
-TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
+TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 TEST_ELEMENT_UUID = "0d2edb8f-fa34-4e73-89ec-fb9a63001440"
 TEST_OCAP_UUID = "83d1334f-6180-46c4-a80d-6839341df688"
 TEST_DESCR = (
@@ -80,6 +80,22 @@ TEST_REQ_TEXT = (
     "<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n"
 )
 POLARION_ID_MAP = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
+TEST_LOGICAL_COMPONENT = {
+    "type": "logicalComponent",
+    "title": "Hogwarts",
+    "description_type": "text/html",
+    "description": markupsafe.Markup(TEST_DESCR),
+}
+TEST_CONDITION = {
+    "type": "text/html",
+    "value": '<div style="text-align: center;"></div>',
+}
+TEST_OPERATIONAL_CAPABILITY = {
+    "type": "operationalCapability",
+    "title": "Stay alive",
+    "description_type": "text/html",
+    "description": markupsafe.Markup(""),
+}
 
 HTML_LINK_0 = {
     "attribute": (
@@ -1137,11 +1153,8 @@ class TestSerializers:
                 "la",
                 TEST_ELEMENT_UUID,
                 {
-                    "type": "logicalComponent",
-                    "title": "Hogwarts",
+                    **TEST_LOGICAL_COMPONENT,
                     "uuid_capella": TEST_ELEMENT_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(TEST_DESCR),
                     "reqtype": {
                         "type": "text/html",
                         "value": markupsafe.Markup(TEST_REQ_TEXT),
@@ -1153,20 +1166,11 @@ class TestSerializers:
                 "oa",
                 TEST_OCAP_UUID,
                 {
-                    "type": "operationalCapability",
-                    "title": "Stay alive",
+                    **TEST_OPERATIONAL_CAPABILITY,
                     "uuid_capella": TEST_OCAP_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
                     "additional_attributes": {
-                        "preCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
-                        "postCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
+                        "preCondition": TEST_CONDITION,
+                        "postCondition": TEST_CONDITION,
                     },
                 },
                 id="operationalCapability",
@@ -1328,7 +1332,8 @@ class TestSerializers:
         assert work_item == data_models.CapellaWorkItem(**expected)
         assert status == "open"
 
-    def test_add_context_diagram(self, model: capellambse.MelodyModel):
+    @staticmethod
+    def test_add_context_diagram(model: capellambse.MelodyModel):
         uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
         type_config = converter_config.CapellaTypeConfig(
             "test", "add_context_diagram", []
@@ -1371,7 +1376,9 @@ class TestSerializers:
             "__C2P__context_diagram.svg",
         )
 
-    def test_multiple_serializers(self, model: capellambse.MelodyModel):
+    @staticmethod
+    @pytest.mark.parametrize("prefix", ["", "_C2P"])
+    def test_multiple_serializers(model: capellambse.MelodyModel, prefix: str):
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
             "test",
@@ -1387,16 +1394,25 @@ class TestSerializers:
                 )
             },
             True,
+            prefix,
         )
+        precondition_id = "preCondition"
+        postcondition_id = "postCondition"
+        context_diagram_id = "context_diagram"
+        if prefix:
+            precondition_id = f"{prefix}_{precondition_id}"
+            postcondition_id = f"{prefix}_{postcondition_id}"
+            context_diagram_id = f"{prefix}_{context_diagram_id}"
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
 
         assert work_item is not None
-        assert "preCondition" in work_item.additional_attributes
-        assert "postCondition" in work_item.additional_attributes
-        assert "context_diagram" in work_item.additional_attributes
+        assert work_item.type.startswith(prefix)
+        assert precondition_id in work_item.additional_attributes
+        assert postcondition_id in work_item.additional_attributes
+        assert context_diagram_id in work_item.additional_attributes
         assert str(
-            work_item.additional_attributes["context_diagram"]["value"]
+            work_item.additional_attributes[context_diagram_id]["value"]
         ) == TEST_DIAG_DESCR.format(
             title="Context Diagram",
             attachment_id="__C2P__context_diagram.svg",
@@ -1404,9 +1420,77 @@ class TestSerializers:
             cls="additional-attributes-diagram",
         )
 
-    def test_read_config_with_custom_params(
-        self, model: capellambse.MelodyModel
+    @staticmethod
+    @pytest.mark.parametrize(
+        "layer,uuid,expected",
+        [
+            pytest.param(
+                "la",
+                TEST_ELEMENT_UUID,
+                {
+                    **TEST_LOGICAL_COMPONENT,
+                    "type": "_C2P_logicalComponent",
+                    "_C2P_uuid_capella": TEST_ELEMENT_UUID,
+                    "_C2P_reqtype": {
+                        "type": "text/html",
+                        "value": markupsafe.Markup(TEST_REQ_TEXT),
+                    },
+                },
+                id="logicalComponent",
+            ),
+            pytest.param(
+                "oa",
+                TEST_OCAP_UUID,
+                {
+                    **TEST_OPERATIONAL_CAPABILITY,
+                    "type": "_C2P_operationalCapability",
+                    "_C2P_uuid_capella": TEST_OCAP_UUID,
+                    "additional_attributes": {
+                        "_C2P_preCondition": TEST_CONDITION,
+                        "_C2P_postCondition": TEST_CONDITION,
+                    },
+                },
+                id="operationalCapability",
+            ),
+        ],
+    )
+    def test_generic_work_item_with_id_prefix(
+        model: capellambse.MelodyModel,
+        layer: str,
+        uuid: str,
+        expected: dict[str, t.Any],
     ):
+        prefix = "_C2P"
+        obj = model.by_uuid(uuid)
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        c_type = type(obj).__name__
+        attributes = {
+            "is_actor": getattr(obj, "is_actor", None),
+            "nature": getattr(obj, "nature", None),
+        }
+        type_config = config.get_type_config(layer, c_type, **attributes)
+        assert type_config is not None
+        ework_item = data_models.CapellaWorkItem(id=f"{prefix}_TEST")
+        setattr(ework_item, f"{prefix}_uuid_capella", TEST_E_UUID)
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository([ework_item]),
+            {uuid: data_session.ConverterData(layer, type_config, obj)},
+            False,
+            prefix,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        work_item.status = None
+        assert work_item == data_models.CapellaWorkItem(**expected)
+
+    @staticmethod
+    def test_read_config_with_custom_params(model: capellambse.MelodyModel):
         cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:

@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
     type=click.File(mode="r", encoding="utf8"),
     default=None,
 )
+@click.option("--id-prefix", type=str, default="")
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -51,6 +52,7 @@ def cli(
     polarion_delete_work_items: bool,
     capella_model: capellambse.MelodyModel,
     synchronize_config: typing.TextIO,
+    id_prefix: str,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
     if capella_model.diagram_cache is None:
@@ -65,6 +67,7 @@ def cli(
         capella_model,
         synchronize_config,
         force_update,
+        id_prefix,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -104,7 +107,10 @@ def synchronize(ctx: click.core.Context) -> None:
 
     polarion_worker.load_polarion_work_item_map()
 
-    converter.generate_work_items(polarion_worker.polarion_data_repo)
+    converter.generate_work_items(
+        polarion_worker.polarion_data_repo,
+        id_prefix=capella_to_polarion_cli.id_prefix,
+    )
 
     polarion_worker.delete_work_items(converter.converter_session)
     polarion_worker.post_work_items(converter.converter_session)
@@ -114,6 +120,7 @@ def synchronize(ctx: click.core.Context) -> None:
         polarion_worker.polarion_data_repo,
         generate_links=True,
         generate_attachments=True,
+        id_prefix=capella_to_polarion_cli.id_prefix,
     )
 
     polarion_worker.patch_work_items(converter.converter_session)
