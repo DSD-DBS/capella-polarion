@@ -33,11 +33,13 @@ class LinkSerializer:
         converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
+        id_prefix: str = "",
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.project_id = project_id
         self.model = model
+        self.id_prefix = id_prefix
 
         self.serializers: dict[
             str,
@@ -71,14 +73,18 @@ class LinkSerializer:
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
         for role_id in converter_data.type_config.links:
+            roleid = role_id
+            if self.id_prefix:
+                roleid = f"{self.id_prefix}_{roleid}"
+
             if serializer := self.serializers.get(role_id):
-                new_links.extend(serializer(obj, work_item.id, role_id, {}))
+                new_links.extend(serializer(obj, work_item.id, roleid, {}))
             else:
                 if (refs := getattr(obj, role_id, None)) is None:
                     logger.info(
                         "Unable to create work item link %r for [%s]. "
                         "There is no %r attribute on %s",
-                        role_id,
+                        roleid,
                         work_item.id,
                         role_id,
                         repres,
@@ -91,8 +97,8 @@ class LinkSerializer:
                     assert hasattr(refs, "uuid")
                     new = [refs.uuid]
 
-                new = set(self._get_work_item_ids(work_item.id, new, role_id))
-                new_links.extend(self._create(work_item.id, role_id, new, {}))
+                new = set(self._get_work_item_ids(work_item.id, new, roleid))
+                new_links.extend(self._create(work_item.id, roleid, new, {}))
         return new_links
 
     def _get_work_item_ids(

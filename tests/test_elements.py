@@ -647,6 +647,39 @@ class TestModelElements:
         assert links == [expected]
 
     @staticmethod
+    def test_create_link_from_single_attribute_with_id_prefix(
+        base_object: BaseObjectContainer,
+    ):
+        work_item_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            type="_C2P_fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+            _C2P_uuid_capella="uuid2",
+        )
+
+        base_object.pw.polarion_data_repo.update_work_items([work_item_2])
+        base_object.mc.converter_session["uuid2"].work_item = work_item_2
+
+        expected = polarion_api.WorkItemLink(
+            "Obj-2",
+            "Obj-1",
+            "_C2P_attribute",
+            secondary_work_item_project="project_id",
+        )
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+            id_prefix="_C2P",
+        )
+        links = link_serializer.create_links_for_work_item("uuid2")
+
+        assert links == [expected]
+
+    @staticmethod
     def test_update_work_items(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):

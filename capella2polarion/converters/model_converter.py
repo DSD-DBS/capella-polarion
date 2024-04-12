@@ -117,12 +117,14 @@ class ModelConverter:
             assert work_item.type is not None
 
         if generate_links:
-            self.generate_work_item_links(polarion_data_repo)
+            self.generate_work_item_links(polarion_data_repo, id_prefix)
 
         return {wi.uuid_capella: wi for wi in work_items}
 
     def generate_work_item_links(
-        self, polarion_data_repo: polarion_repo.PolarionDataRepository
+        self,
+        polarion_data_repo: polarion_repo.PolarionDataRepository,
+        id_prefix: str = "",
     ):
         """Generate links for all work items and add custom fields for them."""
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
@@ -131,6 +133,7 @@ class ModelConverter:
             self.converter_session,
             self.project_id,
             self.model,
+            id_prefix,
         )
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
