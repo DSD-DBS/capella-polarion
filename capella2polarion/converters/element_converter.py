@@ -61,7 +61,7 @@ def strike_through(string: str) -> str:
 
 
 def _format_texts(
-    type_texts: dict[str, list[str]], prefix: str = ""
+    type_texts: dict[str, list[str]]
 ) -> dict[str, dict[str, str]]:
     def _format(texts: list[str]) -> dict[str, str]:
         if len(texts) > 1:
@@ -73,11 +73,7 @@ def _format_texts(
 
     requirement_types = {}
     for typ, texts in type_texts.items():
-        key = typ.lower()
-        if prefix:
-            key = f"{prefix}_{key}"
-
-        requirement_types[key] = _format(texts)
+        requirement_types[typ.lower()] = _format(texts)
     return requirement_types
 
 
@@ -136,7 +132,13 @@ class CapellaWorkItemSerializer:
             uuid
         ):
             work_item_id = old.id
+
         self.__generic_work_item(converter_data, work_item_id)
+        assert converter_data.work_item is not None
+        if self.id_prefix:
+            converter_data.work_item.type = (
+                f"{self.id_prefix}_{converter_data.work_item.type}"
+            )
 
         assert isinstance(converter_data.type_config.converters, dict)
         for converter, params in converter_data.type_config.converters.items():
@@ -146,6 +148,16 @@ class CapellaWorkItemSerializer:
                     data_models.CapellaWorkItem,
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
+                assert converter_data.work_item is not None
+                if (
+                    self.id_prefix
+                    and not converter_data.work_item.type.startswith(
+                        self.id_prefix
+                    )
+                ):
+                    converter_data.work_item.type = (
+                        f"{self.id_prefix}_{converter_data.work_item.type}"
+                    )
             except Exception as error:
                 converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
@@ -243,11 +255,7 @@ class CapellaWorkItemSerializer:
         if attachment:
             self._add_attachment(work_item, attachment)
 
-        attribute_id = attribute
-        if self.id_prefix:
-            attribute_id = f"{self.id_prefix}_{attribute_id}"
-
-        work_item.additional_attributes[attribute_id] = {
+        work_item.additional_attributes[attribute] = {
             "type": "text/html",
             "value": diagram_html,
         }
@@ -375,7 +383,7 @@ class CapellaWorkItemSerializer:
                 continue
 
             type_texts[req.type.long_name].append(req.text)
-        return _format_texts(type_texts, self.id_prefix)
+        return _format_texts(type_texts)
 
     # Serializer implementation starts below
 
@@ -391,24 +399,17 @@ class CapellaWorkItemSerializer:
         )
         converter_data.description_references = uuids
         requirement_types = self._get_requirement_types_text(obj)
-        id = work_item_id
-        type = converter_data.type_config.p_type
-        uuid_key = "uuid_capella"
-        if self.id_prefix:
-            id = f"{self.id_prefix}_{id}" if id is not None else id
-            type = f"{self.id_prefix}_{type}"
-            uuid_key = f"{self.id_prefix}_{uuid_key}"
 
         converter_data.work_item = data_models.CapellaWorkItem(
-            id=id,
-            type=type,
+            id=work_item_id,
+            type=converter_data.type_config.p_type,
             title=obj.name,
+            uuid_capella=obj.uuid,
             description_type="text/html",
             description=value,
             status="open",
             **requirement_types,
         )
-        setattr(converter_data.work_item, uuid_key, obj.uuid)
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
 
@@ -427,25 +428,19 @@ class CapellaWorkItemSerializer:
         diagram_html, attachment = self._draw_diagram_svg(
             diagram, "diagram", "Diagram", 750, "diagram", render_params
         )
-        id = work_item_id
-        type = converter_data.type_config.p_type
-        uuid_key = "uuid_capella"
-        if self.id_prefix:
-            id = f"{self.id_prefix}_{id}" if id is not None else id
-            type = f"{self.id_prefix}_{type}"
-            uuid_key = f"{self.id_prefix}_{uuid_key}"
 
         converter_data.work_item = data_models.CapellaWorkItem(
-            id=id,
-            type=type,
+            id=work_item_id,
+            type=converter_data.type_config.p_type,
             title=diagram.name,
+            uuid_capella=diagram.uuid,
             description_type="text/html",
             description=diagram_html,
             status="open",
         )
-        setattr(converter_data.work_item, uuid_key, diagram.uuid)
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)
+
         return converter_data.work_item
 
     def _include_pre_and_post_condition(
@@ -464,22 +459,11 @@ class CapellaWorkItemSerializer:
 
         pre_condition = get_condition(obj, "precondition")
         post_condition = get_condition(obj, "postcondition")
-        pre_condition_id = "preCondition"
-        post_condition_id = "postCondition"
-        if self.id_prefix:
-            pre_condition_id = f"{self.id_prefix}_{pre_condition_id}"
-            post_condition_id = f"{self.id_prefix}_{post_condition_id}"
 
         assert converter_data.work_item, "No work item set yet"
-        setattr(
-            converter_data.work_item,
-            pre_condition_id,
-            _condition(True, pre_condition),
-        )
-        setattr(
-            converter_data.work_item,
-            post_condition_id,
-            _condition(True, post_condition),
+        converter_data.work_item.preCondition = _condition(True, pre_condition)
+        converter_data.work_item.postCondition = _condition(
+            True, post_condition
         )
         return converter_data.work_item
 

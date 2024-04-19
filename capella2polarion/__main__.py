@@ -95,6 +95,7 @@ def synchronize(ctx: click.core.Context) -> None:
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
+        id_prefix=capella_to_polarion_cli.id_prefix,
     )
 
     converter.read_model(capella_to_polarion_cli.config)
@@ -103,14 +104,12 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.config,
         capella_to_polarion_cli.force_update,
+        id_prefix=capella_to_polarion_cli.id_prefix,
     )
 
     polarion_worker.load_polarion_work_item_map()
 
-    converter.generate_work_items(
-        polarion_worker.polarion_data_repo,
-        id_prefix=capella_to_polarion_cli.id_prefix,
-    )
+    converter.generate_work_items(polarion_worker.polarion_data_repo)
 
     polarion_worker.delete_work_items(converter.converter_session)
     polarion_worker.post_work_items(converter.converter_session)
@@ -120,7 +119,6 @@ def synchronize(ctx: click.core.Context) -> None:
         polarion_worker.polarion_data_repo,
         generate_links=True,
         generate_attachments=True,
-        id_prefix=capella_to_polarion_cli.id_prefix,
     )
 
     polarion_worker.patch_work_items(converter.converter_session)

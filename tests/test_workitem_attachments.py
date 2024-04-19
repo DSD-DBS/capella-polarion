@@ -18,6 +18,7 @@ from capella2polarion.converters import (
     model_converter,
 )
 
+# pylint: disable=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR
 
@@ -109,6 +110,7 @@ def test_diagram_has_attachments(model: capellambse.MelodyModel):
     assert len(work_item.attachments) == 2
 
 
+# pylint: disable=redefined-outer-name  # false-positive
 def test_diagram_attachments_new(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,

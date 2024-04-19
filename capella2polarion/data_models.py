@@ -11,15 +11,18 @@ import typing as t
 import polarion_rest_api_client as polarion_api
 
 
-class Condition(t.TypedDict):
-    """A class to describe a pre or post condition."""
-
-    type: str
-    value: str
-
-
 class CapellaWorkItem(polarion_api.WorkItem):
     """A WorkItem class with additional Capella related attributes."""
+
+    class Condition(t.TypedDict):
+        """A class to describe a pre or post condition."""
+
+        type: str
+        value: str
+
+    uuid_capella: str
+    preCondition: Condition | None
+    postCondition: Condition | None
 
     def calculate_checksum(self) -> str:
         """Calculate and return a checksum for this WorkItem.

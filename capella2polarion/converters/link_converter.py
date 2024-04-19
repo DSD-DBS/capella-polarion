@@ -198,49 +198,53 @@ class LinkSerializer:
             exchanges.extend(set(exs))
         return self._create(work_item_id, role_id, exchanges, links)
 
+    def create_grouped_link_fields(
+        self,
+        work_item: data_models.CapellaWorkItem,
+        back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
+    ):
+        """Create the grouped link fields from the primary work item.
 
-def create_grouped_link_fields(
-    work_item: data_models.CapellaWorkItem,
-    back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
-):
-    """Create the grouped link fields from the primary work item.
+        Parameters
+        ----------
+        work_item
+            WorkItem to create the fields for.
+        back_links
+            A dictionary of secondary WorkItem IDs to links to create
+            backlinks later.
+        """
+        wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+        logger.debug("Building grouped links for work item %r...", wi)
+        for role, grouped_links in _group_by(
+            "role", work_item.linked_work_items
+        ).items():
+            if back_links is not None:
+                for link in grouped_links:
+                    key = link.secondary_work_item_id
+                    back_links.setdefault(key, []).append(link)
 
-    Parameters
-    ----------
-    work_item
-        WorkItem to create the fields for.
-    back_links
-        A dictionary of secondary WorkItem IDs to links to create
-        backlinks later.
-    """
-    wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
-    logger.debug("Building grouped links for work item %r...", wi)
-    for role, grouped_links in _group_by(
-        "role", work_item.linked_work_items
-    ).items():
-        if back_links is not None:
-            for link in grouped_links:
-                key = link.secondary_work_item_id
-                back_links.setdefault(key, []).append(link)
+            _create_link_fields(
+                work_item, role.lstrip(self.id_prefix), grouped_links
+            )
 
-        _create_link_fields(work_item, role, grouped_links)
+    def create_grouped_back_link_fields(
+        self,
+        work_item: data_models.CapellaWorkItem,
+        links: list[polarion_api.WorkItemLink],
+    ):
+        """Create fields for the given WorkItem using a list of backlinks.
 
-
-def create_grouped_back_link_fields(
-    work_item: data_models.CapellaWorkItem,
-    links: list[polarion_api.WorkItemLink],
-):
-    """Create fields for the given WorkItem using a list of backlinks.
-
-    Parameters
-    ----------
-    work_item
-        WorkItem to create the fields for
-    links
-        List of links referencing work_item as secondary
-    """
-    for role, grouped_links in _group_by("role", links).items():
-        _create_link_fields(work_item, role, grouped_links, True)
+        Parameters
+        ----------
+        work_item
+            WorkItem to create the fields for
+        links
+            List of links referencing work_item as secondary
+        """
+        for role, grouped_links in _group_by("role", links).items():
+            _create_link_fields(
+                work_item, role.lstrip(self.id_prefix), grouped_links, True
+            )
 
 
 def _group_by(

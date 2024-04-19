@@ -15,7 +15,6 @@ from capella2polarion.connectors.polarion_worker import CapellaPolarionWorker
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
-    TEST_DIAGRAM_CACHE,
     TEST_MODEL,
     TEST_MODEL_ELEMENTS_CONFIG,
 )

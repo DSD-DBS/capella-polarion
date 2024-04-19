@@ -28,7 +28,6 @@ from capella2polarion.converters import (
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
-    TEST_DIAGRAM_CACHE,
     TEST_HOST,
     TEST_MODEL_ELEMENTS_CONFIG,
 )
@@ -656,7 +655,7 @@ class TestModelElements:
             description_type="text/html",
             description=markupsafe.Markup(""),
             status="open",
-            _C2P_uuid_capella="uuid2",
+            uuid_capella="uuid2",
         )
 
         base_object.pw.polarion_data_repo.update_work_items([work_item_2])
@@ -1005,12 +1004,14 @@ class TestModelElements:
 
         mock_grouped_links = mock.MagicMock()
         monkeypatch.setattr(
-            link_converter, "create_grouped_link_fields", mock_grouped_links
+            link_converter.LinkSerializer,
+            "create_grouped_link_fields",
+            mock_grouped_links,
         )
         mock_grouped_links.side_effect = mock_back_link
         mock_grouped_links_reverse = mock.MagicMock()
         monkeypatch.setattr(
-            link_converter,
+            link_converter.LinkSerializer,
             "create_grouped_back_link_fields",
             mock_grouped_links_reverse,
         )
@@ -1043,10 +1044,17 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes(
-        dummy_work_items: dict[str, data_models.CapellaWorkItem]
+        dummy_work_items: dict[str, data_models.CapellaWorkItem],
+        model: capellambse.MelodyModel,
     ):
+        link_serializer = link_converter.LinkSerializer(
+            polarion_repo.PolarionDataRepository(),
+            {},
+            "PROJ-1",
+            model,
+        )
         for work_item in dummy_work_items.values():
-            link_converter.create_grouped_link_fields(work_item)
+            link_serializer.create_grouped_link_fields(work_item)
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid2"].additional_attributes["uuid_capella"]
@@ -1068,15 +1076,22 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_reverse_grouped_links_attributes(
-        dummy_work_items: dict[str, data_models.CapellaWorkItem]
+        dummy_work_items: dict[str, data_models.CapellaWorkItem],
+        model: capellambse.MelodyModel,
     ):
         reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        link_serializer = link_converter.LinkSerializer(
+            polarion_repo.PolarionDataRepository(),
+            {},
+            "PROJ-1",
+            model,
+        )
         for work_item in dummy_work_items.values():
-            link_converter.create_grouped_link_fields(work_item, back_links)
+            link_serializer.create_grouped_link_fields(work_item, back_links)
         for work_item_id, links in back_links.items():
             work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
-            link_converter.create_grouped_back_link_fields(work_item, links)
+            link_serializer.create_grouped_back_link_fields(work_item, links)
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid2"].additional_attributes["uuid_capella"]
@@ -1105,13 +1120,21 @@ class TestModelElements:
         assert dummy_work_items["uuid2"].additional_attributes == {}
 
 
-def test_grouped_linked_work_items_order_consistency():
+def test_grouped_linked_work_items_order_consistency(
+    model: capellambse.MelodyModel,
+):
+    link_serializer = link_converter.LinkSerializer(
+        polarion_repo.PolarionDataRepository(),
+        {},
+        "PROJ-1",
+        model,
+    )
     work_item = data_models.CapellaWorkItem("id", "Dummy")
     links = [
         polarion_api.WorkItemLink("prim1", "id", "role1"),
         polarion_api.WorkItemLink("prim2", "id", "role1"),
     ]
-    link_converter.create_grouped_back_link_fields(work_item, links)
+    link_serializer.create_grouped_back_link_fields(work_item, links)
 
     check_sum = work_item.calculate_checksum()
 
@@ -1119,7 +1142,7 @@ def test_grouped_linked_work_items_order_consistency():
         polarion_api.WorkItemLink("prim2", "id", "role1"),
         polarion_api.WorkItemLink("prim1", "id", "role1"),
     ]
-    link_converter.create_grouped_back_link_fields(work_item, links)
+    link_serializer.create_grouped_back_link_fields(work_item, links)
 
     assert check_sum == work_item.calculate_checksum()
 
@@ -1429,23 +1452,16 @@ class TestSerializers:
             True,
             prefix,
         )
-        precondition_id = "preCondition"
-        postcondition_id = "postCondition"
-        context_diagram_id = "context_diagram"
-        if prefix:
-            precondition_id = f"{prefix}_{precondition_id}"
-            postcondition_id = f"{prefix}_{postcondition_id}"
-            context_diagram_id = f"{prefix}_{context_diagram_id}"
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
 
         assert work_item is not None
         assert work_item.type.startswith(prefix)
-        assert precondition_id in work_item.additional_attributes
-        assert postcondition_id in work_item.additional_attributes
-        assert context_diagram_id in work_item.additional_attributes
+        assert "preCondition" in work_item.additional_attributes
+        assert "postCondition" in work_item.additional_attributes
+        assert "context_diagram" in work_item.additional_attributes
         assert str(
-            work_item.additional_attributes[context_diagram_id]["value"]
+            work_item.additional_attributes["context_diagram"]["value"]
         ) == TEST_DIAG_DESCR.format(
             title="Context Diagram",
             attachment_id="__C2P__context_diagram.svg",
@@ -1463,8 +1479,8 @@ class TestSerializers:
                 {
                     **TEST_LOGICAL_COMPONENT,
                     "type": "_C2P_logicalComponent",
-                    "_C2P_uuid_capella": TEST_ELEMENT_UUID,
-                    "_C2P_reqtype": {
+                    "uuid_capella": TEST_ELEMENT_UUID,
+                    "reqtype": {
                         "type": "text/html",
                         "value": markupsafe.Markup(TEST_REQ_TEXT),
                     },
@@ -1477,10 +1493,10 @@ class TestSerializers:
                 {
                     **TEST_OPERATIONAL_CAPABILITY,
                     "type": "_C2P_operationalCapability",
-                    "_C2P_uuid_capella": TEST_OCAP_UUID,
+                    "uuid_capella": TEST_OCAP_UUID,
                     "additional_attributes": {
-                        "_C2P_preCondition": TEST_CONDITION,
-                        "_C2P_postCondition": TEST_CONDITION,
+                        "preCondition": TEST_CONDITION,
+                        "postCondition": TEST_CONDITION,
                     },
                 },
                 id="operationalCapability",

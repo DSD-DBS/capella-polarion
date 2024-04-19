@@ -29,9 +29,12 @@ class ModelConverter:
         self,
         model: capellambse.MelodyModel,
         project_id: str,
+        id_prefix: str = "",
     ):
         self.model = model
         self.project_id = project_id
+        self.id_prefix = id_prefix
+
         self.converter_session: data_session.ConverterSession = {}
 
     def read_model(
@@ -82,7 +85,6 @@ class ModelConverter:
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_links: bool = False,
         generate_attachments: bool = False,
-        id_prefix: str = "",
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
@@ -100,16 +102,13 @@ class ModelConverter:
         generate_attachments
             A boolean flag to control attachments generation. For SVG
             attachments, PNGs are generated and attached automatically.
-        id_prefix
-            A string that is used as a prefix for IDs of types, roles
-            and links.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
             self.model,
             polarion_data_repo,
             self.converter_session,
             generate_attachments,
-            id_prefix,
+            self.id_prefix,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:
@@ -117,14 +116,13 @@ class ModelConverter:
             assert work_item.type is not None
 
         if generate_links:
-            self.generate_work_item_links(polarion_data_repo, id_prefix)
+            self.generate_work_item_links(polarion_data_repo)
 
         return {wi.uuid_capella: wi for wi in work_items}
 
     def generate_work_item_links(
         self,
         polarion_data_repo: polarion_repo.PolarionDataRepository,
-        id_prefix: str = "",
     ):
         """Generate links for all work items and add custom fields for them."""
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
@@ -133,7 +131,7 @@ class ModelConverter:
             self.converter_session,
             self.project_id,
             self.model,
-            id_prefix,
+            self.id_prefix,
         )
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
@@ -146,7 +144,7 @@ class ModelConverter:
             links = link_serializer.create_links_for_work_item(uuid)
             converter_data.work_item.linked_work_items = links
 
-            link_converter.create_grouped_link_fields(
+            link_serializer.create_grouped_link_fields(
                 converter_data.work_item, back_links
             )
 
@@ -159,6 +157,6 @@ class ModelConverter:
                 continue
 
             if local_back_links := back_links.get(converter_data.work_item.id):
-                link_converter.create_grouped_back_link_fields(
+                link_serializer.create_grouped_back_link_fields(
                     converter_data.work_item, local_back_links
                 )
