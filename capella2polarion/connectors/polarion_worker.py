@@ -170,7 +170,6 @@ class CapellaPolarionWorker:
         assert old is not None
 
         new.calculate_checksum()
-        old.calculate_checksum()
         if not self.force_update and new == old:
             return
 
