@@ -109,6 +109,7 @@ def test_diagram_has_attachments(model: capellambse.MelodyModel):
     assert len(work_item.attachments) == 2
 
 
+# pylint: disable=redefined-outer-name
 def test_diagram_attachments_new(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
