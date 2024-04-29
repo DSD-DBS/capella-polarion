@@ -22,14 +22,14 @@ from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR
 
 DIAGRAM_WI_CHECKSUM = (
-    "122dc8471ac3135a1af1e3b44ac76a9acd888a9e4add162e7433a94aa498598d"
+    "2c3aadc9b145917810e1988ed463a4b45f6d3c6506c24378b006ba922c4141b8"
 )
 
-TEST_DIAG_UUID = "_APMboAPhEeynfbzU12yy7w"
+TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 WORKITEM_ID = "TEST-ID"
 
 with open(
-    TEST_DIAGRAM_CACHE / "_APMboAPhEeynfbzU12yy7w.svg", "r", encoding="utf8"
+    TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", "r", encoding="utf8"
 ) as f:
     diagram_svg = f.read()
 
