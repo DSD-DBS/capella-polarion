@@ -73,18 +73,17 @@ class LinkSerializer:
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
         for role_id in converter_data.type_config.links:
-            roleid = role_id
             if self.id_prefix:
-                roleid = f"{self.id_prefix}_{roleid}"
+                role_id = f"{self.id_prefix}_{role_id}"
 
             if serializer := self.serializers.get(role_id):
-                new_links.extend(serializer(obj, work_item.id, roleid, {}))
+                new_links.extend(serializer(obj, work_item.id, role_id, {}))
             else:
                 if (refs := getattr(obj, role_id, None)) is None:
                     logger.info(
                         "Unable to create work item link %r for [%s]. "
                         "There is no %r attribute on %s",
-                        roleid,
+                        role_id,
                         work_item.id,
                         role_id,
                         repres,
@@ -97,8 +96,8 @@ class LinkSerializer:
                     assert hasattr(refs, "uuid")
                     new = [refs.uuid]
 
-                new = set(self._get_work_item_ids(work_item.id, new, roleid))
-                new_links.extend(self._create(work_item.id, roleid, new, {}))
+                new = set(self._get_work_item_ids(work_item.id, new, role_id))
+                new_links.extend(self._create(work_item.id, role_id, new, {}))
         return new_links
 
     def _get_work_item_ids(
@@ -243,7 +242,10 @@ class LinkSerializer:
         """
         for role, grouped_links in _group_by("role", links).items():
             _create_link_fields(
-                work_item, role.lstrip(self.id_prefix), grouped_links, True
+                work_item,
+                role.removeprefix(self.id_prefix),
+                grouped_links,
+                True,
             )
 
 
