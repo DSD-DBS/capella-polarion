@@ -141,7 +141,7 @@ def base_object(
         "fakeModelObject",
         links=[
             converter_config.LinkConfig(
-                id="attribute", polarion_id="attribute"
+                capella_attr="attribute", polarion_role="attribute"
             )
         ],
     )

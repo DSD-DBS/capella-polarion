@@ -21,9 +21,11 @@ class LinkConfig:
 
     Attributes
     ----------
-    id
-        The identifier used in Polarion which is also the attribute name
-        on the Capella object.
+    capella_attr
+        The Attribute name on the capellambse model object.
+    polarion_role
+        The identifier used in the Polarion configuration for this work
+        item link (role).
     include
         A list of identifiers that are attribute names on the Capella
         objects link targets. The requested objects are then included in
@@ -31,9 +33,9 @@ class LinkConfig:
         lists. They also need be migrated for working references.
     """
 
-    id: str | None = None
-    polarion_id: str | None = None
-    include: list[str] = dataclasses.field(default_factory=list)
+    capella_attr: str | None = None
+    polarion_role: str | None = None
+    include: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -233,21 +235,19 @@ def _force_dict(
             raise TypeError("Unsupported Type")
 
 
-def _force_link_config(
-    links: list[str | dict[str, t.Any]]
-) -> list[LinkConfig]:
+def _force_link_config(links: t.Any) -> list[LinkConfig]:
     result: list[LinkConfig] = []
     for link in links:
         if isinstance(link, str):
-            config = LinkConfig(id=link, polarion_id=link)
+            config = LinkConfig(capella_attr=link, polarion_role=link)
         elif isinstance(link, dict):
             config = LinkConfig(
-                id=(lid := link.get("id")),
-                polarion_id=link.get("polarion_id", lid),
-                include=link.get("include", []),
+                capella_attr=(lid := link.get("capella_attr")),
+                polarion_role=link.get("polarion_role", lid),
+                include=link.get("include", {}),
             )
         else:
-            logger.error(  # type: ignore[unreachable]
+            logger.error(
                 "Link not configured correctly: %r",
                 link,
             )

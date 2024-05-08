@@ -25,6 +25,10 @@ from capella2polarion.converters import (
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
+_Serializer: t.TypeAlias = cabc.Callable[
+    [common.GenericElement, str, str, str, dict[str, t.Any]],
+    list[polarion_api.WorkItemLink],
+]
 
 
 class LinkSerializer:
@@ -42,13 +46,7 @@ class LinkSerializer:
         self.project_id = project_id
         self.model = model
 
-        self.serializers: dict[
-            str,
-            cabc.Callable[
-                [common.GenericElement, str, str, str, dict[str, t.Any]],
-                list[polarion_api.WorkItemLink],
-            ],
-        ] = {
+        self.serializers: dict[str, _Serializer] = {
             "description_reference": self._handle_description_reference_links,
             "diagram_elements": self._handle_diagram_reference_links,
             "input_exchanges": self._handle_exchanges,
@@ -70,8 +68,8 @@ class LinkSerializer:
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
         for link_config in converter_data.type_config.links:
-            assert (role_id := link_config.polarion_id) is not None
-            attr_id = link_config.id or ""
+            assert (role_id := link_config.polarion_role) is not None
+            attr_id = link_config.capella_attr or ""
             if serializer := self.serializers.get(role_id):
                 new_links.extend(
                     serializer(obj, work_item.id, role_id, attr_id, {})
@@ -233,7 +231,7 @@ class LinkSerializer:
 
             config: converter_config.LinkConfig | None = None
             for link_config in data.type_config.links:
-                if link_config.polarion_id == role:
+                if link_config.polarion_role == role:
                     config = link_config
                     break
 
@@ -277,7 +275,7 @@ class LinkSerializer:
                     )
                     continue
 
-                for attr_name in config.include:
+                for display_name, attr_name in config.include.items():
                     try:
                         attr = getattr(obj, attr_name)
                     except AttributeError:
@@ -294,8 +292,11 @@ class LinkSerializer:
                         assert hasattr(attr, "uuid")
                         uuids = [attr.uuid]
 
-                    include_map[attr_name] = list(
+                    work_item_ids = list(
                         self._get_work_item_ids(work_item.id, uuids, attr_name)
+                    )
+                    include_map[f"{link_id}:{display_name}:{attr_name}"] = (
+                        work_item_ids
                     )
 
         work_item.additional_attributes[role] = {
@@ -337,19 +338,27 @@ def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:
     for link_id in sorted(link_map):
         url = element_converter.POLARION_WORK_ITEM_URL.format(pid=link_id)
         urls.append(f"<li>{url}</li>")
-        for include_wids in link_map[link_id].values():
-            urls.append(_sorted_unordered_html_list(include_wids))
+        for key, include_wids in link_map[link_id].items():
+            _, display_name, _ = key.split(":")
+            urls.append(
+                _sorted_unordered_html_list(include_wids, display_name)
+            )
 
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
 
 
-def _sorted_unordered_html_list(work_item_ids: cabc.Iterable[str]) -> str:
+def _sorted_unordered_html_list(
+    work_item_ids: cabc.Iterable[str], heading: str = ""
+) -> str:
     urls: list[str] = []
     for pid in work_item_ids:
         url = element_converter.POLARION_WORK_ITEM_URL.format(pid=pid)
         urls.append(f"<li>{url}</li>")
 
     urls.sort()
+    if heading:
+        urls.insert(0, f"<div>{heading}</div>")
+
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"

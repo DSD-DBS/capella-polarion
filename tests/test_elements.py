@@ -137,8 +137,8 @@ HTML_LINK_3 = {
         '<span class="polarion-rte-link" data-type="workItem" id="fake" '
         'data-item-id="WI-1" data-option-id="long"></span>'
         "</li>\n"
-        "<ul><li>"
-        '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+        "<ul><div>Exchange Items</div>\n"
+        '<li><span class="polarion-rte-link" data-type="workItem" id="fake" '
         'data-item-id="WI-2" data-option-id="long"></span>'
         "</li>\n"
         '<li><span class="polarion-rte-link" data-type="workItem" id="fake" '
@@ -340,7 +340,8 @@ class TestModelElements:
         base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
         base_object.mc.converter_session["uuid2"].type_config.links = [
             converter_config.LinkConfig(
-                id="description_reference", polarion_id="description_reference"
+                capella_attr="description_reference",
+                polarion_role="description_reference",
             )
         ]
         base_object.mc.converter_session["uuid2"].description_references = [
@@ -394,7 +395,7 @@ class TestModelElements:
             [work_item_obj_1, work_item_obj_2]
         )
         link_config = converter_config.LinkConfig(
-            id="inputs.exchanges", polarion_id="input_exchanges"
+            capella_attr="inputs.exchanges", polarion_role="input_exchanges"
         )
         base_object.mc.converter_session[function_uuid] = (
             data_session.ConverterData(
@@ -981,7 +982,7 @@ class TestModelElements:
                 converter_config.LinkConfig(
                     "inputs.exchanges",
                     "input_exchanges",
-                    include=["exchange_items"],
+                    include={"Exchange Items": "exchange_items"},
                 )
             ],
         )
@@ -1034,6 +1035,7 @@ class TestModelElements:
 
         for converter_data in base_object.mc.converter_session.values():
             links = link_serializer.create_links_for_work_item(fnc.uuid)
+            assert converter_data.work_item is not None
             converter_data.work_item.linked_work_items = links
 
             link_serializer.create_grouped_link_fields(
