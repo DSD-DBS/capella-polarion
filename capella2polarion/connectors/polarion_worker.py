@@ -94,13 +94,8 @@ class CapellaPolarionWorker:
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        _type = " ".join(
-            f"{self.id_prefix}_{ptype}" if self.id_prefix else ptype
-            for ptype in self.config.polarion_types
-        )
-
         work_items = self.client.get_all_work_items(
-            f"type:({_type})",
+            "HAS_VALUE:uuid_capella",
             {"workitems": "id,uuid_capella,checksum,status"},
         )
         self.polarion_data_repo.update_work_items(work_items)

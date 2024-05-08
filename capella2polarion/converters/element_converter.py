@@ -135,10 +135,6 @@ class CapellaWorkItemSerializer:
 
         self.__generic_work_item(converter_data, work_item_id)
         assert converter_data.work_item is not None
-        if self.id_prefix:
-            converter_data.work_item.type = (
-                f"{self.id_prefix}_{converter_data.work_item.type}"
-            )
 
         assert isinstance(converter_data.type_config.converters, dict)
         for converter, params in converter_data.type_config.converters.items():
@@ -148,19 +144,14 @@ class CapellaWorkItemSerializer:
                     data_models.CapellaWorkItem,
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
-                assert converter_data.work_item is not None
-                if (
-                    self.id_prefix
-                    and not converter_data.work_item.type.startswith(
-                        self.id_prefix
-                    )
-                ):
-                    converter_data.work_item.type = (
-                        f"{self.id_prefix}_{converter_data.work_item.type}"
-                    )
             except Exception as error:
                 converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
+
+        if self.id_prefix and converter_data.work_item is not None:
+            converter_data.work_item.type = (
+                f"{self.id_prefix}_{converter_data.work_item.type}"
+            )
 
         if converter_data.errors:
             log_args = (
@@ -410,6 +401,7 @@ class CapellaWorkItemSerializer:
             status="open",
             **requirement_types,
         )
+        assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
 
@@ -438,6 +430,7 @@ class CapellaWorkItemSerializer:
             description=diagram_html,
             status="open",
         )
+        assert converter_data.work_item is not None
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)
 

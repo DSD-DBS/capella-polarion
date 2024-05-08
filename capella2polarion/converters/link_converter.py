@@ -223,7 +223,7 @@ class LinkSerializer:
                     back_links.setdefault(key, []).append(link)
 
             _create_link_fields(
-                work_item, role.lstrip(self.id_prefix), grouped_links
+                work_item, role.removeprefix(self.id_prefix), grouped_links
             )
 
     def create_grouped_back_link_fields(
