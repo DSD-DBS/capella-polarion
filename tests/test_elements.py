@@ -137,7 +137,7 @@ HTML_LINK_3 = {
         '<span class="polarion-rte-link" data-type="workItem" id="fake" '
         'data-item-id="WI-1" data-option-id="long"></span>'
         "</li>\n"
-        "<ul><div>Exchange Items</div>\n"
+        "<ul><div>Exchange Items:</div>\n"
         '<li><span class="polarion-rte-link" data-type="workItem" id="fake" '
         'data-item-id="WI-2" data-option-id="long"></span>'
         "</li>\n"

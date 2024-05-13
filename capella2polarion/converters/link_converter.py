@@ -357,8 +357,8 @@ def _sorted_unordered_html_list(
         urls.append(f"<li>{url}</li>")
 
     urls.sort()
-    if heading:
-        urls.insert(0, f"<div>{heading}</div>")
+    if heading and urls:
+        urls.insert(0, f"<div>{heading}:</div>")
 
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
