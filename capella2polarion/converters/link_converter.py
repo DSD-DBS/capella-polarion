@@ -76,16 +76,22 @@ class LinkSerializer:
             if self.id_prefix:
                 role_id = f"{self.id_prefix}_{role_id}"
 
-            if serializer := self.serializers.get(role_id):
+            serializer = self.serializers.get(
+                role_id.removeprefix(f"{self.id_prefix}_")
+            )
+            if serializer:
                 new_links.extend(serializer(obj, work_item.id, role_id, {}))
             else:
-                if (refs := getattr(obj, role_id, None)) is None:
+                refs = getattr(
+                    obj, role_id.removeprefix(f"{self.id_prefix}_"), None
+                )
+                if refs is None:
                     logger.info(
                         "Unable to create work item link %r for [%s]. "
                         "There is no %r attribute on %s",
                         role_id,
                         work_item.id,
-                        role_id,
+                        role_id.removeprefix(f"{self.id_prefix}_"),
                         repres,
                     )
                     continue
@@ -223,7 +229,9 @@ class LinkSerializer:
                     back_links.setdefault(key, []).append(link)
 
             _create_link_fields(
-                work_item, role.removeprefix(self.id_prefix), grouped_links
+                work_item,
+                role.removeprefix(f"{self.id_prefix}_"),
+                grouped_links,
             )
 
     def create_grouped_back_link_fields(
