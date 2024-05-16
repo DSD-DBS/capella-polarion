@@ -32,7 +32,7 @@ dependencies = [
   "capellambse_context_diagrams",
   "click",
   "PyYAML",
-  "polarion-rest-api-client==0.3.2",
+  "polarion-rest-api-client==0.3.3",
   "bidict",
   "cairosvg",
 ]
