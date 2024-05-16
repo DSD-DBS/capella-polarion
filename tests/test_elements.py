@@ -1300,7 +1300,10 @@ class TestSerializers:
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
-                            "value": '<div style="text-align: center;">hehe<br/></div>',
+                            "value": (
+                                '<div style="text-align: center;">hehe'
+                                "<br/></div>"
+                            ),
                         },
                         "postCondition": {
                             "type": "text/html",
