@@ -46,10 +46,19 @@ sa:
       polarion_type: systemComponent
     - is_actor: true
       polarion_type: systemActor
-  SystemFunction:
   ComponentExchange:
     links:
       - allocated_functional_exchanges
+  SystemFunction:
+    links:
+      - polarion_role: input_exchanges
+        capella_attr: inputs.exchanges
+        include:
+          Exchange Items: exchange_items
+      - polarion_role: output_exchanges
+        capella_attr: outputs.exchanges
+        include:
+          Exchange Items: exchange_items
   FunctionalExchange:
     links:
       - exchanged_items

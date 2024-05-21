@@ -4,12 +4,38 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import typing as t
 from collections import abc as cabc
 
 import yaml
 
+logger = logging.getLogger(__name__)
+
 _C2P_DEFAULT = "_C2P_DEFAULT"
+
+
+@dataclasses.dataclass
+class LinkConfig:
+    """A single Capella Link configuration.
+
+    Attributes
+    ----------
+    capella_attr
+        The Attribute name on the capellambse model object.
+    polarion_role
+        The identifier used in the Polarion configuration for this work
+        item link (role).
+    include
+        A list of identifiers that are attribute names on the Capella
+        objects link targets. The requested objects are then included in
+        the list display in the grouped link custom field as nested
+        lists. They also need be migrated for working references.
+    """
+
+    capella_attr: str | None = None
+    polarion_role: str | None = None
+    include: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -18,7 +44,7 @@ class CapellaTypeConfig:
 
     p_type: str | None = None
     converters: str | list[str] | dict[str, dict[str, t.Any]] | None = None
-    links: list[str] = dataclasses.field(default_factory=list)
+    links: list[LinkConfig] = dataclasses.field(default_factory=list)
     is_actor: bool | None = None
     nature: str | None = None
 
@@ -48,7 +74,7 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = global_links
+        self.__global_config.links = _force_link_config(global_links)
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
@@ -97,7 +123,8 @@ class ConverterConfig:
                 CapellaTypeConfig(
                     p_type,
                     type_config.get("serializer") or closest_config.converters,
-                    type_config.get("links", []) + closest_config.links,
+                    _force_link_config(type_config.get("links", []))
+                    + closest_config.links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
                 )
@@ -112,7 +139,8 @@ class ConverterConfig:
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
             type_config.get("serializer"),
-            type_config.get("links", []) + self.__global_config.links,
+            _force_link_config(type_config.get("links", []))
+            + self.__global_config.links,
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
@@ -121,10 +149,11 @@ class ConverterConfig:
         """Set the diagram config."""
         p_type = diagram_config.get("polarion_type") or "diagram"
         self.polarion_types.add(p_type)
+        links = _force_link_config(diagram_config.get("links", []))
         self.diagram_config = CapellaTypeConfig(
             p_type,
             diagram_config.get("serializer") or "diagram",
-            diagram_config.get("links", []) + self.__global_config.links,
+            links + self.__global_config.links,
         )
 
     def get_type_config(
@@ -204,3 +233,24 @@ def _force_dict(
             return {k: v or {} for k, v in config.items()}
         case _:
             raise TypeError("Unsupported Type")
+
+
+def _force_link_config(links: t.Any) -> list[LinkConfig]:
+    result: list[LinkConfig] = []
+    for link in links:
+        if isinstance(link, str):
+            config = LinkConfig(capella_attr=link, polarion_role=link)
+        elif isinstance(link, dict):
+            config = LinkConfig(
+                capella_attr=(lid := link.get("capella_attr")),
+                polarion_role=link.get("polarion_role", lid),
+                include=link.get("include", {}),
+            )
+        else:
+            logger.error(
+                "Link not configured correctly: %r",
+                link,
+            )
+            continue
+        result.append(config)
+    return result

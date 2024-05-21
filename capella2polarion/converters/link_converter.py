@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import collections.abc as cabc
-import functools
 import logging
 import typing as t
 from collections import defaultdict
@@ -17,11 +16,19 @@ from capellambse.model.crosslayer import fa
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session, element_converter
+from capella2polarion.converters import (
+    converter_config,
+    data_session,
+    element_converter,
+)
 
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
+_Serializer: t.TypeAlias = cabc.Callable[
+    [common.GenericElement, str, str, str, dict[str, t.Any]],
+    list[polarion_api.WorkItemLink],
+]
 
 
 class LinkSerializer:
@@ -39,21 +46,11 @@ class LinkSerializer:
         self.project_id = project_id
         self.model = model
 
-        self.serializers: dict[
-            str,
-            cabc.Callable[
-                [common.GenericElement, str, str, dict[str, t.Any]],
-                list[polarion_api.WorkItemLink],
-            ],
-        ] = {
+        self.serializers: dict[str, _Serializer] = {
             "description_reference": self._handle_description_reference_links,
             "diagram_elements": self._handle_diagram_reference_links,
-            "input_exchanges": functools.partial(
-                self._handle_exchanges, attr="inputs"
-            ),
-            "output_exchanges": functools.partial(
-                self._handle_exchanges, attr="outputs"
-            ),
+            "input_exchanges": self._handle_exchanges,
+            "output_exchanges": self._handle_exchanges,
         }
 
     def create_links_for_work_item(
@@ -70,23 +67,28 @@ class LinkSerializer:
         work_item = converter_data.work_item
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
-        for role_id in converter_data.type_config.links:
+        for link_config in converter_data.type_config.links:
+            assert (role_id := link_config.polarion_role) is not None
+            attr_id = link_config.capella_attr or ""
             if serializer := self.serializers.get(role_id):
-                new_links.extend(serializer(obj, work_item.id, role_id, {}))
+                new_links.extend(
+                    serializer(obj, work_item.id, role_id, attr_id, {})
+                )
             else:
-                if (refs := getattr(obj, role_id, None)) is None:
+                if (refs := getattr(obj, attr_id, None)) is None:
                     logger.info(
                         "Unable to create work item link %r for [%s]. "
-                        "There is no %r attribute on %s",
+                        "There is no %r attribute on %s or no link-serializer",
                         role_id,
                         work_item.id,
-                        role_id,
+                        attr_id,
                         repres,
                     )
                     continue
 
+                new: cabc.Iterable[str]
                 if isinstance(refs, common.ElementList):
-                    new: cabc.Iterable[str] = refs.by_uuid  # type: ignore[assignment]
+                    new = refs.by_uuid  # type: ignore[assignment]
                 else:
                     assert hasattr(refs, "uuid")
                     new = [refs.uuid]
@@ -119,8 +121,10 @@ class LinkSerializer:
         obj: common.GenericElement,
         work_item_id: str,
         role_id: str,
+        attr_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
+        del attr_id
         refs = self.converter_session[obj.uuid].description_references
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
@@ -130,8 +134,10 @@ class LinkSerializer:
         obj: diag.Diagram,
         work_item_id: str,
         role_id: str,
+        attr_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
+        del attr_id
         try:
             refs = set(self._collect_uuids(obj.nodes))
             refs = set(self._get_work_item_ids(work_item_id, refs, role_id))
@@ -182,59 +188,138 @@ class LinkSerializer:
         obj: fa.Function,
         work_item_id: str,
         role_id: str,
+        attr_id: str,
         links: dict[str, polarion_api.WorkItemLink],
-        attr: str = "inputs",
     ) -> list[polarion_api.WorkItemLink]:
         exchanges: list[str] = []
-        for element in getattr(obj, attr):
-            uuids = element.exchanges.by_uuid
-            exs = self._get_work_item_ids(work_item_id, uuids, role_id)
-            exchanges.extend(set(exs))
+        attr_name, _, map_id = attr_id.partition(".")
+        objs = getattr(obj, attr_name)
+        if map_id:
+            objs = objs.map(map_id)
+
+        exs = self._get_work_item_ids(work_item_id, objs.by_uuid, role_id)
+        exchanges.extend(set(exs))
         return self._create(work_item_id, role_id, exchanges, links)
 
+    def create_grouped_link_fields(
+        self,
+        data: data_session.ConverterData,
+        back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
+    ):
+        """Create the grouped link fields from the primary work item.
 
-def create_grouped_link_fields(
-    work_item: data_models.CapellaWorkItem,
-    back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
-):
-    """Create the grouped link fields from the primary work item.
+        Parameters
+        ----------
+        data
+            The ConverterData that stores the WorkItem to create the
+            fields for.
+        back_links
+            A dictionary of secondary WorkItem IDs to links to create
+            backlinks later.
+        """
+        work_item = data.work_item
+        assert work_item is not None
+        wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+        logger.debug("Building grouped links for work item %r...", wi)
+        for role, grouped_links in _group_by(
+            "role", work_item.linked_work_items
+        ).items():
+            if back_links is not None:
+                for link in grouped_links:
+                    key = link.secondary_work_item_id
+                    back_links.setdefault(key, []).append(link)
 
-    Parameters
-    ----------
-    work_item
-        WorkItem to create the fields for.
-    back_links
-        A dictionary of secondary WorkItem IDs to links to create
-        backlinks later.
-    """
-    wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
-    logger.debug("Building grouped links for work item %r...", wi)
-    for role, grouped_links in _group_by(
-        "role", work_item.linked_work_items
-    ).items():
-        if back_links is not None:
-            for link in grouped_links:
-                key = link.secondary_work_item_id
-                back_links.setdefault(key, []).append(link)
+            config: converter_config.LinkConfig | None = None
+            for link_config in data.type_config.links:
+                if link_config.polarion_role == role:
+                    config = link_config
+                    break
 
-        _create_link_fields(work_item, role, grouped_links)
+            self._create_link_fields(
+                work_item, role, grouped_links, config=config
+            )
 
+    def _create_link_fields(
+        self,
+        work_item: data_models.CapellaWorkItem,
+        role: str,
+        links: list[polarion_api.WorkItemLink],
+        reverse: bool = False,
+        config: converter_config.LinkConfig | None = None,
+    ):
+        link_map: dict[str, dict[str, list[str]]]
+        if reverse:
+            role = f"{role}_reverse"
+            link_map = {link.primary_work_item_id: {} for link in links}
+        else:
+            link_map = {link.secondary_work_item_id: {} for link in links}
+            for link_id, include_map in link_map.items():
+                if config is None:
+                    break
 
-def create_grouped_back_link_fields(
-    work_item: data_models.CapellaWorkItem,
-    links: list[polarion_api.WorkItemLink],
-):
-    """Create fields for the given WorkItem using a list of backlinks.
+                uuid = self.capella_polarion_mapping.get_capella_uuid(link_id)
+                if uuid is None:
+                    logger.error(
+                        "Did not find work item %r for link field include",
+                        link_id,
+                    )
+                    continue
 
-    Parameters
-    ----------
-    work_item
-        WorkItem to create the fields for
-    links
-        List of links referencing work_item as secondary
-    """
-    for role, grouped_links in _group_by("role", links).items():
-        _create_link_fields(work_item, role, grouped_links, True)
+                try:
+                    obj = self.model.by_uuid(uuid)
+                except KeyError:
+                    logger.error(
+                        "Did not find capella element %r for link field "
+                        "include",
+                        uuid,
+                    )
+                    continue
+
+                for display_name, attr_name in config.include.items():
+                    try:
+                        attr = getattr(obj, attr_name)
+                    except AttributeError:
+                        logger.error(
+                            "Couldn't create nested link field."
+                            "%r is not a valid attribute on %r.",
+                            attr_name,
+                            obj._short_repr_(),
+                        )
+
+                    if isinstance(attr, common.ElementList):
+                        uuids = attr.by_uuid  # type: ignore[assignment]
+                    else:
+                        assert hasattr(attr, "uuid")
+                        uuids = [attr.uuid]
+
+                    work_item_ids = list(
+                        self._get_work_item_ids(work_item.id, uuids, attr_name)
+                    )
+                    include_map[f"{link_id}:{display_name}:{attr_name}"] = (
+                        work_item_ids
+                    )
+
+        work_item.additional_attributes[role] = {
+            "type": "text/html",
+            "value": _make_url_list(link_map),
+        }
+
+    def create_grouped_back_link_fields(
+        self,
+        work_item: data_models.CapellaWorkItem,
+        links: list[polarion_api.WorkItemLink],
+    ):
+        """Create fields for the given WorkItem using a list of backlinks.
+
+        Parameters
+        ----------
+        work_item
+            WorkItem to create the fields for
+        links
+            List of links referencing work_item as secondary
+        """
+        for role, grouped_links in _group_by("role", links).items():
+            self._create_link_fields(work_item, role, grouped_links, True)
 
 
 def _group_by(
@@ -248,32 +333,32 @@ def _group_by(
     return group
 
 
-def _make_url_list(
-    links: cabc.Iterable[polarion_api.WorkItemLink], reverse: bool = False
-) -> str:
+def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:
     urls: list[str] = []
-    for link in links:
-        if reverse:
-            pid = link.primary_work_item_id
-        else:
-            pid = link.secondary_work_item_id
-
-        url = element_converter.POLARION_WORK_ITEM_URL.format(pid=pid)
+    for link_id in sorted(link_map):
+        url = element_converter.POLARION_WORK_ITEM_URL.format(pid=link_id)
         urls.append(f"<li>{url}</li>")
+        for key, include_wids in link_map[link_id].items():
+            _, display_name, _ = key.split(":")
+            urls.append(
+                _sorted_unordered_html_list(include_wids, display_name)
+            )
 
-    urls.sort()
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
 
 
-def _create_link_fields(
-    work_item: data_models.CapellaWorkItem,
-    role: str,
-    links: list[polarion_api.WorkItemLink],
-    reverse: bool = False,
-):
-    role = f"{role}_reverse" if reverse else role
-    work_item.additional_attributes[role] = {
-        "type": "text/html",
-        "value": _make_url_list(links, reverse),
-    }
+def _sorted_unordered_html_list(
+    work_item_ids: cabc.Iterable[str], heading: str = ""
+) -> str:
+    urls: list[str] = []
+    for pid in work_item_ids:
+        url = element_converter.POLARION_WORK_ITEM_URL.format(pid=pid)
+        urls.append(f"<li>{url}</li>")
+
+    urls.sort()
+    if heading and urls:
+        urls.insert(0, f"<div>{heading}:</div>")
+
+    url_list = "\n".join(urls)
+    return f"<ul>{url_list}</ul>"
