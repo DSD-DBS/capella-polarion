@@ -251,7 +251,7 @@ class LinkSerializer:
         for role, grouped_links in _group_by("role", links).items():
             _create_link_fields(
                 work_item,
-                role.removeprefix(self.id_prefix),
+                role.removeprefix(f"{self.id_prefix}_"),
                 grouped_links,
                 True,
             )
