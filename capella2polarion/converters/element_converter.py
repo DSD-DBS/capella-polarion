@@ -195,8 +195,8 @@ class CapellaWorkItemSerializer:
             try:
                 render_params = render_params or {}
                 diagram_svg = diagram.render("svg", **render_params)
-            except Exception as error:
-                logger.exception("Failed to render diagram. Error: %s", error)
+            except Exception:
+                logger.exception("Failed to render diagram %s", diagram.name)
                 diagram_svg = diagram.as_svg
 
             if isinstance(diagram_svg, str):
