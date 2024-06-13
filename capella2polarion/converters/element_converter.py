@@ -20,6 +20,7 @@ from capellambse import helpers as chelpers
 from capellambse.model import common
 from capellambse.model.crosslayer import interaction
 from capellambse.model.layers import oa
+from jinja2 import Environment, FileSystemLoader
 from lxml import etree
 
 from capella2polarion import data_models
@@ -225,6 +226,15 @@ class CapellaWorkItemSerializer:
             _generate_image_html(title, file_name, max_width, cls),
             attachment,
         )
+
+    def _render_jinja_template(
+        self,
+        template_path: str | pathlib.Path,
+        model_element: capellambse.model.GenericElement,
+    ):
+        env = Environment(loader=FileSystemLoader("templates"))
+        template = env.get_template(template_path)
+        return template.render(element=model_element, model=self.model)
 
     def _draw_additional_attributes_diagram(
         self,
@@ -509,4 +519,36 @@ class CapellaWorkItemSerializer:
             render_params,
         )
 
+        return converter_data.work_item
+
+    def _add_jinja_fields(
+        self,
+        converter_data: data_session.ConverterData,
+        fields: dict[str, str],
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field tree diagram."""
+        assert converter_data.work_item, "No work item set yet"
+        for field, jinja_path in fields.items():
+            converter_data.work_item.additional_attributes[field] = {
+                "type": "text/html",
+                "value": self._render_jinja_template(
+                    jinja_path, converter_data.capella_element
+                ),
+            }
+
+        return converter_data.work_item
+
+    def _add_jinja_to_description(
+        self,
+        converter_data: data_session.ConverterData,
+        template_path: str,
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field tree diagram."""
+        assert converter_data.work_item, "No work item set yet"
+        converter_data.work_item.description += (
+            "<br>"
+            + self._render_jinja_template(
+                template_path, converter_data.capella_element
+            )
+        )
         return converter_data.work_item
