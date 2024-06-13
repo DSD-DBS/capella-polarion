@@ -162,6 +162,51 @@ def test_diagram_attachments_new(
     assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
 
 
+# pylint: disable=redefined-outer-name
+def test_new_diagram(
+    model: capellambse.MelodyModel,
+    worker: polarion_worker.CapellaPolarionWorker,
+):
+    converter = model_converter.ModelConverter(model, "TEST")
+
+    checksum = json.dumps({"__C2P__WORK_ITEM": DIAGRAM_WI_CHECKSUM})
+
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [
+            data_models.CapellaWorkItem(
+                WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+            )
+        ]
+    )
+
+    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
+        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+    )
+    worker.client.create_work_item_attachments = mock.MagicMock()
+    worker.client.create_work_item_attachments.side_effect = set_attachment_ids
+
+    converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        model.diagrams.by_uuid(TEST_DIAG_UUID),
+    )
+
+    converter.generate_work_items(worker.polarion_data_repo, False, True)
+
+    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+
+    assert worker.client.update_work_item.call_count == 1
+    assert worker.client.create_work_item_attachments.call_count == 1
+    assert worker.client.update_work_item.call_args.args[
+        0
+    ].description == TEST_DIAG_DESCR.format(
+        title="Diagram",
+        attachment_id="1-__C2P__diagram.svg",
+        width=750,
+        cls="diagram",
+    )
+
+
 def test_diagram_attachments_updated(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
