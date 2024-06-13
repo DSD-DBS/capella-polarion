@@ -35,6 +35,7 @@ dependencies = [
   "polarion-rest-api-client>=1.0.0",
   "bidict",
   "cairosvg",
+  "jinja2",
 ]
 
 [project.urls]

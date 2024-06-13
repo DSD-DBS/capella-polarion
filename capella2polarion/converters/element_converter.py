@@ -234,7 +234,10 @@ class CapellaWorkItemSerializer:
     ):
         env = Environment(loader=FileSystemLoader("templates"))
         template = env.get_template(template_path)
-        return template.render(element=model_element, model=self.model)
+        rendered_jinja = template.render(
+            element=model_element, model=self.model
+        )
+        return self._sanitize_text(model_element, rendered_jinja)
 
     def _draw_additional_attributes_diagram(
         self,
