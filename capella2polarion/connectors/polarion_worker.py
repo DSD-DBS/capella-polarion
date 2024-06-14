@@ -201,7 +201,7 @@ class CapellaPolarionWorker:
                     work_item_id=old.id
                 )
             if old_attachments or new.attachments:
-                self.update_attachments(
+                work_item_changed |= self.update_attachments(
                     new, old_checksums, new_checksums, old_attachments
                 )
         except polarion_api.PolarionApiException as error:
@@ -324,11 +324,11 @@ class CapellaPolarionWorker:
         old_checksums: dict[str, str],
         new_checksums: dict[str, str],
         old_attachments: list[polarion_api.WorkItemAttachment],
-    ):
+    ) -> bool:
         """Delete, create and update attachments in one go.
 
-        After execution all attachments of the new work item should have
-        IDs.
+        Returns True if new attachments were created. After execution
+        all attachments of the new work item should have IDs.
         """
         new_attachment_dict = {
             attachment.file_name: attachment for attachment in new.attachments
@@ -336,6 +336,8 @@ class CapellaPolarionWorker:
         old_attachment_dict = {
             attachment.file_name: attachment for attachment in old_attachments
         }
+
+        created = False
 
         for attachment in old_attachments:
             if attachment not in old_attachment_dict.values():
@@ -362,6 +364,7 @@ class CapellaPolarionWorker:
             )
         ):
             self.client.create_work_item_attachments(new_attachments)
+            created = True
 
         attachments_for_update = {}
         for common_attachment_file_name in (
@@ -386,6 +389,7 @@ class CapellaPolarionWorker:
                 continue
 
             self.client.update_work_item_attachment(attachment)
+        return created
 
     @staticmethod
     def get_missing_link_ids(
