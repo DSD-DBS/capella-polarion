@@ -75,7 +75,7 @@ class LinkSerializer:
                     serializer(obj, work_item.id, role_id, attr_id, {})
                 )
             else:
-                if (refs := getattr(obj, attr_id, None)) is None:
+                if (refs := _resolve_attribute(obj, attr_id)) is None:
                     logger.info(
                         "Unable to create work item link %r for [%s]. "
                         "There is no %r attribute on %s or no link-serializer",
@@ -192,11 +192,8 @@ class LinkSerializer:
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
         exchanges: list[str] = []
-        attr_name, _, map_id = attr_id.partition(".")
-        objs = getattr(obj, attr_name)
-        if map_id:
-            objs = objs.map(map_id)
-
+        objs = _resolve_attribute(obj, attr_id)
+        assert objs is not None
         exs = self._get_work_item_ids(work_item_id, objs.by_uuid, role_id)
         exchanges.extend(set(exs))
         return self._create(work_item_id, role_id, exchanges, links)
@@ -362,3 +359,13 @@ def _sorted_unordered_html_list(
 
     url_list = "\n".join(urls)
     return f"<ul>{url_list}</ul>"
+
+
+def _resolve_attribute(
+    obj: common.GenericElement, attr_id: str
+) -> common.ElementList[common.GenericElement] | None:
+    attr_name, _, map_id = attr_id.partition(".")
+    objs = getattr(obj, attr_name, None)
+    if map_id and objs is not None:
+        objs = objs.map(map_id)
+    return objs
