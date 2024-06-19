@@ -564,7 +564,7 @@ class TestModelElements:
         assert links == [expected]
 
     @staticmethod
-    def test_create_link_from_single_attribute_with_id_prefix(
+    def test_create_link_from_single_attribute_with_role_prefix(
         base_object: BaseObjectContainer,
     ):
         work_item_2 = data_models.CapellaWorkItem(
@@ -590,7 +590,7 @@ class TestModelElements:
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
-            id_prefix="_C2P",
+            role_prefix="_C2P",
         )
         links = link_serializer.create_links_for_work_item("uuid2")
 
@@ -1547,7 +1547,7 @@ class TestSerializers:
             ),
         ],
     )
-    def test_generic_work_item_with_id_prefix(
+    def test_generic_work_item_with_type_prefix(
         model: capellambse.MelodyModel,
         layer: str,
         uuid: str,
@@ -1567,7 +1567,6 @@ class TestSerializers:
         type_config = config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
         ework_item = data_models.CapellaWorkItem(id=f"{prefix}_TEST")
-        setattr(ework_item, f"{prefix}_uuid_capella", TEST_E_UUID)
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository([ework_item]),

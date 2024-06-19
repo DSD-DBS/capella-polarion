@@ -47,13 +47,15 @@ class CapellaPolarionWorker:
         params: PolarionWorkerParams,
         config: converter_config.ConverterConfig,
         force_update: bool = False,
-        id_prefix: str = "",
+        type_prefix: str = "",
+        role_prefix: str = "",
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.config = config
         self.force_update = force_update
-        self.id_prefix = id_prefix
+        self.type_prefix = type_prefix
+        self.role_prefix = role_prefix
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0

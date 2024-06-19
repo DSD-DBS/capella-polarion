@@ -111,13 +111,13 @@ class CapellaWorkItemSerializer:
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         converter_session: data_session.ConverterSession,
         generate_attachments: bool,
-        id_prefix: str = "",
+        type_prefix: str = "",
     ):
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
-        self.id_prefix = id_prefix
+        self.type_prefix = type_prefix
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
@@ -148,9 +148,9 @@ class CapellaWorkItemSerializer:
                 converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
 
-        if self.id_prefix and converter_data.work_item is not None:
+        if self.type_prefix and converter_data.work_item is not None:
             converter_data.work_item.type = (
-                f"{self.id_prefix}_{converter_data.work_item.type}"
+                f"{self.type_prefix}_{converter_data.work_item.type}"
             )
 
         if converter_data.errors:

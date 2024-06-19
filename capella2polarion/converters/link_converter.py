@@ -40,13 +40,13 @@ class LinkSerializer:
         converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
-        id_prefix: str = "",
+        role_prefix: str = "",
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.project_id = project_id
         self.model = model
-        self.id_prefix = id_prefix
+        self.role_prefix = role_prefix
 
         self.serializers: dict[str, _Serializer] = {
             "description_reference": self._handle_description_reference_links,
@@ -71,11 +71,13 @@ class LinkSerializer:
         new_links: list[polarion_api.WorkItemLink] = []
         for link_config in converter_data.type_config.links:
             assert (role_id := link_config.polarion_role) is not None
-            if self.id_prefix:
-                role_id = f"{self.id_prefix}_{role_id}"
+            if self.role_prefix:
+                role_id = f"{self.role_prefix}_{role_id}"
 
             attr_id = link_config.capella_attr or ""
-            serializer = self.serializers.get(role_id.removeprefix(f"{self.id_prefix}_"))
+            serializer = self.serializers.get(
+                role_id.removeprefix(f"{self.role_prefix}_")
+            )
             if serializer:
                 new_links.extend(
                     serializer(obj, work_item.id, role_id, attr_id, {})
@@ -240,7 +242,7 @@ class LinkSerializer:
 
             self._create_link_fields(
                 work_item,
-                role.removeprefix(f"{self.id_prefix}_"),
+                role.removeprefix(f"{self.role_prefix}_"),
                 grouped_links,
                 config=config,
             )
@@ -327,7 +329,7 @@ class LinkSerializer:
         for role, grouped_links in _group_by("role", links).items():
             self._create_link_fields(
                 work_item,
-                role.removeprefix(f"{self.id_prefix}_"),
+                role.removeprefix(f"{self.role_prefix}_"),
                 grouped_links,
                 True,
             )
