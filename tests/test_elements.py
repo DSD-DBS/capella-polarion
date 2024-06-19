@@ -1014,6 +1014,7 @@ class TestModelElements:
         work_items = converter.generate_work_items(
             base_object.pw.polarion_data_repo
         )
+        work_item: data_models.CapellaWorkItem | None
         for i, work_item in enumerate(work_items.values()):
             work_item.id = f"WI-{i}"
 
