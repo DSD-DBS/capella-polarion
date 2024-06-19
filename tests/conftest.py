@@ -6,13 +6,20 @@ from __future__ import annotations
 import json
 import pathlib
 import typing as t
+from unittest import mock
 
 import capellambse
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 
-from capella2polarion import data_models
+from capella2polarion import cli, data_models
+from capella2polarion.connectors import polarion_repo, polarion_worker
+from capella2polarion.converters import (
+    converter_config,
+    data_session,
+    model_converter,
+)
 
 TEST_DATA_ROOT = pathlib.Path(__file__).parent / "data"
 TEST_DIAGRAM_CACHE = TEST_DATA_ROOT / "diagram_cache"
@@ -59,3 +66,112 @@ def dummy_work_items() -> dict[str, data_models.CapellaWorkItem]:
         )
         for i in range(3)
     }
+
+
+class FakeModelObject:
+    """Mimicks a capellambse model objectyping."""
+
+    def __init__(
+        self,
+        uuid: str,
+        name: str = "",
+        attribute: t.Any | None = None,
+    ):
+        self.uuid = uuid
+        self.name = name
+        self.attribute = attribute
+
+    @classmethod
+    def from_model(
+        cls, _: capellambse.MelodyModel, element: FakeModelObject
+    ) -> FakeModelObject:
+        return element
+
+    def _short_repr_(self) -> str:
+        return f"<{type(self).__name__} {self.name!r} ({self.uuid})>"
+
+
+class UnsupportedFakeModelObject(FakeModelObject):
+    """A ``FakeModelObject`` which shouldn't be migrated."""
+
+
+class BaseObjectContainer:
+    def __init__(
+        self,
+        c2p_cli: cli.Capella2PolarionCli,
+        pw: polarion_worker.CapellaPolarionWorker,
+        mc: model_converter.ModelConverter,
+    ) -> None:
+        self.c2pcli: cli.Capella2PolarionCli = c2p_cli
+        self.pw: polarion_worker.CapellaPolarionWorker = pw
+        self.mc = mc
+
+
+# pylint: disable=redefined-outer-name
+@pytest.fixture
+def base_object(
+    model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
+) -> BaseObjectContainer:
+    import io
+
+    class MyIO(io.StringIO):
+        def write(self, text: str):
+            pass
+
+    work_item = data_models.CapellaWorkItem(
+        id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
+    )
+    c2p_cli = cli.Capella2PolarionCli(
+        debug=True,
+        polarion_project_id="project_id",
+        polarion_url=TEST_HOST,
+        polarion_pat="PrivateAccessToken",
+        polarion_delete_work_items=True,
+        capella_model=model,
+        synchronize_config_io=MyIO(),
+    )
+
+    c2p_cli.setup_logger()
+    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
+    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
+
+    fake = FakeModelObject("uuid1", name="Fake 1")
+    fake_model_type_config = converter_config.CapellaTypeConfig(
+        "fakeModelObject",
+        links=[
+            converter_config.LinkConfig(
+                capella_attr="attribute", polarion_role="attribute"
+            )
+        ],
+    )
+
+    mc = model_converter.ModelConverter(
+        model, c2p_cli.polarion_params.project_id
+    )
+
+    mc.converter_session = {
+        "uuid1": data_session.ConverterData(
+            "oa",
+            fake_model_type_config,
+            fake,
+            data_models.CapellaWorkItem(
+                id="Obj-1",
+                uuid_capella="uuid1",
+                status="open",
+                checksum="123",
+                type="fakeModelObject",
+            ),
+        ),
+        "uuid2": data_session.ConverterData(
+            "oa",
+            fake_model_type_config,
+            FakeModelObject("uuid2", name="Fake 2", attribute=fake),
+        ),
+    }
+
+    pw = polarion_worker.CapellaPolarionWorker(
+        c2p_cli.polarion_params, c2p_cli.config
+    )
+    pw.polarion_data_repo = polarion_repo.PolarionDataRepository([work_item])
+    return BaseObjectContainer(c2p_cli, pw, mc)

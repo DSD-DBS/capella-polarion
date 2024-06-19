@@ -145,7 +145,7 @@ class ModelConverter:
             converter_data.work_item.linked_work_items = links
 
             link_serializer.create_grouped_link_fields(
-                converter_data.work_item, back_links
+                converter_data, back_links
             )
 
         for uuid, converter_data in self.converter_session.items():

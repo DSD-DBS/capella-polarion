@@ -159,11 +159,10 @@ class CapellaWorkItemSerializer:
                 "\n\t".join(converter_data.errors),
             )
             if converter_data.work_item is None:
-                logger.error("Serialization of %r failed:\n\t %s", *log_args)
+                logger.error("Serialization of %r failed:\n\t%s", *log_args)
             else:
                 logger.warning(
-                    "Serialization of %r successful, but with warnings:"
-                    "\n\t %s",
+                    "Serialization of %r successful, but with warnings:\n\t%s",
                     *log_args,
                 )
         return converter_data.work_item
@@ -204,8 +203,8 @@ class CapellaWorkItemSerializer:
             try:
                 render_params = render_params or {}
                 diagram_svg = diagram.render("svg", **render_params)
-            except Exception as error:
-                logger.exception("Failed to render diagram. Error: %s", error)
+            except Exception:
+                logger.exception("Failed to render diagram %s", diagram.name)
                 diagram_svg = diagram.as_svg
 
             if isinstance(diagram_svg, str):
@@ -340,7 +339,7 @@ class CapellaWorkItemSerializer:
             self.model.by_uuid(uuid)
         except KeyError:
             self.converter_session[origin_uuid].errors.add(
-                "Non-existing model element referenced in description"
+                f"Non-existing model element referenced in description: {uuid}"
             )
             return strike_through(match.group(default_group))
         if pid := self.capella_polarion_mapping.get_work_item_id(uuid):
@@ -348,7 +347,7 @@ class CapellaWorkItemSerializer:
             return POLARION_WORK_ITEM_URL.format(pid=pid)
 
         self.converter_session[origin_uuid].errors.add(
-            "Non-existing work item referenced in description"
+            f"Non-existing work item referenced in description: {uuid}"
         )
         return match.group(default_group)
 
