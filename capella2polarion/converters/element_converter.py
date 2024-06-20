@@ -575,7 +575,7 @@ class CapellaWorkItemSerializer:
 
         return converter_data.work_item
 
-    def _add_jinja_to_description(
+    def _jinja_as_description(
         self,
         converter_data: data_session.ConverterData,
         template_path: str,
@@ -583,9 +583,7 @@ class CapellaWorkItemSerializer:
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.description += markupsafe.Markup(
-            "<br>"
-        ) + self._render_jinja_template(
+        converter_data.work_item.description = self._render_jinja_template(
             template_folder, template_path, converter_data.capella_element
         )
         return converter_data.work_item

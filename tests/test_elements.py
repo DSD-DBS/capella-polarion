@@ -1611,7 +1611,7 @@ class TestSerializers:
         type_config = converter_config.CapellaTypeConfig(
             "test",
             {
-                "add_jinja_to_description": {
+                "jinja_as_description": {
                     "template_folder": "tests/data/jinja_templates",
                     "template_path": "classes.html.j2",
                 }
