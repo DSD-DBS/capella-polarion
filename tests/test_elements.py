@@ -469,6 +469,128 @@ class TestModelElements:
         assert caplog.messages[0] == expected
 
     @staticmethod
+    def test_create_links_no_new_links_with_errors(
+        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
+    ):
+        expected = (
+            "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
+            "\n\tassert False"
+        )
+
+        work_item_obj_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        base_object.pw.polarion_data_repo.update_work_items([work_item_obj_2])
+        base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
+        base_object.mc.converter_session["uuid2"].type_config.links = [
+            converter_config.LinkConfig(
+                capella_attr="non_existent_attr",
+                polarion_role="invalid_role",
+            )
+        ]
+        base_object.mc.converter_session["uuid2"].errors = set()
+
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+        )
+
+        def error():
+            assert False
+
+        link_serializer.serializers["invalid_role"] = (
+            lambda obj, work_item_id, role_id, attr_id, links: error()
+        )
+
+        with caplog.at_level(logging.ERROR):
+            links = link_serializer.create_links_for_work_item("uuid2")
+
+        assert not links
+        assert len(caplog.messages) == 1
+        assert caplog.messages[0] == expected
+        assert len(base_object.mc.converter_session["uuid2"].errors) == 1
+
+    @staticmethod
+    def test_create_links_with_new_links_and_errors(
+        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
+    ):
+        expected = (
+            "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
+            "successful, but with warnings:\n\tassert False"
+        )
+
+        work_item_obj_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        work_item_obj_1 = data_models.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella="uuid1",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        base_object.pw.polarion_data_repo.update_work_items(
+            [work_item_obj_2, work_item_obj_1]
+        )
+        base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
+        base_object.mc.converter_session["uuid1"].work_item = work_item_obj_1
+        base_object.mc.converter_session["uuid2"].type_config.links = [
+            converter_config.LinkConfig(
+                capella_attr="description_reference",
+                polarion_role="description_reference",
+            ),
+            converter_config.LinkConfig(
+                capella_attr="non_existent_attr",
+                polarion_role="invalid_role",
+            ),
+        ]
+        base_object.mc.converter_session["uuid2"].description_references = [
+            "uuid1"
+        ]
+        base_object.mc.converter_session["uuid2"].errors = set()
+
+        expected_link = polarion_api.WorkItemLink(
+            "Obj-2",
+            "Obj-1",
+            "description_reference",
+            secondary_work_item_project="project_id",
+        )
+
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+        )
+
+        def error():
+            assert False
+
+        link_serializer.serializers["invalid_role"] = (
+            lambda obj, work_item_id, role_id, attr_id, links: error()
+        )
+
+        with caplog.at_level(logging.WARNING):
+            links = link_serializer.create_links_for_work_item("uuid2")
+
+        assert links == [expected_link]
+        assert len(caplog.messages) == 1
+        assert caplog.messages[0] == expected
+
+    @staticmethod
     def test_create_links_from_ElementList(base_object: BaseObjectContainer):
         fake = FakeModelObject("uuid4", name="Fake 4")
         fake1 = FakeModelObject("uuid5", name="Fake 5")

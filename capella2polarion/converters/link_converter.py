@@ -69,6 +69,7 @@ class LinkSerializer:
         work_item = converter_data.work_item
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
+        link_errors: set[str] = set()
         for link_config in converter_data.type_config.links:
             assert (role_id := link_config.polarion_role) is not None
             if self.role_prefix:
@@ -78,31 +79,55 @@ class LinkSerializer:
             serializer = self.serializers.get(
                 role_id.removeprefix(f"{self.role_prefix}_")
             )
-            if serializer:
-                new_links.extend(
-                    serializer(obj, work_item.id, role_id, attr_id, {})
-                )
-            else:
-                if (refs := _resolve_attribute(obj, attr_id)) is None:
-                    logger.info(
-                        "Unable to create work item link %r for [%s]. "
-                        "There is no %r attribute on %s or no link-serializer",
-                        role_id,
-                        work_item.id,
-                        attr_id,
-                        repres,
+            try:
+                if serializer:
+                    new_links.extend(
+                        serializer(obj, work_item.id, role_id, attr_id, {})
                     )
-                    continue
-
-                new: cabc.Iterable[str]
-                if isinstance(refs, common.ElementList):
-                    new = refs.by_uuid  # type: ignore[assignment]
                 else:
-                    assert hasattr(refs, "uuid")
-                    new = [refs.uuid]
+                    if (refs := _resolve_attribute(obj, attr_id)) is None:
+                        logger.info(
+                            "Unable to create work item link %r for [%s]. "
+                            "There is no %r attribute on %s or no "
+                            "link-serializer",
+                            role_id,
+                            work_item.id,
+                            attr_id,
+                            repres,
+                        )
+                        continue
 
-                new = set(self._get_work_item_ids(work_item.id, new, role_id))
-                new_links.extend(self._create(work_item.id, role_id, new, {}))
+                    new: cabc.Iterable[str]
+                    if isinstance(refs, common.ElementList):
+                        new = refs.by_uuid  # type: ignore[assignment]
+                    else:
+                        assert hasattr(refs, "uuid")
+                        new = [refs.uuid]
+
+                    new = set(
+                        self._get_work_item_ids(work_item.id, new, role_id)
+                    )
+                    new_links.extend(
+                        self._create(work_item.id, role_id, new, {})
+                    )
+            except Exception as error:
+                link_errors.add(error.args[0])
+
+        if link_errors:
+            converter_data.errors |= link_errors
+            log_args = (
+                converter_data.capella_element._short_repr_(),
+                "\n\t".join(link_errors),
+            )
+            if not new_links:
+                logger.error("Link creation for %r failed:\n\t%s", *log_args)
+            else:
+                logger.warning(
+                    "Link creation for %r successful, but with warnings:"
+                    "\n\t%s",
+                    *log_args,
+                )
+
         return new_links
 
     def _get_work_item_ids(
