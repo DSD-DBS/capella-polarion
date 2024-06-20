@@ -1,0 +1,96 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common_macros.html.j2' import show_other_attributes %}
+
+<style>
+    .table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    th, td {
+        padding: 8px;
+
+        text-align: left;
+    }
+
+    tr:hover, th {
+        background-color: #f2f2f2;
+    }
+</style>
+
+{% macro properties_table(props, obj) %}
+<table className="min-w-full divide-y divide-gray-200">
+    <thead>
+        <tr>
+            <th>Property Name</th>
+            <th>Type</th>
+            <th>Kind</th>
+            <th>Multiplicity</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for property in props %}
+        <tr>
+            <td>{{ property.name }}</td>
+            <td>
+                {% if property.type.__class__ == obj.__class__ %}
+                    <a href="{{ property.type | make_href }}">{{ property.type.name }}</a>
+                {% else %}
+                    {{ property.type.name }}
+                {% endif %}
+            </td>
+            <td>{{ property.kind }}</td>
+            <td>{{ property.min_card.value }} .. {{ property.max_card.value }}</td>
+            <td>{% if property.description %}
+            {{ property.description }}
+            {% else %}
+<p style="color:red">No description available.</p>
+            {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+<h1><span style="font-weight: normal">{{ object.__class__.__name__ }}</span> <b>{{ object.name }}</b></h1>
+<p>Parent: {{ object.parent._short_html_() }}</p><br>
+{% if object.description %}
+<p>{{ object.description }}</p>
+{% else %}
+<p style="color:red">No description available.</p>
+{% endif %}
+
+<h2>Relationships Overview</h2>
+<p>The diagram below provides a view on raletionships between the {{ object.name }} and other objects.</p>
+
+{{ object.tree_view.as_svg|safe}}
+
+<h2>Owned Properties</h2>
+{% if object.owned_properties %}
+    <p>The object owns the following properties:</p><br>
+    {{ properties_table(object.owned_properties, object) |safe }}
+{% else %}
+    <p style="color:red">No properties are owned by this object.</p>
+{% endif %}
+
+{% if object.generalizations %}
+<h2>Inherited Properties</h2>
+{% for gen in object.generalizations %}
+    {% set sup = gen.super %}
+    <h3>From <b>{{sup.name}}</b></h3>
+    <p>Object <b>{{object.name}}</b> inherits the following properties from {{sup._short_html_() }}</p>
+    {{ properties_table(sup.owned_properties, sup) |safe }}
+{% endfor%}
+{% endif %}
+
+
+{% set handled_attrs = ["from_model", "pvmt", "properties", "owned_properties", "parent", "generalizations", "super", "tree_view", "xtype", "name", "uuid", "validate", "visibility", "progress_status"]%}
+
+<h2>Other Object Attributes</h2>
+{{ show_other_attributes(object, handled_attrs, True) | safe }}

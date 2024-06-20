@@ -14,13 +14,13 @@ from collections import abc as cabc
 
 import cairosvg
 import capellambse
+import jinja2
 import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
 from capellambse.model.crosslayer import interaction
 from capellambse.model.layers import oa
-from jinja2 import Environment, FileSystemLoader
 from lxml import etree
 
 from capella2polarion import data_models
@@ -229,15 +229,37 @@ class CapellaWorkItemSerializer:
 
     def _render_jinja_template(
         self,
+        template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
         model_element: capellambse.model.GenericElement,
     ):
-        env = Environment(loader=FileSystemLoader("templates"))
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_folder)
+        )
+        env.filters["make_href"] = self.__make_href_filter
         template = env.get_template(template_path)
         rendered_jinja = template.render(
-            element=model_element, model=self.model
+            object=model_element, model=self.model
         )
-        return self._sanitize_text(model_element, rendered_jinja)
+        _, text, _ = self._sanitize_text(model_element, rendered_jinja)
+        return text
+
+    def __make_href_filter(self, obj: object) -> str | None:
+        if jinja2.is_undefined(obj) or obj is None:
+            return "#"
+
+        if isinstance(obj, capellambse.model.ElementList):
+            raise TypeError("Cannot make an href to a list of elements")
+        if not isinstance(
+            obj,
+            (
+                capellambse.model.GenericElement,
+                capellambse.model.diagram.AbstractDiagram,
+            ),
+        ):
+            raise TypeError(f"Expected a model object, got {obj!r}")
+
+        return f"hlink://{obj.uuid}"
 
     def _draw_additional_attributes_diagram(
         self,
@@ -527,15 +549,17 @@ class CapellaWorkItemSerializer:
     def _add_jinja_fields(
         self,
         converter_data: data_session.ConverterData,
-        fields: dict[str, str],
+        fields: dict[str, dict[str, str]],
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
-        for field, jinja_path in fields.items():
+        for field, jinja_properties in fields.items():
             converter_data.work_item.additional_attributes[field] = {
                 "type": "text/html",
                 "value": self._render_jinja_template(
-                    jinja_path, converter_data.capella_element
+                    jinja_properties.get("template_folder", ""),
+                    jinja_properties["template_path"],
+                    converter_data.capella_element,
                 ),
             }
 
@@ -545,13 +569,13 @@ class CapellaWorkItemSerializer:
         self,
         converter_data: data_session.ConverterData,
         template_path: str,
+        template_folder: str = "",
     ) -> data_models.CapellaWorkItem:
         """Add a new custom field tree diagram."""
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.description += (
+        converter_data.work_item.description += markupsafe.Markup(
             "<br>"
-            + self._render_jinja_template(
-                template_path, converter_data.capella_element
-            )
+        ) + self._render_jinja_template(
+            template_folder, template_path, converter_data.capella_element
         )
         return converter_data.work_item

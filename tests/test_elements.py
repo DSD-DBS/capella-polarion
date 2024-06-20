@@ -1606,6 +1606,35 @@ class TestSerializers:
             "__C2P__context_diagram.svg",
         )
 
+    def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
+        uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
+        type_config = converter_config.CapellaTypeConfig(
+            "test",
+            {
+                "add_jinja_to_description": {
+                    "template_folder": "tests/data/jinja_templates",
+                    "template_path": "classes.html.j2",
+                }
+            },
+            [],
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                uuid: data_session.ConverterData(
+                    "la",
+                    type_config,
+                    model.by_uuid(uuid),
+                )
+            },
+            False,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+
     @staticmethod
     @pytest.mark.parametrize("prefix", ["", "_C2P"])
     def test_multiple_serializers(model: capellambse.MelodyModel, prefix: str):
