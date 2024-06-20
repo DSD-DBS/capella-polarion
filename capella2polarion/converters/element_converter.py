@@ -119,6 +119,7 @@ class CapellaWorkItemSerializer:
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
         self.type_prefix = type_prefix
+        self.jinja_envs: dict[str, jinja2.Environment] = {}
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
@@ -146,7 +147,7 @@ class CapellaWorkItemSerializer:
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
             except Exception as error:
-                converter_data.errors.add(error.args[0])
+                converter_data.errors.add(str(error.args[0]))
                 converter_data.work_item = None
 
         if self.type_prefix and converter_data.work_item is not None:
@@ -233,16 +234,25 @@ class CapellaWorkItemSerializer:
         template_path: str | pathlib.Path,
         model_element: capellambse.model.GenericElement,
     ):
-        env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(template_folder)
-        )
-        env.filters["make_href"] = self.__make_href_filter
+        env = self.__get_jinja_env(str(template_folder))
         template = env.get_template(template_path)
         rendered_jinja = template.render(
             object=model_element, model=self.model
         )
         _, text, _ = self._sanitize_text(model_element, rendered_jinja)
         return text
+
+    def __get_jinja_env(self, template_folder: str):
+        if env := self.jinja_envs.get(template_folder):
+            return env
+
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_folder)
+        )
+        env.filters["make_href"] = self.__make_href_filter
+
+        self.jinja_envs[template_folder] = env
+        return env
 
     def __make_href_filter(self, obj: object) -> str | None:
         if jinja2.is_undefined(obj) or obj is None:
