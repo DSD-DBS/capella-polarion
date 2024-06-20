@@ -175,3 +175,22 @@ def base_object(
     )
     pw.polarion_data_repo = polarion_repo.PolarionDataRepository([work_item])
     return BaseObjectContainer(c2p_cli, pw, mc)
+
+
+@pytest.fixture
+def c2p_polarion_cli() -> cli.Capella2PolarionCli:
+    capella2polarion_cli = cli.Capella2PolarionCli(
+        debug=True,
+        polarion_project_id="{project-id}",
+        polarion_url="https://www.czy.de",
+        polarion_pat="PrivateAcessToken",
+        polarion_delete_work_items=True,
+        capella_model=json.dumps(TEST_MODEL),
+        synchronize_config_io=str(TEST_MODEL_ELEMENTS_CONFIG),
+        force_update=False,
+        type_prefix="",
+        role_prefix="",
+        determine_exit_code_from_logs=True,
+    )
+    capella2polarion_cli.setup_logger()
+    return capella2polarion_cli
