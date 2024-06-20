@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import typing
 
 import capellambse
@@ -81,6 +82,12 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.option("--force-update", is_flag=True, default=False)
 @click.option("--type-prefix", type=str, default="")
 @click.option("--role-prefix", type=str, default="")
+@click.option(
+    "--synchronize-config",
+    type=click.File(mode="r", encoding="utf8"),
+    default=None,
+)
+@click.option("--determine-exit-code-from-logs", is_flag=True, default=False)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -88,30 +95,37 @@ def synchronize(
     synchronize_config: typing.TextIO,
     type_prefix: str,
     role_prefix: str,
+    determine_exit_code_from_logs: bool,
 ) -> None:
     """Synchronise model elements."""
-    capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
+    capella2polarion_cli: Capella2PolarionCli = ctx.obj
     logger.info(
         "Synchronising model elements to Polarion project with id %s...",
-        capella_to_polarion_cli.polarion_params.project_id,
+        capella2polarion_cli.polarion_params.project_id,
     )
-    capella_to_polarion_cli.load_synchronize_config(synchronize_config)
-    capella_to_polarion_cli.force_update = force_update
-    capella_to_polarion_cli.type_prefix = type_prefix
-    capella_to_polarion_cli.role_prefix = role_prefix
+    capella2polarion_cli.load_synchronize_config(synchronize_config)
+    capella2polarion_cli.force_update = force_update
+    capella2polarion_cli.type_prefix = type_prefix
+    capella2polarion_cli.role_prefix = role_prefix
+    capella2polarion_cli.determine_exit_code_from_logs = (
+        determine_exit_code_from_logs
+    )
 
     converter = model_converter.ModelConverter(
-        capella_to_polarion_cli.capella_model,
-        capella_to_polarion_cli.polarion_params.project_id,
-        type_prefix=capella_to_polarion_cli.type_prefix,
-        role_prefix=capella_to_polarion_cli.role_prefix,
+        capella2polarion_cli.capella_model,
+        capella2polarion_cli.polarion_params.project_id,
+        type_prefix=capella2polarion_cli.type_prefix,
+        role_prefix=capella2polarion_cli.role_prefix,
     )
 
-    converter.read_model(capella_to_polarion_cli.config)
+    converter.read_model(capella2polarion_cli.config)
 
     polarion_worker = pw.CapellaPolarionWorker(
-        capella_to_polarion_cli.polarion_params,
-        capella_to_polarion_cli.force_update,
+        capella2polarion_cli.polarion_params,
+        capella2polarion_cli.config,
+        capella2polarion_cli.force_update,
+        type_prefix=capella2polarion_cli.type_prefix,
+        role_prefix=capella2polarion_cli.role_prefix,
     )
 
     polarion_worker.load_polarion_work_item_map()
@@ -220,6 +234,13 @@ def render_documents(
             )
             polarion_worker.update_document(new_doc)
             polarion_worker.update_work_items(work_items)
+
+    if capella2polarion_cli.exit_code_handler.has_error:
+        sys.exit(1)
+    elif capella2polarion_cli.exit_code_handler.has_warning:
+        sys.exit(2)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

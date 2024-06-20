@@ -16,8 +16,27 @@ from capella2polarion.converters import converter_config
 logger = logging.getLogger(__name__)
 
 
+class ExitCodeHandler(logging.Handler):
+    def __init__(self, determine: bool = True):
+        super().__init__()
+        self.determine = determine
+        self.has_warning = False
+        self.has_error = False
+
+    def emit(self, record: logging.LogRecord):
+        if not self.determine:
+            return
+
+        if record.levelno == logging.WARNING:
+            self.has_warning = True
+        elif record.levelno == logging.ERROR:
+            self.has_error = True
+
+
 class Capella2PolarionCli:
     """Call Level Interface."""
+
+    exit_code_handler: ExitCodeHandler
 
     def __init__(
         self,
@@ -30,6 +49,7 @@ class Capella2PolarionCli:
         force_update: bool = False,
         type_prefix: str = "",
         role_prefix: str = "",
+        determine_exit_code_from_logs: bool = False,
     ) -> None:
         self.debug = debug
         self.polarion_params = pw.PolarionWorkerParams(
@@ -44,6 +64,7 @@ class Capella2PolarionCli:
         self.force_update = force_update
         self.type_prefix = type_prefix
         self.role_prefix = role_prefix
+        self.determine_exit_code_from_logs = determine_exit_code_from_logs
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -95,6 +116,10 @@ class Capella2PolarionCli:
         )
         logging.getLogger("httpx").setLevel("WARNING")
         logging.getLogger("httpcore").setLevel("WARNING")
+        self.exit_code_handler = ExitCodeHandler(
+            self.determine_exit_code_from_logs
+        )
+        logging.getLogger().addHandler(self.exit_code_handler)
 
     def load_synchronize_config(
         self, synchronize_config_io: typing.TextIO
