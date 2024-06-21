@@ -13,7 +13,7 @@ Synchronise Capella models with Polarion projects
 # Documentation
 
 <!-- prettier-ignore -->
-Read the [full documentation on GitLab pages](https://dsd-dbs.github.io/capella-polarion).
+Read the [full documentation on GitHub](https://dsd-dbs.github.io/capella-polarion).
 
 # Installation
 We have a dependency on [cairosvg](https://cairosvg.org/). Please check their
