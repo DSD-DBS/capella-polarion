@@ -451,9 +451,10 @@ class TestModelElements:
         base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
     ):
         expected = (
-            "Unable to create work item link 'attribute' for [Obj-1]. "
-            "There is no 'attribute' attribute on "
-            "<FakeModelObject 'Fake 1' (uuid1)> or no link-serializer"
+            "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
+            "\n\tRequested attribute: attribute"
+            "\n\tAssertionError No 'uuid' on value"
+            "\n\t--------"
         )
 
         with caplog.at_level(logging.DEBUG):
@@ -474,7 +475,9 @@ class TestModelElements:
     ):
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
-            "\n\tassert False"
+            "\n\tRequested attribute: non_existent_attr"
+            "\n\tAssertionError assert False"
+            "\n\t--------"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(
@@ -515,7 +518,7 @@ class TestModelElements:
         assert not links
         assert len(caplog.messages) == 1
         assert caplog.messages[0] == expected
-        assert len(base_object.mc.converter_session["uuid2"].errors) == 1
+        assert len(base_object.mc.converter_session["uuid2"].errors) == 3
 
     @staticmethod
     def test_create_links_with_new_links_and_errors(
@@ -524,7 +527,9 @@ class TestModelElements:
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
             "partially successful. Some links were not created:"
-            "\n\tassert False"
+            "\n\tRequested attribute: non_existent_attr"
+            "\n\tAssertionError assert False"
+            "\n\t--------"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(

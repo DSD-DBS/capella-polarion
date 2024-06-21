@@ -61,15 +61,10 @@ class LinkSerializer:
         """Create work item links for a given Capella object."""
         converter_data = self.converter_session[uuid]
         obj = converter_data.capella_element
-        if isinstance(obj, diag.Diagram):
-            repres = f"<Diagram {obj.name!r}>"
-        else:
-            repres = obj._short_repr_()
-
         work_item = converter_data.work_item
         assert work_item is not None
         new_links: list[polarion_api.WorkItemLink] = []
-        link_errors: set[str] = set()
+        link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
             assert (role_id := link_config.polarion_role) is not None
             attr_id = link_config.capella_attr or ""
@@ -82,23 +77,12 @@ class LinkSerializer:
                         serializer(obj, work_item.id, role_id, attr_id, {})
                     )
                 else:
-                    if (refs := _resolve_attribute(obj, attr_id)) is None:
-                        logger.info(
-                            "Unable to create work item link %r for [%s]. "
-                            "There is no %r attribute on %s or no "
-                            "link-serializer",
-                            role_id,
-                            work_item.id,
-                            attr_id,
-                            repres,
-                        )
-                        continue
-
+                    refs = _resolve_attribute(obj, attr_id)
                     new: cabc.Iterable[str]
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
                     else:
-                        assert hasattr(refs, "uuid")
+                        assert hasattr(refs, "uuid"), "No 'uuid' on value"
                         new = [refs.uuid]
 
                     new = set(
@@ -108,10 +92,14 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                link_errors.add(*error.args)
+                request_text = f"Requested attribute: {attr_id}"
+                error_text = f"{type(error).__name__} {str(error)}"
+                link_errors.extend([request_text, error_text, "--------"])
 
         if link_errors:
-            converter_data.errors |= link_errors
+            for link_error in link_errors:
+                converter_data.errors.add(link_error)
+
             log_args = (
                 converter_data.capella_element._short_repr_(),
                 "\n\t".join(link_errors),
@@ -224,7 +212,6 @@ class LinkSerializer:
     ) -> list[polarion_api.WorkItemLink]:
         exchanges: list[str] = []
         objs = _resolve_attribute(obj, attr_id)
-        assert objs is not None
         exs = self._get_work_item_ids(work_item_id, objs.by_uuid, role_id)
         exchanges.extend(set(exs))
         return self._create(work_item_id, role_id, exchanges, links)
@@ -402,9 +389,9 @@ def _sorted_unordered_html_list(
 
 def _resolve_attribute(
     obj: common.GenericElement, attr_id: str
-) -> common.ElementList[common.GenericElement] | None:
+) -> common.ElementList[common.GenericElement]:
     attr_name, _, map_id = attr_id.partition(".")
-    objs = getattr(obj, attr_name, None)
-    if map_id and objs is not None:
+    objs = getattr(obj, attr_name)
+    if map_id:
         objs = objs.map(map_id)
     return objs

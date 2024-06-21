@@ -461,7 +461,6 @@ class CapellaWorkItemSerializer:
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
-        # pylint: disable-next=attribute-defined-outside-init
         assert converter_data.work_item, "No work item set yet"
         (
             uuids,
