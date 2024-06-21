@@ -523,7 +523,8 @@ class TestModelElements:
     ):
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
-            "successful, but with warnings:\n\tassert False"
+            "partially successful. Some links were not created:"
+            "\n\tassert False"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(

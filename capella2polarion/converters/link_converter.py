@@ -72,13 +72,10 @@ class LinkSerializer:
         link_errors: set[str] = set()
         for link_config in converter_data.type_config.links:
             assert (role_id := link_config.polarion_role) is not None
+            attr_id = link_config.capella_attr or ""
+            serializer = self.serializers.get(role_id)
             if self.role_prefix:
                 role_id = f"{self.role_prefix}_{role_id}"
-
-            attr_id = link_config.capella_attr or ""
-            serializer = self.serializers.get(
-                role_id.removeprefix(f"{self.role_prefix}_")
-            )
             try:
                 if serializer:
                     new_links.extend(
@@ -111,7 +108,7 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                link_errors.add(error.args[0])
+                link_errors.add(*error.args)
 
         if link_errors:
             converter_data.errors |= link_errors
@@ -123,7 +120,8 @@ class LinkSerializer:
                 logger.error("Link creation for %r failed:\n\t%s", *log_args)
             else:
                 logger.warning(
-                    "Link creation for %r successful, but with warnings:"
+                    "Link creation for %r partially successful. Some links "
+                    "were not created:"
                     "\n\t%s",
                     *log_args,
                 )

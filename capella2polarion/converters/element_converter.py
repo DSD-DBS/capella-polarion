@@ -400,7 +400,6 @@ class CapellaWorkItemSerializer:
             status="open",
             **requirement_types,
         )
-        assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
 
@@ -429,7 +428,6 @@ class CapellaWorkItemSerializer:
             description=diagram_html,
             status="open",
         )
-        assert converter_data.work_item is not None
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)
 
