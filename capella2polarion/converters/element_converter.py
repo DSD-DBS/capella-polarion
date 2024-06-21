@@ -147,7 +147,9 @@ class CapellaWorkItemSerializer:
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
             except Exception as error:
-                converter_data.errors.add(str(error.args[0]))
+                converter_data.errors.add(
+                    ", ".join([str(a) for a in error.args])
+                )
                 converter_data.work_item = None
 
         if self.type_prefix and converter_data.work_item is not None:
