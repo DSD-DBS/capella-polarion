@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import pathlib
 import typing as t
@@ -112,8 +113,6 @@ class BaseObjectContainer:
 def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
-    import io
-
     class MyIO(io.StringIO):
         def write(self, text: str):
             pass
@@ -186,7 +185,9 @@ def c2p_polarion_cli() -> cli.Capella2PolarionCli:
         polarion_pat="PrivateAcessToken",
         polarion_delete_work_items=True,
         capella_model=json.dumps(TEST_MODEL),
-        synchronize_config_io=str(TEST_MODEL_ELEMENTS_CONFIG),
+        synchronize_config_io=io.StringIO(
+            TEST_MODEL_ELEMENTS_CONFIG.read_text(encoding="utf8")
+        ),
         force_update=False,
         type_prefix="",
         role_prefix="",

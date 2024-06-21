@@ -33,7 +33,6 @@ from .conftest import (  # type: ignore[import]
     FakeModelObject,
 )
 
-# pylint: disable=redefined-outer-name
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 TEST_ELEMENT_UUID = "0d2edb8f-fa34-4e73-89ec-fb9a63001440"
 TEST_OCAP_UUID = "83d1334f-6180-46c4-a80d-6839341df688"
@@ -1185,6 +1184,7 @@ class TestModelElements:
         work_items = converter.generate_work_items(
             base_object.pw.polarion_data_repo
         )
+        work_item: data_models.CapellaWorkItem | None
         for i, work_item in enumerate(work_items.values()):
             work_item.id = f"WI-{i}"
 

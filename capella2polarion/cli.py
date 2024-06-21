@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class ExitCodeHandler(logging.Handler):
+    """Exit code handler from logging messages."""
+
     def __init__(self, determine: bool = True):
         super().__init__()
         self.determine = determine
@@ -24,6 +26,7 @@ class ExitCodeHandler(logging.Handler):
         self.has_error = False
 
     def emit(self, record: logging.LogRecord):
+        """Emit a logging record."""
         if not self.determine:
             return
 
