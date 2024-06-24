@@ -33,7 +33,6 @@ from .conftest import (  # type: ignore[import]
     FakeModelObject,
 )
 
-# pylint: disable=redefined-outer-name
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 TEST_ELEMENT_UUID = "0d2edb8f-fa34-4e73-89ec-fb9a63001440"
 TEST_OCAP_UUID = "83d1334f-6180-46c4-a80d-6839341df688"
