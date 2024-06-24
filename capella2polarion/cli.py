@@ -29,6 +29,8 @@ class Capella2PolarionCli:
         capella_model: capellambse.MelodyModel,
         synchronize_config_io: typing.TextIO,
         force_update: bool = False,
+        type_prefix: str = "",
+        role_prefix: str = "",
     ) -> None:
         self.debug = debug
         self.polarion_params = pw.PolarionWorkerParams(
@@ -42,6 +44,8 @@ class Capella2PolarionCli:
         self.synchronize_config_io: typing.TextIO = synchronize_config_io
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
+        self.type_prefix = type_prefix
+        self.role_prefix = role_prefix
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -90,19 +94,12 @@ class Capella2PolarionCli:
     def setup_logger(self) -> None:
         """Set the logger in the right mood."""
         max_logging_level = logging.DEBUG if self.debug else logging.WARNING
-        assert isinstance(logger.parent, logging.RootLogger)
-        logger.parent.setLevel(max_logging_level)
-        log_formatter = logging.Formatter(
-            "%(asctime)-15s - %(levelname)-8s %(message)s"
+        logging.basicConfig(
+            level=max_logging_level,
+            format="%(asctime)-15s - %(levelname)-8s %(message)s",
         )
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(max_logging_level)
-        console_handler.setFormatter(log_formatter)
-        console_handler.addFilter(
-            lambda record: record.name.startswith("capella2polarion")
-            or (record.name == "httpx" and record.levelname == "INFO")
-        )
-        logger.parent.addHandler(console_handler)
+        logging.getLogger("httpx").setLevel("WARNING")
+        logging.getLogger("httpcore").setLevel("WARNING")
 
     def load_synchronize_config(self) -> None:
         """Read the sync config into SynchronizeConfigContent.

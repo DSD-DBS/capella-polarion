@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
     type=click.File(mode="r", encoding="utf8"),
     default=None,
 )
+@click.option("--type-prefix", type=str, default="")
+@click.option("--role-prefix", type=str, default="")
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -51,6 +53,8 @@ def cli(
     polarion_delete_work_items: bool,
     capella_model: capellambse.MelodyModel,
     synchronize_config: typing.TextIO,
+    type_prefix: str,
+    role_prefix: str,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
     if capella_model.diagram_cache is None:
@@ -65,6 +69,8 @@ def cli(
         capella_model,
         synchronize_config,
         force_update,
+        type_prefix,
+        role_prefix,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -92,6 +98,8 @@ def synchronize(ctx: click.core.Context) -> None:
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
+        type_prefix=capella_to_polarion_cli.type_prefix,
+        role_prefix=capella_to_polarion_cli.role_prefix,
     )
 
     converter.read_model(capella_to_polarion_cli.config)
@@ -100,6 +108,8 @@ def synchronize(ctx: click.core.Context) -> None:
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.config,
         capella_to_polarion_cli.force_update,
+        type_prefix=capella_to_polarion_cli.type_prefix,
+        role_prefix=capella_to_polarion_cli.role_prefix,
     )
 
     polarion_worker.load_polarion_work_item_map()

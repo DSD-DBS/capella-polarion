@@ -111,11 +111,13 @@ class CapellaWorkItemSerializer:
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         converter_session: data_session.ConverterSession,
         generate_attachments: bool,
+        type_prefix: str = "",
     ):
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
+        self.type_prefix = type_prefix
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
@@ -130,7 +132,9 @@ class CapellaWorkItemSerializer:
             uuid
         ):
             work_item_id = old.id
+
         self.__generic_work_item(converter_data, work_item_id)
+        assert converter_data.work_item is not None
 
         assert isinstance(converter_data.type_config.converters, dict)
         for converter, params in converter_data.type_config.converters.items():
@@ -143,6 +147,11 @@ class CapellaWorkItemSerializer:
             except Exception as error:
                 converter_data.errors.add(error.args[0])
                 converter_data.work_item = None
+
+        if self.type_prefix and converter_data.work_item is not None:
+            converter_data.work_item.type = (
+                f"{self.type_prefix}_{converter_data.work_item.type}"
+            )
 
         if converter_data.errors:
             log_args = (
@@ -235,6 +244,7 @@ class CapellaWorkItemSerializer:
         )
         if attachment:
             self._add_attachment(work_item, attachment)
+
         work_item.additional_attributes[attribute] = {
             "type": "text/html",
             "value": diagram_html,
@@ -368,7 +378,9 @@ class CapellaWorkItemSerializer:
     # Serializer implementation starts below
 
     def __generic_work_item(
-        self, converter_data: data_session.ConverterData, work_item_id
+        self,
+        converter_data: data_session.ConverterData,
+        work_item_id: str | None,
     ) -> data_models.CapellaWorkItem:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
@@ -377,14 +389,15 @@ class CapellaWorkItemSerializer:
         )
         converter_data.description_references = uuids
         requirement_types = self._get_requirement_types_text(obj)
+
         converter_data.work_item = data_models.CapellaWorkItem(
             id=work_item_id,
             type=converter_data.type_config.p_type,
             title=obj.name,
+            uuid_capella=obj.uuid,
             description_type="text/html",
             description=value,
             status="open",
-            uuid_capella=obj.uuid,
             **requirement_types,
         )
         for attachment in attachments:
@@ -410,13 +423,14 @@ class CapellaWorkItemSerializer:
             id=work_item_id,
             type=converter_data.type_config.p_type,
             title=diagram.name,
+            uuid_capella=diagram.uuid,
             description_type="text/html",
             description=diagram_html,
             status="open",
-            uuid_capella=diagram.uuid,
         )
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)
+
         return converter_data.work_item
 
     def _include_pre_and_post_condition(
@@ -447,7 +461,6 @@ class CapellaWorkItemSerializer:
         self, converter_data: data_session.ConverterData
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
-        # pylint: disable-next=attribute-defined-outside-init
         assert converter_data.work_item, "No work item set yet"
         (
             uuids,

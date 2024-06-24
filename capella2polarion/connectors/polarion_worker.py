@@ -47,11 +47,15 @@ class CapellaPolarionWorker:
         params: PolarionWorkerParams,
         config: converter_config.ConverterConfig,
         force_update: bool = False,
+        type_prefix: str = "",
+        role_prefix: str = "",
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.config = config
         self.force_update = force_update
+        self.type_prefix = type_prefix
+        self.role_prefix = role_prefix
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -92,13 +96,10 @@ class CapellaPolarionWorker:
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        _type = " ".join(self.config.polarion_types)
-
         work_items = self.client.get_all_work_items(
-            f"type:({_type})",
+            "HAS_VALUE:uuid_capella",
             {"workitems": "id,uuid_capella,checksum,status"},
         )
-
         self.polarion_data_repo.update_work_items(work_items)
 
     def delete_work_items(

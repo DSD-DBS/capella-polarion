@@ -18,6 +18,7 @@ from capella2polarion.converters import (
     model_converter,
 )
 
+# pylint: disable=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR
 

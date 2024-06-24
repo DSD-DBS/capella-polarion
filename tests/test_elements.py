@@ -82,6 +82,22 @@ TEST_REQ_TEXT = (
     "<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n"
 )
 POLARION_ID_MAP = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
+TEST_LOGICAL_COMPONENT = {
+    "type": "logicalComponent",
+    "title": "Hogwarts",
+    "description_type": "text/html",
+    "description": markupsafe.Markup(TEST_DESCR),
+}
+TEST_CONDITION = {
+    "type": "text/html",
+    "value": '<div style="text-align: center;"></div>',
+}
+TEST_OPERATIONAL_CAPABILITY = {
+    "type": "operationalCapability",
+    "title": "Stay alive",
+    "description_type": "text/html",
+    "description": markupsafe.Markup(""),
+}
 
 HTML_LINK_0 = {
     "attribute": (
@@ -435,9 +451,10 @@ class TestModelElements:
         base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
     ):
         expected = (
-            "Unable to create work item link 'attribute' for [Obj-1]. "
-            "There is no 'attribute' attribute on "
-            "<FakeModelObject 'Fake 1' (uuid1)> or no link-serializer"
+            "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
+            "\n\tRequested attribute: attribute"
+            "\n\tAssertionError No 'uuid' on value"
+            "\n\t--------"
         )
 
         with caplog.at_level(logging.DEBUG):
@@ -450,6 +467,133 @@ class TestModelElements:
             links = link_serializer.create_links_for_work_item("uuid1")
 
         assert not links
+        assert caplog.messages[0] == expected
+
+    @staticmethod
+    def test_create_links_no_new_links_with_errors(
+        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
+    ):
+        expected = (
+            "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
+            "\n\tRequested attribute: non_existent_attr"
+            "\n\tAssertionError assert False"
+            "\n\t--------"
+        )
+
+        work_item_obj_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        base_object.pw.polarion_data_repo.update_work_items([work_item_obj_2])
+        base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
+        base_object.mc.converter_session["uuid2"].type_config.links = [
+            converter_config.LinkConfig(
+                capella_attr="non_existent_attr",
+                polarion_role="invalid_role",
+            )
+        ]
+        base_object.mc.converter_session["uuid2"].errors = set()
+
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+        )
+
+        def error():
+            assert False
+
+        link_serializer.serializers["invalid_role"] = (
+            lambda obj, work_item_id, role_id, attr_id, links: error()
+        )
+
+        with caplog.at_level(logging.ERROR):
+            links = link_serializer.create_links_for_work_item("uuid2")
+
+        assert not links
+        assert len(caplog.messages) == 1
+        assert caplog.messages[0] == expected
+        assert len(base_object.mc.converter_session["uuid2"].errors) == 3
+
+    @staticmethod
+    def test_create_links_with_new_links_and_errors(
+        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
+    ):
+        expected = (
+            "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
+            "partially successful. Some links were not created:"
+            "\n\tRequested attribute: non_existent_attr"
+            "\n\tAssertionError assert False"
+            "\n\t--------"
+        )
+
+        work_item_obj_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        work_item_obj_1 = data_models.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella="uuid1",
+            type="fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+        )
+        base_object.pw.polarion_data_repo.update_work_items(
+            [work_item_obj_2, work_item_obj_1]
+        )
+        base_object.mc.converter_session["uuid2"].work_item = work_item_obj_2
+        base_object.mc.converter_session["uuid1"].work_item = work_item_obj_1
+        base_object.mc.converter_session["uuid2"].type_config.links = [
+            converter_config.LinkConfig(
+                capella_attr="description_reference",
+                polarion_role="description_reference",
+            ),
+            converter_config.LinkConfig(
+                capella_attr="non_existent_attr",
+                polarion_role="invalid_role",
+            ),
+        ]
+        base_object.mc.converter_session["uuid2"].description_references = [
+            "uuid1"
+        ]
+        base_object.mc.converter_session["uuid2"].errors = set()
+
+        expected_link = polarion_api.WorkItemLink(
+            "Obj-2",
+            "Obj-1",
+            "description_reference",
+            secondary_work_item_project="project_id",
+        )
+
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+        )
+
+        def error():
+            assert False
+
+        link_serializer.serializers["invalid_role"] = (
+            lambda obj, work_item_id, role_id, attr_id, links: error()
+        )
+
+        with caplog.at_level(logging.WARNING):
+            links = link_serializer.create_links_for_work_item("uuid2")
+
+        assert links == [expected_link]
+        assert len(caplog.messages) == 1
         assert caplog.messages[0] == expected
 
     @staticmethod
@@ -545,6 +689,39 @@ class TestModelElements:
         links = link_serializer.create_links_for_work_item(
             "uuid2",
         )
+        assert links == [expected]
+
+    @staticmethod
+    def test_create_link_from_single_attribute_with_role_prefix(
+        base_object: BaseObjectContainer,
+    ):
+        work_item_2 = data_models.CapellaWorkItem(
+            id="Obj-2",
+            type="_C2P_fakeModelObject",
+            description_type="text/html",
+            description=markupsafe.Markup(""),
+            status="open",
+            uuid_capella="uuid2",
+        )
+
+        base_object.pw.polarion_data_repo.update_work_items([work_item_2])
+        base_object.mc.converter_session["uuid2"].work_item = work_item_2
+
+        expected = polarion_api.WorkItemLink(
+            "Obj-2",
+            "Obj-1",
+            "_C2P_attribute",
+            secondary_work_item_project="project_id",
+        )
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            base_object.c2pcli.capella_model,
+            role_prefix="_C2P",
+        )
+        links = link_serializer.create_links_for_work_item("uuid2")
+
         assert links == [expected]
 
     @staticmethod
@@ -1061,7 +1238,7 @@ class TestModelElements:
             links=[converter_config.LinkConfig("attribute")],
         )
         mock_model = mock.MagicMock()
-        fake_2 = FakeModelObject("uuid2", "Fale 2")
+        fake_2 = FakeModelObject("uuid2", "Fake 2")
         fake_1 = FakeModelObject("uuid1", "Fake 1")
         fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
         fake_1.attribute = [fake_0, fake_2]
@@ -1083,6 +1260,7 @@ class TestModelElements:
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
+
         for work_item_id, links in back_links.items():
             work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
             link_serializer.create_grouped_back_link_fields(work_item, links)
@@ -1203,11 +1381,8 @@ class TestSerializers:
                 "la",
                 TEST_ELEMENT_UUID,
                 {
-                    "type": "logicalComponent",
-                    "title": "Hogwarts",
+                    **TEST_LOGICAL_COMPONENT,
                     "uuid_capella": TEST_ELEMENT_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(TEST_DESCR),
                     "reqtype": {
                         "type": "text/html",
                         "value": markupsafe.Markup(TEST_REQ_TEXT),
@@ -1219,20 +1394,11 @@ class TestSerializers:
                 "oa",
                 TEST_OCAP_UUID,
                 {
-                    "type": "operationalCapability",
-                    "title": "Stay alive",
+                    **TEST_OPERATIONAL_CAPABILITY,
                     "uuid_capella": TEST_OCAP_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
                     "additional_attributes": {
-                        "preCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
-                        "postCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
+                        "preCondition": TEST_CONDITION,
+                        "postCondition": TEST_CONDITION,
                     },
                 },
                 id="operationalCapability",
@@ -1394,7 +1560,8 @@ class TestSerializers:
         assert work_item == data_models.CapellaWorkItem(**expected)
         assert status == "open"
 
-    def test_add_context_diagram(self, model: capellambse.MelodyModel):
+    @staticmethod
+    def test_add_context_diagram(model: capellambse.MelodyModel):
         uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
         type_config = converter_config.CapellaTypeConfig(
             "test", "add_context_diagram", []
@@ -1437,7 +1604,9 @@ class TestSerializers:
             "__C2P__context_diagram.svg",
         )
 
-    def test_multiple_serializers(self, model: capellambse.MelodyModel):
+    @staticmethod
+    @pytest.mark.parametrize("prefix", ["", "_C2P"])
+    def test_multiple_serializers(model: capellambse.MelodyModel, prefix: str):
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
             "test",
@@ -1453,11 +1622,13 @@ class TestSerializers:
                 )
             },
             True,
+            prefix,
         )
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
 
         assert work_item is not None
+        assert work_item.type.startswith(prefix)
         assert "preCondition" in work_item.additional_attributes
         assert "postCondition" in work_item.additional_attributes
         assert "context_diagram" in work_item.additional_attributes
@@ -1470,9 +1641,76 @@ class TestSerializers:
             cls="additional-attributes-diagram",
         )
 
-    def test_read_config_with_custom_params(
-        self, model: capellambse.MelodyModel
+    @staticmethod
+    @pytest.mark.parametrize(
+        "layer,uuid,expected",
+        [
+            pytest.param(
+                "la",
+                TEST_ELEMENT_UUID,
+                {
+                    **TEST_LOGICAL_COMPONENT,
+                    "type": "_C2P_logicalComponent",
+                    "uuid_capella": TEST_ELEMENT_UUID,
+                    "reqtype": {
+                        "type": "text/html",
+                        "value": markupsafe.Markup(TEST_REQ_TEXT),
+                    },
+                },
+                id="logicalComponent",
+            ),
+            pytest.param(
+                "oa",
+                TEST_OCAP_UUID,
+                {
+                    **TEST_OPERATIONAL_CAPABILITY,
+                    "type": "_C2P_operationalCapability",
+                    "uuid_capella": TEST_OCAP_UUID,
+                    "additional_attributes": {
+                        "preCondition": TEST_CONDITION,
+                        "postCondition": TEST_CONDITION,
+                    },
+                },
+                id="operationalCapability",
+            ),
+        ],
+    )
+    def test_generic_work_item_with_type_prefix(
+        model: capellambse.MelodyModel,
+        layer: str,
+        uuid: str,
+        expected: dict[str, t.Any],
     ):
+        prefix = "_C2P"
+        obj = model.by_uuid(uuid)
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        c_type = type(obj).__name__
+        attributes = {
+            "is_actor": getattr(obj, "is_actor", None),
+            "nature": getattr(obj, "nature", None),
+        }
+        type_config = config.get_type_config(layer, c_type, **attributes)
+        assert type_config is not None
+        ework_item = data_models.CapellaWorkItem(id=f"{prefix}_TEST")
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository([ework_item]),
+            {uuid: data_session.ConverterData(layer, type_config, obj)},
+            False,
+            prefix,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        work_item.status = None
+        assert work_item == data_models.CapellaWorkItem(**expected)
+
+    @staticmethod
+    def test_read_config_with_custom_params(model: capellambse.MelodyModel):
         cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
