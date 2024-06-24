@@ -1191,6 +1191,7 @@ class TestModelElements:
         work_items = converter.generate_work_items(
             base_object.pw.polarion_data_repo
         )
+        work_item: data_models.CapellaWorkItem | None
         for i, work_item in enumerate(work_items.values()):
             work_item.id = f"WI-{i}"
 
@@ -1466,7 +1467,10 @@ class TestSerializers:
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
-                            "value": '<div style="text-align: center;">hehe<br/></div>',
+                            "value": (
+                                '<div style="text-align: center;">hehe'
+                                "<br/></div>"
+                            ),
                         },
                         "postCondition": {
                             "type": "text/html",

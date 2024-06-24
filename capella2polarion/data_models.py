@@ -54,7 +54,7 @@ class CapellaWorkItem(polarion_api.WorkItem):
         data = dict(sorted(data.items()))
 
         converted = json.dumps(data).encode("utf8")
-        # pylint: disable-next=attribute-defined-outside-init
+        # pylint: disable=attribute-defined-outside-init
         self._checksum = json.dumps(
             {"__C2P__WORK_ITEM": hashlib.sha256(converted).hexdigest()}
             | dict(sorted(attachment_checksums.items()))

@@ -42,14 +42,13 @@ jobs:
           git config --global --add url."https://${{ secrets.PAT_GITHUB }}@github".insteadOf https://github
       - name: Pre-install private Github dependencies
         run: |-
-          python -m pip install git+https://github.com/DSD-DBS/polarion-rest-api-client.git@v0.3.2
+          python -m pip install git+https://github.com/DSD-DBS/polarion-rest-api-client.git@v0.4.0
       - name: Install test dependencies
         run: |-
           python -m pip install '.[test]'
       - name: Run unit tests
         run: |-
           python -m pytest --cov-report=term --cov=capella2polarion --rootdir=.
-
 
 #  publish:
 #    name: Publish artifacts
