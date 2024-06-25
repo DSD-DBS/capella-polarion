@@ -111,7 +111,7 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                link_errors.add(error.args[0])
+                link_errors.add(error.args[0] if error.args else str(error))
 
         if link_errors:
             converter_data.errors |= link_errors

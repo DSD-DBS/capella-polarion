@@ -473,7 +473,7 @@ class TestModelElements:
     ):
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
-            "\n\tassert False"
+            "\n\tNo"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(
@@ -502,7 +502,7 @@ class TestModelElements:
         )
 
         def error():
-            assert False
+            raise ValueError("No")
 
         link_serializer.serializers["invalid_role"] = (
             lambda obj, work_item_id, role_id, attr_id, links: error()
