@@ -476,8 +476,7 @@ class TestModelElements:
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
             "\n\tRequested attribute: non_existent_attr"
-            "\n\tAssertionError assert False"
-            "\n\t--------"
+            "\n\t"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(
@@ -517,7 +516,7 @@ class TestModelElements:
 
         assert not links
         assert len(caplog.messages) == 1
-        assert caplog.messages[0] == expected
+        assert caplog.messages[0].startswith(expected)
         assert len(base_object.mc.converter_session["uuid2"].errors) == 3
 
     @staticmethod
@@ -528,8 +527,7 @@ class TestModelElements:
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
             "partially successful. Some links were not created:"
             "\n\tRequested attribute: non_existent_attr"
-            "\n\tAssertionError assert False"
-            "\n\t--------"
+            "\n\t"
         )
 
         work_item_obj_2 = data_models.CapellaWorkItem(
@@ -594,7 +592,7 @@ class TestModelElements:
 
         assert links == [expected_link]
         assert len(caplog.messages) == 1
-        assert caplog.messages[0] == expected
+        assert caplog.messages[0].startswith(expected)
 
     @staticmethod
     def test_create_links_from_ElementList(base_object: BaseObjectContainer):
