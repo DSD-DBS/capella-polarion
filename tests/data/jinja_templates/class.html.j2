@@ -1,0 +1,41 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common_macros.html.j2' import show_other_attributes, linked_name, linked_name_with_icon, description, display_property_label %}
+
+{% macro properties_table(props, obj) %}
+    {% for property in props %}
+        {{ display_property_label(obj, property) | safe }}
+        <div style="margin-left: 20px;">
+            {% if property.kind != "UNSET" %}
+            <p>KIND: {{ property.kind }}</p>
+            {% endif %}
+            {{ description(property) | safe}}
+        </div>
+        <hr>
+    {% endfor %}
+{% endmacro %}
+
+<p>Parent: <a href="{{ object.parent | make_href }}">{{ object.parent.name }}</a></p>
+{% if object.description %}
+<p>{{ object.description }}</p>
+{% else %}
+<p style="color:red">No description available.</p>
+{% endif %}
+
+{% set props = [] %}
+{% if object.super %}
+    {% set props = props | list + object.super.properties | list %}
+{% endif %}
+{% set props = props + object.owned_properties | list %}
+
+<span style="font-weight: bold;font-size: 12pt;line-height: 1.5;">Properties</span>
+<br>
+{% if props %}
+    <p>The object owns the properties listed below; We use the following format to describe property: name : type [min .. max (instances of type)] or [ fixed number]; if no multiplicity is shown assume its 1 (single instance).</p>
+    {{ properties_table(props, object) | safe }}
+{% else %}
+    <p style="color:red">No properties are owned by this object.</p>
+{% endif %}

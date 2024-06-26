@@ -1,0 +1,24 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common_macros.html.j2' import show_other_attributes, description, typed_name, linked_name, linked_name_with_icon, display_property_label %}
+
+{%- set source_function = object.source.owner -%}
+{%- set target_function = object.target.owner -%}
+{%- set source = source_function.owner -%}
+{%- set target = target_function.owner -%}
+The {{ linked_name(source) | safe }} shall provide {{ linked_name_with_icon(object) | safe }} to {{ linked_name_with_icon(target) | safe }} so that the {{ linked_name_with_icon(target) | safe }} could {{ linked_name_with_icon(target_function)|safe }}.
+{% if object.exchange_items %}
+{% if object.exchange_items | length > 1 %}
+<p>{{ object.name }} is further specified via the following Exchange Items:</p>
+<ul>
+   {% for item in object.exchange_items %}
+   <li>{{ linked_name_with_icon(item) | safe }}</li>
+   {% endfor %}
+</ul>
+{% else %}
+<p>This interaction is further specified via {{ linked_name_with_icon(object.exchange_items[0]) | safe}} Exchange Item</p>
+{% endif %}
+{% endif %}

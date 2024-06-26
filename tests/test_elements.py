@@ -1605,7 +1605,7 @@ class TestSerializers:
             {
                 "jinja_as_description": {
                     "template_folder": "tests/data/jinja_templates",
-                    "template_path": "classes.html.j2",
+                    "template_path": "class.html.j2",
                 }
             },
             [],
