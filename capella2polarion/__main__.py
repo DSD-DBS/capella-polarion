@@ -106,10 +106,7 @@ def synchronize(ctx: click.core.Context) -> None:
 
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
-        capella_to_polarion_cli.config,
         capella_to_polarion_cli.force_update,
-        type_prefix=capella_to_polarion_cli.type_prefix,
-        role_prefix=capella_to_polarion_cli.role_prefix,
     )
 
     polarion_worker.load_polarion_work_item_map()

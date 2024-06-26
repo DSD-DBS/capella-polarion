@@ -66,8 +66,7 @@ def worker(monkeypatch: pytest.MonkeyPatch):
             "http://localhost",
             "TESTPAT",
             False,
-        ),
-        config,
+        )
     )
 
 

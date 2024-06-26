@@ -170,8 +170,6 @@ def base_object(
         ),
     }
 
-    pw = polarion_worker.CapellaPolarionWorker(
-        c2p_cli.polarion_params, c2p_cli.config
-    )
+    pw = polarion_worker.CapellaPolarionWorker(c2p_cli.polarion_params)
     pw.polarion_data_repo = polarion_repo.PolarionDataRepository([work_item])
     return BaseObjectContainer(c2p_cli, pw, mc)

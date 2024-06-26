@@ -211,9 +211,7 @@ class TestDiagramElements:
             )
         }
 
-        pw = polarion_worker.CapellaPolarionWorker(
-            c2p_cli.polarion_params, c2p_cli.config
-        )
+        pw = polarion_worker.CapellaPolarionWorker(c2p_cli.polarion_params)
 
         pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
             [work_item]
@@ -745,9 +743,6 @@ class TestModelElements:
             "get_all_work_items",
             polarion_api_get_all_work_items,
         )
-        config = mock.Mock(converter_config.ConverterConfig)
-        config.polarion_types = set()
-        base_object.pw.config = config
 
         base_object.pw.load_polarion_work_item_map()
 
@@ -812,9 +807,6 @@ class TestModelElements:
             "get_all_work_items",
             polarion_api_get_all_work_items,
         )
-        config = mock.Mock(converter_config.ConverterConfig)
-        config.polarion_types = set()
-        base_object.pw.config = config
 
         base_object.pw.load_polarion_work_item_map()
 

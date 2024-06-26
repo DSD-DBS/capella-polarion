@@ -43,19 +43,11 @@ class CapellaPolarionWorker:
     """CapellaPolarionWorker encapsulate the Polarion API Client work."""
 
     def __init__(
-        self,
-        params: PolarionWorkerParams,
-        config: converter_config.ConverterConfig,
-        force_update: bool = False,
-        type_prefix: str = "",
-        role_prefix: str = "",
+        self, params: PolarionWorkerParams, force_update: bool = False
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
-        self.config = config
         self.force_update = force_update
-        self.type_prefix = type_prefix
-        self.role_prefix = role_prefix
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
