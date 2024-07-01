@@ -7,6 +7,8 @@
 
 <!-- prettier-ignore -->
 ![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/build-test-publish.yml/badge.svg)
+![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/lint.yml/badge.svg)
+![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/docs.yml/badge.svg)
 
 Synchronise Capella models with Polarion projects
 
