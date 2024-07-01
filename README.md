@@ -21,7 +21,7 @@ Read the [full documentation on GitHub](https://dsd-dbs.github.io/capella-polari
 We have a dependency on [cairosvg](https://cairosvg.org/). Please check their
 [documentation](https://cairosvg.org/documentation/) for OS specific dependencies.
 
-You can install the latest released version directly from PyPI (**Not yet**).
+You can install the latest released version directly from [PyPI](https://pypi.org/project/capella2polarion/).
 
 ```zsh
 pip install capella2polarion
