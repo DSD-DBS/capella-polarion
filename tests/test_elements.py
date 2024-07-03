@@ -1604,7 +1604,7 @@ class TestSerializers:
             "test",
             {
                 "jinja_as_description": {
-                    "template_folder": "tests/data/jinja_templates",
+                    "template_folder": "jupyter-notebooks/element_templates",
                     "template_path": "class.html.j2",
                 }
             },

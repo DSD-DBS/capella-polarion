@@ -25,21 +25,12 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session
+from capella2polarion.converters import data_session, polarion_html_helper
 
-RE_DESCR_DELETED_PATTERN = re.compile(
-    f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
-)
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
-
-POLARION_WORK_ITEM_URL = (
-    '<span class="polarion-rte-link" data-type="workItem" '
-    'id="fake" data-item-id="{pid}" data-option-id="long">'
-    "</span>"
-)
 
 PrePostConditionElement = t.Union[
     oa.OperationalCapability, interaction.Scenario
@@ -52,13 +43,6 @@ C2P_IMAGE_PREFIX = "__C2P__"
 def resolve_element_type(type_: str) -> str:
     """Return a valid Type ID for polarion for a given ``obj``."""
     return type_[0].lower() + type_[1:]
-
-
-def strike_through(string: str) -> str:
-    """Return a striked-through html span from given ``string``."""
-    if match := RE_DESCR_DELETED_PATTERN.match(string):
-        string = match.group(1)
-    return f'<span style="text-decoration: line-through;">{string}</span>'
 
 
 def _format_texts(
@@ -88,19 +72,7 @@ def _condition(
     }
 
 
-def _generate_image_html(
-    title: str, attachment_id: str, max_width: int, cls: str
-) -> str:
-    """Generate an image as HTMl with the given source."""
-    description = (
-        f'<span><img title="{title}" class="{cls}" '
-        f'src="workitemimg:{attachment_id}" '
-        f'style="max-width: {max_width}px;"/></span>'
-    )
-    return description
-
-
-class CapellaWorkItemSerializer:
+class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     """The general serializer class for CapellaWorkItems."""
 
     diagram_cache_path: pathlib.Path
@@ -226,7 +198,9 @@ class CapellaWorkItemSerializer:
             attachment = None
 
         return (
-            _generate_image_html(title, file_name, max_width, cls),
+            polarion_html_helper.generate_image_html(
+                title, file_name, max_width, cls
+            ),
             attachment,
         )
 
@@ -236,7 +210,7 @@ class CapellaWorkItemSerializer:
         template_path: str | pathlib.Path,
         model_element: capellambse.model.GenericElement,
     ):
-        env = self.__get_jinja_env(str(template_folder))
+        env = self._get_jinja_env(str(template_folder))
         template = env.get_template(template_path)
         rendered_jinja = template.render(
             object=model_element, model=self.model
@@ -244,33 +218,13 @@ class CapellaWorkItemSerializer:
         _, text, _ = self._sanitize_text(model_element, rendered_jinja)
         return text
 
-    def __get_jinja_env(self, template_folder: str):
-        if env := self.jinja_envs.get(template_folder):
-            return env
-
-        env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(template_folder)
-        )
+    def setup_env(self, env: jinja2.Environment):
+        """Add the link rendering filter."""
         env.filters["make_href"] = self.__make_href_filter
 
-        self.jinja_envs[template_folder] = env
-        return env
-
     def __make_href_filter(self, obj: object) -> str | None:
-        if jinja2.is_undefined(obj) or obj is None:
+        if (obj := self.check_model_element(obj)) is None:
             return "#"
-
-        if isinstance(obj, capellambse.model.ElementList):
-            raise TypeError("Cannot make an href to a list of elements")
-        if not isinstance(
-            obj,
-            (
-                capellambse.model.GenericElement,
-                capellambse.model.diagram.AbstractDiagram,
-            ),
-        ):
-            raise TypeError(f"Expected a model object, got {obj!r}")
-
         return f"hlink://{obj.uuid}"
 
     def _draw_additional_attributes_diagram(
@@ -305,8 +259,8 @@ class CapellaWorkItemSerializer:
         linked_text = getattr(
             obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
         )["capella:linkedText"]
-        linked_text = RE_DESCR_DELETED_PATTERN.sub(
-            lambda match: strike_through(
+        linked_text = polarion_html_helper.RE_DESCR_DELETED_PATTERN.sub(
+            lambda match: polarion_html_helper.strike_through(
                 self._replace_markup(obj.uuid, match, [])
             ),
             linked_text,
@@ -388,10 +342,12 @@ class CapellaWorkItemSerializer:
             self.converter_session[origin_uuid].errors.add(
                 f"Non-existing model element referenced in description: {uuid}"
             )
-            return strike_through(match.group(default_group))
+            return polarion_html_helper.strike_through(
+                match.group(default_group)
+            )
         if pid := self.capella_polarion_mapping.get_work_item_id(uuid):
             referenced_uuids.append(uuid)
-            return POLARION_WORK_ITEM_URL.format(pid=pid)
+            return polarion_html_helper.POLARION_WORK_ITEM_URL.format(pid=pid)
 
         self.converter_session[origin_uuid].errors.add(
             f"Non-existing work item referenced in description: {uuid}"

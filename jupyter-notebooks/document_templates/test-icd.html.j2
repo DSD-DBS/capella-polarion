@@ -1,0 +1,43 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% macro add_class_dependencies(cls, classes) %}
+    {% if not cls in classes %}
+        {% set _none = classes.append(cls) %}
+        {% if cls.super %}
+            {{ add_class_dependencies(cls.super, classes) }}
+        {% endif %}
+        {% for property in cls.properties %}
+            {% set type = None %}
+            {% if "type" in property.__dir__() %}
+                {% set type = property.type %}
+            {% elif "abstract_type" in property.__dir__() %}
+                {% set type = property.abstract_type %}
+            {% endif %}
+            {% if type and type.xtype == "org.polarsys.capella.core.data.information:Class" %}
+                {{ add_class_dependencies(type, classes) }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endmacro %}
+{% set interface = model.by_uuid(interface) %}
+{{ heading(1, "Interface " + interface.name, session)}}
+{{ heading(2, "Interface Partners", session)}}
+<b>Source</b>
+{{ insert_work_item(interface.source.owner, session) }}
+<b>Target</b>
+{{ insert_work_item(interface.target.owner, session) }}
+{{ heading(2, "Exchange Items", session)}}
+{%- set classes = [] %}
+{% for ei in interface.exchange_items | unique %}
+{{ insert_work_item(ei, session) }}
+{% for el in ei.elements %}
+{{ add_class_dependencies(el.abstract_type, classes) }}
+{% endfor %}
+{% endfor %}
+{{ heading(2, "Data Classes", session)}}
+{% for cl in classes | unique %}
+{{ insert_work_item(cl, session) }}
+{% endfor %}

@@ -90,7 +90,7 @@ class CapellaPolarionWorker:
         """Return a map from Capella UUIDs to Polarion work items."""
         work_items = self.client.get_all_work_items(
             "HAS_VALUE:uuid_capella",
-            {"workitems": "id,uuid_capella,checksum,status"},
+            {"workitems": "id,uuid_capella,checksum,status,type"},
         )
         self.polarion_data_repo.update_work_items(work_items)
 
@@ -419,3 +419,7 @@ class CapellaPolarionWorker:
         for uuid, data in converter_session.items():
             if uuid in self.polarion_data_repo and data.work_item is not None:
                 self.patch_work_item(data)
+
+    def post_document(self, document: polarion_api.Document):
+        """Create a new Document."""
+        self.client.project_client.documents.create(document)
