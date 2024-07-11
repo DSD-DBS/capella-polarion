@@ -112,12 +112,6 @@ class BaseObjectContainer:
 def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
-    import io
-
-    class MyIO(io.StringIO):
-        def write(self, text: str):
-            pass
-
     work_item = data_models.CapellaWorkItem(
         id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
     )
@@ -128,7 +122,6 @@ def base_object(
         polarion_pat="PrivateAccessToken",
         polarion_delete_work_items=True,
         capella_model=model,
-        synchronize_config_io=MyIO(),
     )
 
     c2p_cli.setup_logger()

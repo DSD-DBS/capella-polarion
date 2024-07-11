@@ -519,7 +519,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         converter_data: data_session.ConverterData,
         fields: dict[str, dict[str, str]],
     ) -> data_models.CapellaWorkItem:
-        """Add a new custom field tree diagram."""
+        """Add a new custom field and fill it with rendered jinja content."""
         assert converter_data.work_item, "No work item set yet"
         for field, jinja_properties in fields.items():
             converter_data.work_item.additional_attributes[field] = {
@@ -539,7 +539,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         template_path: str,
         template_folder: str = "",
     ) -> data_models.CapellaWorkItem:
-        """Add a new custom field tree diagram."""
+        """Use a Jinja template to render the description content."""
         assert converter_data.work_item, "No work item set yet"
         converter_data.work_item.description = self._render_jinja_template(
             template_folder, template_path, converter_data.capella_element

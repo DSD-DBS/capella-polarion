@@ -57,7 +57,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self, obj: object, session: RenderingSession
     ) -> str | None:
         if (obj := self.check_model_element(obj)) is None:
-            raise TypeError("object passed was no model element")
+            return polarion_html_helper.RED_TEXT.format(
+                text="A none model object was passed to insert a work item."
+            )
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
@@ -116,6 +118,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str,
         polarion_name: str,
+        document_title: str | None = None,
         **kwargs: t.Any,
     ):
         """Render a new Polarion document."""
@@ -137,6 +140,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str | None = None,
         polarion_name: str | None = None,
+        document_title: str | None = None,
         document: polarion_api.Document | None = None,
         **kwargs: t.Any,
     ):
@@ -160,6 +164,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 session.heading_ids = self._extract_headings(document)
         else:
             document = polarion_api.Document(
+                title=document_title,
                 module_folder=polarion_folder,
                 module_name=polarion_name,
             )
@@ -181,7 +186,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 if matches:
                     heading_ids.append(matches.group(1))
 
-        _ = chelpers.process_html_fragments(
+        chelpers.process_html_fragments(
             document.home_page_content.value, collect_heading_work_items
         )
         return heading_ids

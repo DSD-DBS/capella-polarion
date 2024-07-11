@@ -394,9 +394,11 @@ def _sorted_unordered_html_list(
 
 def _resolve_attribute(
     obj: common.GenericElement, attr_id: str
-) -> common.ElementList[common.GenericElement]:
+) -> common.ElementList[common.GenericElement] | common.GenericElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
+    if isinstance(objs, common.GenericElement):
+        return _resolve_attribute(objs, map_id)
     if map_id:
         objs = objs.map(map_id)
     return objs

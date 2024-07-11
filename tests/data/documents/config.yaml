@@ -1,0 +1,20 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+- template_directory: jupyter-notebooks/document_templates
+  template: test-icd.html.j2
+  instances:
+    - polarion_space: _default
+      polarion_name: id123
+      polarion_title: Interface23
+      params:
+        interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+    - polarion_space: _default
+      polarion_name: id1234
+      params:
+        interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+- template_directory: jupyter-notebooks/document_templates
+  template: test-no-args.html.j2
+  instances:
+    - polarion_space: _default
+      polarion_name: id1234

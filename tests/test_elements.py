@@ -173,12 +173,6 @@ class TestDiagramElements:
         model: capellambse.MelodyModel,
         monkeypatch: pytest.MonkeyPatch,
     ) -> BaseObjectContainer:
-        import io
-
-        class MyIO(io.StringIO):
-            def write(self, text: str):
-                pass
-
         uuid = diagram_cache_index[0]["uuid"]
         work_item = data_models.CapellaWorkItem(
             id="Diag-1", checksum="123", uuid_capella=uuid
@@ -190,7 +184,6 @@ class TestDiagramElements:
             polarion_pat="PrivateAccessToken",
             polarion_delete_work_items=True,
             capella_model=model,
-            synchronize_config_io=MyIO(),
         )
         c2p_cli.setup_logger()
         mock_api = mock.MagicMock(

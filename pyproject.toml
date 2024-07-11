@@ -36,6 +36,7 @@ dependencies = [
   "bidict",
   "cairosvg",
   "jinja2",
+  "pydantic"
 ]
 
 [project.urls]

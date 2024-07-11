@@ -4,9 +4,7 @@
 #}
 
 {% from 'common_macros.html.j2' import show_other_attributes, linked_name, linked_name_with_icon, description, display_property_label %}
-{% set table_attributes='class="polarion-Document-table" style="margin: auto;margin-left: 0px;empty-cells: show;border-collapse: collapse;max-width: 1280px;border: 1px solid #CCCCCC;" id="polarion_wiki macro name=table"' %}
-{% set th_attributes='style="height: 12px;text-align: left;vertical-align: top;font-weight: bold;background-color: #F0F0F0;border: 1px solid #CCCCCC;padding: 5px;"' %}
-{% set td_attributes='style="height: 12px;text-align: left;vertical-align: top;line-height: 18px;border: 1px solid #CCCCCC;padding: 5px;"' %}
+{% from 'polarion_props.j2' import table_attributes, th_attributes, td_attributes %}
 
 {% macro properties_list(props, obj) %}
     {% for property in props %}
@@ -17,7 +15,6 @@
         {% if property.max_value %}{% set _none = prop_props.append(["Max. value", property.max_value])%}{% endif %}
         <div style="margin-left: 20px;">
             {{ description(property) | safe}}
-            {{ property.type.__class__.__name__ }}
             {% if property.type.__class__.__name__ == "Enumeration" %}
                 <p>{{property.type.name}} enumeration values:</p>
                 <table {{table_attributes}}>
@@ -26,17 +23,18 @@
                             <th {{th_attributes}}>Enumeration Literal</th>
                             <th {{th_attributes}}>Value</th>
                         </tr>
-                        {% for val in property.type.applied_property_values %}
+                        {% for val in property.type.literals %}
                             <tr>
                                 <td {{td_attributes}}>{{ val.name }}</td>
-                                <td {{td_attributes}}>{{ val.value if val.value else "0" }}</td>
+                                {% set value = val.value if val.value else "" %}
+                                <td {{td_attributes}}>{{ value.value if value.value is defined else "0" }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             {% endif %}
-            <p>Property {{ property.name }} has the following additional attributes:</p>
             {% if prop_props %}
+            <p>This property has the following additional attributes:</p>
                 <table {{table_attributes}}>
                     <tbody>
                         <tr>
@@ -54,7 +52,7 @@
             {% endif %}
         </div>
         <hr>
-        {# show_other_attributes(property) | safe #}
+        {# show_other_attributes(property) | safe #}
 
     {% endfor %}
 {% endmacro %}

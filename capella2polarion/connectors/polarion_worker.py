@@ -423,3 +423,20 @@ class CapellaPolarionWorker:
     def post_document(self, document: polarion_api.Document):
         """Create a new Document."""
         self.client.project_client.documents.create(document)
+
+    def update_document(self, document: polarion_api.Document):
+        """Create a new Document."""
+        self.client.project_client.documents.update(document)
+
+    def get_document(
+        self, space: str, name: str
+    ) -> polarion_api.Document | None:
+        """Create a new Document."""
+        try:
+            return self.client.project_client.documents.get(
+                space, name, fields={"documents": "@all"}
+            )
+        except polarion_api.PolarionApiBaseException as e:
+            if e.args[0] == 404:
+                return None
+            raise e

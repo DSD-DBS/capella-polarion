@@ -52,9 +52,9 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "--polarion-delete-work-items",
         "--capella-model",
         json.dumps(TEST_MODEL),
+        "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
-        "synchronize",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
