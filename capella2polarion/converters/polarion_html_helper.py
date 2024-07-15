@@ -102,4 +102,3 @@ class JinjaRendererMixin:
 
     def setup_env(self, env: jinja2.Environment):
         """Implement this method to adjust a newly created environment."""
-        pass

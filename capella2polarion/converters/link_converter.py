@@ -17,11 +17,7 @@ from capellambse.model.crosslayer import fa
 import capella2polarion.converters.polarion_html_helper
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import (
-    converter_config,
-    data_session,
-    element_converter,
-)
+from capella2polarion.converters import converter_config, data_session
 
 logger = logging.getLogger(__name__)
 
@@ -360,7 +356,7 @@ def _group_by(
 def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:
     urls: list[str] = []
     for link_id in sorted(link_map):
-        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(
+        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(  # pylint: disable=line-too-long
             pid=link_id
         )
         urls.append(f"<li>{url}</li>")
@@ -379,7 +375,7 @@ def _sorted_unordered_html_list(
 ) -> str:
     urls: list[str] = []
     for pid in work_item_ids:
-        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(
+        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(  # pylint: disable=line-too-long
             pid=pid
         )
         urls.append(f"<li>{url}</li>")

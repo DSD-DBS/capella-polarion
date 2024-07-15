@@ -42,6 +42,7 @@ def test_create_new_document(
 
     content = html.fromstring(new_doc.home_page_content.value)
 
+    assert len(wis) == 0
     assert new_doc.rendering_layouts == [
         polarion_api.RenderingLayout(
             label="Class", type="class", layouter="section"
@@ -57,14 +58,16 @@ def test_create_new_document(
         etree.tostring(content[2])
         .decode("utf-8")
         .startswith(
-            '<div id="polarion_wiki macro name=module-workitem;params=id=ATSY-1234|layout=0|external=true"/>'
+            '<div id="polarion_wiki macro name=module-workitem;'
+            'params=id=ATSY-1234|layout=0|external=true"/>'
         )
     )
     assert (
         etree.tostring(content[3])
         .decode("utf-8")
         .startswith(
-            '<div id="polarion_wiki macro name=module-workitem;params=id=ATSY-4321|layout=0|external=true"/>'
+            '<div id="polarion_wiki macro name=module-workitem;'
+            'params=id=ATSY-4321|layout=0|external=true"/>'
         )
     )
 
@@ -105,7 +108,8 @@ def test_update_document(
         ],
         home_page_content=polarion_api.TextContent(
             type="text/html",
-            value='<h2 id="polarion_wiki macro name=module-workitem;params=id=ATSY-16062"/>',
+            value='<h2 id="polarion_wiki macro name='
+            'module-workitem;params=id=ATSY-16062"/>',
         ),
     )
 
@@ -124,7 +128,8 @@ def test_update_document(
         etree.tostring(content[0])
         .decode("utf-8")
         .startswith(
-            '<h1 id="polarion_wiki macro name=module-workitem;params=id=ATSY-16062"'
+            '<h1 id="polarion_wiki macro name='
+            'module-workitem;params=id=ATSY-16062"'
         )
     )
     assert (

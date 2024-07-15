@@ -15,7 +15,7 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import converter_config, data_session
+from capella2polarion.converters import data_session
 
 logger = logging.getLogger(__name__)
 
