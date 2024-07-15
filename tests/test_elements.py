@@ -247,8 +247,8 @@ class TestDiagramElements:
         pw = base_object.pw
         base_object.mc.converter_session = {}
         base_object.mc.generate_work_items(pw.polarion_data_repo)
-        pw.post_work_items(base_object.mc.converter_session)
-        pw.delete_work_items(base_object.mc.converter_session)
+        pw.create_missing_work_items(base_object.mc.converter_session)
+        pw.delete_orphaned_work_items(base_object.mc.converter_session)
         assert pw.client is not None
         assert pw.client.delete_work_items.call_count == 1
         assert pw.client.delete_work_items.call_args[0][0] == ["Diag-1"]
@@ -760,7 +760,9 @@ class TestModelElements:
             get_work_item_mock,
         )
 
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
         assert base_object.pw.client is not None
         assert base_object.pw.client.get_all_work_item_links.call_count == 0
         assert base_object.pw.client.delete_work_item_links.call_count == 0
@@ -825,13 +827,19 @@ class TestModelElements:
             "get_work_item",
             get_work_item_mock,
         )
-        base_object.pw.delete_work_items(base_object.mc.converter_session)
+        base_object.pw.delete_orphaned_work_items(
+            base_object.mc.converter_session
+        )
         assert base_object.pw.client.update_work_item.called is False
 
-        base_object.pw.post_work_items(base_object.mc.converter_session)
+        base_object.pw.create_missing_work_items(
+            base_object.mc.converter_session
+        )
         assert base_object.pw.client.create_work_items.called is False
 
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
         work_item = base_object.pw.client.update_work_item.call_args[0][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.status == "open"
@@ -862,7 +870,9 @@ class TestModelElements:
 
         del base_object.mc.converter_session["uuid2"]
 
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
 
         assert base_object.pw.client is not None
         assert base_object.pw.client.update_work_item.call_count == 0
@@ -894,7 +904,9 @@ class TestModelElements:
 
         del base_object.mc.converter_session["uuid2"]
 
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
 
         assert base_object.pw.client is not None
         assert base_object.pw.client.update_work_item.call_count == 1
@@ -905,7 +917,9 @@ class TestModelElements:
             polarion_repo.PolarionDataRepository()
         )
         base_object.mc.converter_session = {}
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
 
         assert base_object.pw.client.get_all_work_item_links.call_count == 0
 
@@ -969,7 +983,9 @@ class TestModelElements:
             work_item_2,
         )
 
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
         assert base_object.pw.client is not None
         links = base_object.pw.client.get_all_work_item_links.call_args_list
         assert base_object.pw.client.get_all_work_item_links.call_count == 2
@@ -1053,7 +1069,9 @@ class TestModelElements:
         base_object.mc.generate_work_item_links(
             base_object.pw.polarion_data_repo
         )
-        base_object.pw.patch_work_items(base_object.mc.converter_session)
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
         assert base_object.pw.client is not None
         update_work_item_calls = (
             base_object.pw.client.update_work_item.call_args_list

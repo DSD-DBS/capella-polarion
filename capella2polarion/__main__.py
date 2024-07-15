@@ -118,8 +118,8 @@ def synchronize(
 
     converter.generate_work_items(polarion_worker.polarion_data_repo)
 
-    polarion_worker.delete_work_items(converter.converter_session)
-    polarion_worker.post_work_items(converter.converter_session)
+    polarion_worker.delete_orphaned_work_items(converter.converter_session)
+    polarion_worker.create_missing_work_items(converter.converter_session)
 
     # Create missing links for new work items
     converter.generate_work_items(
@@ -128,7 +128,7 @@ def synchronize(
         generate_attachments=True,
     )
 
-    polarion_worker.patch_work_items(converter.converter_session)
+    polarion_worker.compare_and_update_work_items(converter.converter_session)
 
 
 @cli.command()
@@ -170,7 +170,7 @@ def render_documents(
                     **inst.params,
                 )
                 polarion_worker.update_document(new_doc)
-                polarion_worker.client.project_client.work_items.update(wis)
+                polarion_worker.update_work_items(wis)
             else:
                 new_doc, _ = renderer.render_document(
                     c.template_directory,

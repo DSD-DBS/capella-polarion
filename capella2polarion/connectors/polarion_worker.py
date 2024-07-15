@@ -94,7 +94,7 @@ class CapellaPolarionWorker:
         )
         self.polarion_data_repo.update_work_items(work_items)
 
-    def delete_work_items(
+    def delete_orphaned_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Delete work items in a Polarion project.
@@ -124,7 +124,7 @@ class CapellaPolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
-    def post_work_items(
+    def create_missing_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Post work items in a Polarion project."""
@@ -150,7 +150,9 @@ class CapellaPolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
 
-    def patch_work_item(self, converter_data: data_session.ConverterData):
+    def compare_and_update_work_item(
+        self, converter_data: data_session.ConverterData
+    ):
         """Patch a given WorkItem."""
         new = converter_data.work_item
         assert new is not None
@@ -412,13 +414,13 @@ class CapellaPolarionWorker:
             )
         )
 
-    def patch_work_items(
+    def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
         for uuid, data in converter_session.items():
             if uuid in self.polarion_data_repo and data.work_item is not None:
-                self.patch_work_item(data)
+                self.compare_and_update_work_item(data)
 
     def post_document(self, document: polarion_api.Document):
         """Create a new Document."""
@@ -440,3 +442,7 @@ class CapellaPolarionWorker:
             if e.args[0] == 404:
                 return None
             raise e
+
+    def update_work_items(self, work_items: list[polarion_api.WorkItem]):
+        """Update the given workitems without any additional checks."""
+        self.client.project_client.work_items.update(work_items)
