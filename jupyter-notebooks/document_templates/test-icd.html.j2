@@ -48,22 +48,26 @@ This interface control document defines functional interactions between the foll
     <table {{table_attributes}}>
         <tbody>
             <tr>
-                <th {{th_attributes}}>Source</th>
                 <th {{th_attributes}}>Exchange</th>
-                <th {{th_attributes}}>Target</th>
                 <th {{th_attributes}}>Exchange Items</th>
+                <th {{th_attributes}}>Source</th>
+                <th {{th_attributes}}>Target</th>
             </tr>
-            {% for fex in interface.allocated_functional_exchanges %}
-                <tr>
-                    <td {{td_attributes}}>{{ fex.source.owner | link_work_item }} <br/>of {{ fex.source.owner.owner | link_work_item }}</td>
-                    <td {{td_attributes}}>{{ fex | link_work_item }}</td>
-                    <td {{td_attributes}}>{{ fex.target.owner | link_work_item }} <br/>of {{ fex.target.owner.owner | link_work_item }}</td>
-                    <td {{td_attributes}}>
-                    {% for ei in fex.exchange_items %}
-                        {{ ei | link_work_item }}<br/>
+            {% for _, fex_group in interface.allocated_functional_exchanges | sort(attribute='name') | groupby('name') %}
+                {% for _, fex_source_group in fex_group | sort(attribute='source.owner.name') | groupby('source.owner.name')%}
+                    {% for fex in fex_source_group | sort(attribute='target.owner.name')%}
+                        <tr>
+                            <td {{td_attributes}}>{{ fex | link_work_item }}</td>
+                            <td {{td_attributes}}>
+                            {% for ei in fex.exchange_items %}
+                                {{ ei | link_work_item }}<br/>
+                            {% endfor %}
+                            </td>
+                            <td {{td_attributes}}>{{ fex.source.owner | link_work_item }} <br/>of {{ fex.source.owner.owner | link_work_item }}</td>
+                            <td {{td_attributes}}>{{ fex.target.owner | link_work_item }} <br/>of {{ fex.target.owner.owner | link_work_item }}</td>
+                        </tr>
                     {% endfor %}
-                    </td>
-                </tr>
+                {% endfor %}
             {% endfor %}
         </tbody>
     </table>
