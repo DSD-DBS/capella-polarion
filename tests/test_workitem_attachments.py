@@ -59,7 +59,6 @@ DIAGRAM_CHECKSUM = json.dumps(
 def worker(monkeypatch: pytest.MonkeyPatch):
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
-    config = mock.Mock(converter_config.ConverterConfig)
     return polarion_worker.CapellaPolarionWorker(
         polarion_worker.PolarionWorkerParams(
             "TEST",

@@ -167,54 +167,33 @@ DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", "diagram")
 class TestDiagramElements:
     @staticmethod
     @pytest.fixture
-    def base_object(
+    def diagr_base_object(
         diagram_cache_index: list[dict[str, t.Any]],
         model: capellambse.MelodyModel,
         monkeypatch: pytest.MonkeyPatch,
+        base_object: BaseObjectContainer,
     ) -> BaseObjectContainer:
         uuid = diagram_cache_index[0]["uuid"]
         work_item = data_models.CapellaWorkItem(
             id="Diag-1", checksum="123", uuid_capella=uuid
         )
-        c2p_cli = Capella2PolarionCli(
-            debug=True,
-            polarion_project_id="project_id",
-            polarion_url=TEST_HOST,
-            polarion_pat="PrivateAccessToken",
-            polarion_delete_work_items=True,
-            capella_model=model,
-        )
-        c2p_cli.setup_logger()
-        mock_api = mock.MagicMock(
-            spec=polarion_api.OpenAPIPolarionProjectClient
-        )
-        monkeypatch.setattr(
-            polarion_api, "OpenAPIPolarionProjectClient", mock_api
-        )
-        c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
-        mc = model_converter.ModelConverter(
-            model, c2p_cli.polarion_params.project_id
-        )
-
-        mc.converter_session = {
+        base_object.mc.converter_session = {
             TEST_DIAG_UUID: data_session.ConverterData(
                 "", DIAGRAM_CONFIG, model.diagrams.by_uuid(TEST_DIAG_UUID)
             )
         }
 
-        pw = polarion_worker.CapellaPolarionWorker(c2p_cli.polarion_params)
-
-        pw.polarion_data_repo = polarion_repo.PolarionDataRepository(
-            [work_item]
+        base_object.pw.polarion_data_repo = (
+            polarion_repo.PolarionDataRepository([work_item])
         )
-        return BaseObjectContainer(c2p_cli, pw, mc)
+        return base_object
 
     @staticmethod
-    def test_create_diagrams(base_object: BaseObjectContainer):
-        pw = base_object.pw
+    def test_create_diagrams(diagr_base_object: BaseObjectContainer):
+        pw = diagr_base_object.pw
         new_work_items: dict[str, data_models.CapellaWorkItem]
-        new_work_items = base_object.mc.generate_work_items(
+        new_work_items = diagr_base_object.mc.generate_work_items(
             pw.polarion_data_repo, generate_attachments=True
         )
         assert len(new_work_items) == 1
@@ -234,20 +213,20 @@ class TestDiagramElements:
 
     @staticmethod
     def test_create_diagrams_filters_non_diagram_elements(
-        base_object: BaseObjectContainer,
+        diagr_base_object: BaseObjectContainer,
     ):
         # This test does not make any sense, but it also didn't before
-        pw = base_object.pw
-        base_object.mc.generate_work_items(pw.polarion_data_repo)
+        pw = diagr_base_object.pw
+        diagr_base_object.mc.generate_work_items(pw.polarion_data_repo)
         assert pw.client.generate_work_items.call_count == 0
 
     @staticmethod
-    def test_delete_diagrams(base_object: BaseObjectContainer):
-        pw = base_object.pw
-        base_object.mc.converter_session = {}
-        base_object.mc.generate_work_items(pw.polarion_data_repo)
-        pw.create_missing_work_items(base_object.mc.converter_session)
-        pw.delete_orphaned_work_items(base_object.mc.converter_session)
+    def test_delete_diagrams(diagr_base_object: BaseObjectContainer):
+        pw = diagr_base_object.pw
+        diagr_base_object.mc.converter_session = {}
+        diagr_base_object.mc.generate_work_items(pw.polarion_data_repo)
+        pw.create_missing_work_items(diagr_base_object.mc.converter_session)
+        pw.delete_orphaned_work_items(diagr_base_object.mc.converter_session)
         assert pw.client is not None
         assert pw.client.delete_work_items.call_count == 1
         assert pw.client.delete_work_items.call_args[0][0] == ["Diag-1"]
