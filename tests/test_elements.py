@@ -15,8 +15,7 @@ import pytest
 from capellambse.model import common
 
 from capella2polarion import data_models
-from capella2polarion.cli import Capella2PolarionCli
-from capella2polarion.connectors import polarion_repo, polarion_worker
+from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import (
     converter_config,
     data_session,
@@ -27,7 +26,6 @@ from capella2polarion.converters import (
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
-    TEST_HOST,
     TEST_MODEL_ELEMENTS_CONFIG,
     BaseObjectContainer,
     FakeModelObject,
@@ -170,7 +168,6 @@ class TestDiagramElements:
     def diagr_base_object(
         diagram_cache_index: list[dict[str, t.Any]],
         model: capellambse.MelodyModel,
-        monkeypatch: pytest.MonkeyPatch,
         base_object: BaseObjectContainer,
     ) -> BaseObjectContainer:
         uuid = diagram_cache_index[0]["uuid"]
