@@ -27,7 +27,6 @@ def test_create_new_document(
             ),
         ]
     )
-
     renderer = document_renderer.DocumentRenderer(
         empty_polarion_worker.polarion_data_repo, model
     )
@@ -41,7 +40,6 @@ def test_create_new_document(
     )
 
     content = html.fromstring(new_doc.home_page_content.value)
-
     assert len(wis) == 0
     assert new_doc.rendering_layouts == [
         polarion_api.RenderingLayout(
@@ -90,11 +88,9 @@ def test_update_document(
             ),
         ]
     )
-
     renderer = document_renderer.DocumentRenderer(
         empty_polarion_worker.polarion_data_repo, model
     )
-
     old_doc = polarion_api.Document(
         module_folder="_default",
         module_name="TEST-DOC",
@@ -121,7 +117,6 @@ def test_update_document(
     )
 
     content = html.fromstring(new_doc.home_page_content.value)
-
     assert len(new_doc.rendering_layouts) == 1
     assert new_doc.rendering_layouts[0].properties == [{"key": "value"}]
     assert (

@@ -97,7 +97,7 @@ class JinjaRendererMixin:
                 capellambse.model.diagram.AbstractDiagram,
             ),
         ):
-            raise TypeError(f"Expected a model object, got {obj!r}")
+            raise TypeError(f"Expected a model object, got {obj._short_repr_()!r}")
         return obj
 
     def setup_env(self, env: jinja2.Environment):
