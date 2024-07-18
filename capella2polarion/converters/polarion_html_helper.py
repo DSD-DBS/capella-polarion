@@ -17,7 +17,7 @@ POLARION_WORK_ITEM_URL = (
 )
 POLARION_WORK_ITEM_DOCUMENT = (
     '<div id="polarion_wiki macro name=module-workitem;'
-    'params=id={pid}|layout={lid}|external=true"></div>'
+    'params=id={pid}|layout={lid}|{custom_info}external=true"></div>'
 )
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"

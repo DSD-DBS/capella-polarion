@@ -54,7 +54,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env.filters["link_work_item"] = self.__link_work_item
 
     def __insert_work_item(
-        self, obj: object, session: RenderingSession
+        self, obj: object, session: RenderingSession, level: int | None = None
     ) -> str | None:
         if (obj := self.check_model_element(obj)) is None:
             return polarion_html_helper.RED_TEXT.format(
@@ -81,8 +81,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     )
                 )
 
+            custom_info = ""
+            if level is not None:
+                custom_info = f"level={level}|"
+
             return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
-                pid=wi.id, lid=layout_index
+                pid=wi.id, lid=layout_index, custom_info=custom_info
             )
 
         return polarion_html_helper.RED_TEXT.format(
