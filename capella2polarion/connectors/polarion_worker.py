@@ -423,17 +423,17 @@ class CapellaPolarionWorker:
                 self.compare_and_update_work_item(data)
 
     def post_document(self, document: polarion_api.Document):
-        """Create a new Document."""
+        """Create a new document."""
         self.client.project_client.documents.create(document)
 
     def update_document(self, document: polarion_api.Document):
-        """Create a new Document."""
+        """Update an existing document."""
         self.client.project_client.documents.update(document)
 
     def get_document(
         self, space: str, name: str
     ) -> polarion_api.Document | None:
-        """Create a new Document."""
+        """Get a document from polarion and return None if not found."""
         try:
             return self.client.project_client.documents.get(
                 space, name, fields={"documents": "@all"}
