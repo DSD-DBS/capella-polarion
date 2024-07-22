@@ -14,13 +14,10 @@ from capellambse.model import common
 from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import fa
 
+import capella2polarion.converters.polarion_html_helper
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import (
-    converter_config,
-    data_session,
-    element_converter,
-)
+from capella2polarion.converters import converter_config, data_session
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +356,9 @@ def _group_by(
 def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:
     urls: list[str] = []
     for link_id in sorted(link_map):
-        url = element_converter.POLARION_WORK_ITEM_URL.format(pid=link_id)
+        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(  # pylint: disable=line-too-long
+            pid=link_id
+        )
         urls.append(f"<li>{url}</li>")
         for key, include_wids in link_map[link_id].items():
             _, display_name, _ = key.split(":")
@@ -376,7 +375,9 @@ def _sorted_unordered_html_list(
 ) -> str:
     urls: list[str] = []
     for pid in work_item_ids:
-        url = element_converter.POLARION_WORK_ITEM_URL.format(pid=pid)
+        url = capella2polarion.converters.polarion_html_helper.POLARION_WORK_ITEM_URL.format(  # pylint: disable=line-too-long
+            pid=pid
+        )
         urls.append(f"<li>{url}</li>")
 
     urls.sort()
@@ -389,9 +390,11 @@ def _sorted_unordered_html_list(
 
 def _resolve_attribute(
     obj: common.GenericElement, attr_id: str
-) -> common.ElementList[common.GenericElement]:
+) -> common.ElementList[common.GenericElement] | common.GenericElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
+    if isinstance(objs, common.GenericElement):
+        return _resolve_attribute(objs, map_id)
     if map_id:
         objs = objs.map(map_id)
     return objs

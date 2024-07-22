@@ -1,0 +1,60 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common_macros.html.j2' import show_other_attributes, description, typed_name, linked_name, linked_name_with_icon, display_property_label %}
+{% from 'polarion_props.j2' import table_attributes, th_attributes, td_attributes %}
+
+{% macro render_usage(object) %}
+<span style="font-weight: bold;font-size: 12pt;line-height: 1.5;">Usage</span>
+{% if object.exchanges %}
+<p>The exchange item "{{ object.name }}" is produced and used across the model in the following cases:</p>
+<ul>
+{%- for exchange in object.exchanges -%}
+    {%- set src = exchange.source.owner.owner if exchange.source.owner.owner else None -%}
+    {%- set tgt = exchange.target.owner.owner if exchange.target.owner.owner else None -%}
+    <li>
+        {{ linked_name_with_icon(exchange) | safe }}
+        , produced by {{ linked_name_with_icon(exchange.source.owner) | safe }} of {{ linked_name_with_icon(src) | safe if src else "Unassigned" }}
+        &nbsp;and consumed by {{ linked_name_with_icon(exchange.target.owner) | safe }} of {{ linked_name_with_icon(tgt) | safe if tgt else "Unassigned" }}</li>
+{%- endfor -%}
+</ul>
+{% else %}
+<p style="color: red;">The exchange item "{{ object.name }}" is not used in any exchanges.</p>
+{% endif %}
+{% endmacro %}
+
+{{ description(object) | safe }}
+
+{% if object.elements %}
+<span style="font-weight: bold;font-size: 12pt;line-height: 1.5;">Composition</span><br/>
+<p>The exchange item "{{ object.name }}" is composed of the following elements:</p>
+<ul>
+{%- for element in object.elements -%}
+    <li>{{ display_property_label(object, element) | safe }}</li>
+{%- endfor -%}
+</ul>
+{% endif %}
+{% if object.type == "UNSET" %}
+    <p style="color:red">There was no type set for the Exchange Item.</p>
+{% else %}
+    {% set props = object.property_values+object.property_value_groups.map("property_values") %}
+    <p>The exchange item is of type "{{object.type}}". {% if props %}It has the following additional attributes:{% endif %}</p>
+    {% if props %}
+        <table {{table_attributes}}>
+            <tbody>
+                <tr>
+                    <th {{th_attributes}}>Property</th>
+                    <th {{th_attributes}}>Value</th>
+                </tr>
+                {% for prop in props %}
+                    <tr>
+                        <td {{td_attributes}}>{{ prop.name }}</td>
+                        <td {{td_attributes}}>{{ prop.value }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endif %}

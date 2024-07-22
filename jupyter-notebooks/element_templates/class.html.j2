@@ -1,0 +1,80 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common_macros.html.j2' import show_other_attributes, linked_name, linked_name_with_icon, description, display_property_label %}
+{% from 'polarion_props.j2' import table_attributes, th_attributes, td_attributes %}
+
+{% macro properties_list(props, obj) %}
+    {% for property in props %}
+        {{ display_property_label(obj, property) | safe }}
+        {% set prop_props = [] %}
+        {% if property.kind != "UNSET" %}{% set _none = prop_props.append(["Kind", property.kind]) %}{% endif %}
+        {% if property.min_value %}{% set _none = prop_props.append(["Min. value", property.min_value])%}{% endif %}
+        {% if property.max_value %}{% set _none = prop_props.append(["Max. value", property.max_value])%}{% endif %}
+        <div style="margin-left: 20px;">
+            {{ description(property) | safe}}
+            {% if property.type.__class__.__name__ == "Enumeration" %}
+                <p>{{property.type.name}} enumeration values:</p>
+                <table {{table_attributes}}>
+                    <tbody>
+                        <tr>
+                            <th {{th_attributes}}>Enumeration Literal</th>
+                            <th {{th_attributes}}>Value</th>
+                        </tr>
+                        {% for val in property.type.literals %}
+                            <tr>
+                                <td {{td_attributes}}>{{ val.name }}</td>
+                                {% set value = val.value if val.value else "" %}
+                                <td {{td_attributes}}>{{ value.value if value.value is defined else "0" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+            {% if prop_props %}
+            <p>This property has the following additional attributes:</p>
+                <table {{table_attributes}}>
+                    <tbody>
+                        <tr>
+                            <th {{th_attributes}}>Property</th>
+                            <th {{th_attributes}}>Value</th>
+                        </tr>
+                        {% for key, val in prop_props %}
+                            <tr>
+                                <td {{td_attributes}}>{{ key }}</td>
+                                <td {{td_attributes}}>{{ val.value }}{% if val.type is defined %} :{{ linked_name_with_icon(val.type) | safe}}{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+        <hr>
+        {# show_other_attributes(property) | safe #}
+
+    {% endfor %}
+{% endmacro %}
+
+<p>Parent: <a href="{{ object.parent | make_href }}">{{ object.parent.name }}</a></p>
+{% if object.description %}
+<p>{{ object.description }}</p>
+{% else %}
+<p style="color:red">No description available.</p>
+{% endif %}
+
+{% set props = [] %}
+{% if object.super %}
+    {% set props = props | list + object.super.properties | list %}
+{% endif %}
+{% set props = props + object.owned_properties | list %}
+
+<span style="font-weight: bold;font-size: 12pt;line-height: 1.5;">Properties</span>
+<br>
+{% if props %}
+    <p>The object owns the properties listed below; We use the following format to describe property: name : type [min .. max (instances of type)] or [ fixed number]; if no multiplicity is shown assume its 1 (single instance).</p>
+    {{ properties_list(props, object) | safe }}
+{% else %}
+    <p style="color:red">No properties are owned by this object.</p>
+{% endif %}

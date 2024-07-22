@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 variables:
-  CAPELLA2POLARION_DEBUG: "1"
+  CAPELLA2POLARION_DEBUG: "0"
 
 capella2polarion_synchronise_elements:
   needs:
     - job: update_capella_diagram_cache
       artifacts: true
+    - job: capella2polarion_synchronise_elements
 
   script:
     - pip install capella2polarion
@@ -17,8 +18,5 @@ capella2polarion_synchronise_elements:
         $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
         --polarion-project-id=${CAPELLA2POLARION_PROJECT_ID:?} \
         --capella-model="${CAPELLA2POLARION_MODEL_JSON:?}" \
-        synchronize \
-        --synchronize-config=${CAPELLA2POLARION_CONFIG:?} \
-        $([[ $CAPELLA2POLARION_FORCE_UPDATE -eq 1 ]] && echo '--force-update') \
-        ${CAPELLA2POLARION_TYPE_PREFIX:+--type-prefix="$CAPELLA2POLARION_TYPE_PREFIX"} \
-        ${CAPELLA2POLARION_ROLE_PREFIX:+--role-prefix="$CAPELLA2POLARION_ROLE_PREFIX"}
+        render-documents \
+        --document-rendering-config="${CAPELLA2POLARION_DOCUMENT_CONFIG:?}"

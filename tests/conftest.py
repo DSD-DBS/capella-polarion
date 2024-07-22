@@ -112,12 +112,6 @@ class BaseObjectContainer:
 def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
-    import io
-
-    class MyIO(io.StringIO):
-        def write(self, text: str):
-            pass
-
     work_item = data_models.CapellaWorkItem(
         id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
     )
@@ -128,7 +122,6 @@ def base_object(
         polarion_pat="PrivateAccessToken",
         polarion_delete_work_items=True,
         capella_model=model,
-        synchronize_config_io=MyIO(),
     )
 
     c2p_cli.setup_logger()
@@ -170,8 +163,19 @@ def base_object(
         ),
     }
 
-    pw = polarion_worker.CapellaPolarionWorker(
-        c2p_cli.polarion_params, c2p_cli.config
-    )
+    pw = polarion_worker.CapellaPolarionWorker(c2p_cli.polarion_params)
     pw.polarion_data_repo = polarion_repo.PolarionDataRepository([work_item])
     return BaseObjectContainer(c2p_cli, pw, mc)
+
+
+@pytest.fixture
+def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
+    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
+    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    polarion_params = polarion_worker.PolarionWorkerParams(
+        project_id="project_id",
+        url=TEST_HOST,
+        pat="PrivateAccessToken",
+        delete_work_items=True,
+    )
+    yield polarion_worker.CapellaPolarionWorker(polarion_params)

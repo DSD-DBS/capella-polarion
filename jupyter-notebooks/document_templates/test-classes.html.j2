@@ -1,0 +1,32 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% macro add_class_dependencies(cls, classes) %}
+    {% if not cls in classes %}
+        {% set _none = classes.append(cls) %}
+        {% if cls.super %}
+            {{ add_class_dependencies(cls.super, classes) }}
+        {% endif %}
+        {% for property in cls.properties %}
+            {% set type = None %}
+            {% if "type" in property.__dir__() %}
+                {% set type = property.type %}
+            {% elif "abstract_type" in property.__dir__() %}
+                {% set type = property.abstract_type %}
+            {% endif %}
+            {% if type and type.xtype == "org.polarsys.capella.core.data.information:Class" %}
+                {{ add_class_dependencies(type, classes) }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endmacro %}
+{% set cls = model.by_uuid(cls) %}
+{% set classes = [] %}
+{{ heading(1, "Class Document", session)}}
+{{ add_class_dependencies(cls, classes) }}
+{{ heading(2, "Data Classes", session)}}
+{% for cl in classes | unique %}
+{{ insert_work_item(cl, session) }}
+{% endfor %}

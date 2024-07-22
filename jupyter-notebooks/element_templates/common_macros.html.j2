@@ -1,0 +1,233 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% macro first_upper(text) %}
+    {{ text[0] | upper}}{{text[1:] }}
+{% endmacro %}
+
+{% macro show_compliance_to_modeling_rules(object) %}
+{% if "validation" in object.__dir__() %}
+    <h2>Compliance to modeling rules</h2>
+    {% set results = object.validate() %}
+    {% if results %}
+        <table>
+            <tbody>
+            {% for result in results %}
+                <tr style="{% if not result.passed %}border-bottom: none;{% endif %}">
+                    <td style="{% if not result.passed %}padding-top: 0.4em;{% endif %}">
+                        <b style="white-space: nowrap;">{{ result.rule.id }}</b>
+                    </td>
+                    <td style="{% if not result.passed %}padding-top: 0.4em;{% endif %}">
+                        <b>{{ result.rule.name }}</b>
+                    </td>
+                    <td style="{% if not result.passed %}padding-top: 0.4em;{% endif %}">
+                        <b style="color: {{ 'green' if result.passed else 'red'}}">
+                            {{ "PASSED" if result.passed else "FAILED"}}
+                        </b>
+                    </td>
+
+                </tr>
+                {% if not result.passed %}
+                <tr>
+                    <td colspan="3" style="padding-left: 2.5em;">
+                        <p>{{ result.rule.rationale }}</p>
+                        <p><b>Next action:</b> {{ result.rule.action }}</p>
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Could not evaluate compliance of the object to the current modeling rules set.</p>
+    {% endif %}
+{% endif %}
+{% endmacro %}
+
+{% macro show_other_attributes(object, excluded=[], hide_rules_check=False) %}
+    {% set empty_attrs = [] %}
+
+    {%- for attr in object.__dir__()|sort if not attr.startswith("_") and attr not in ["from_model", "pvmt"]+excluded -%}
+    {% if attr == "validation" %}
+    {% else %}
+        {%- set value = object[attr] -%}
+        {% if value %}
+            <h2 style="opacity: 0.8; border-top: 1px solid grey; margin-top: 1rem; padding-left: 1rem; font: 1rem monospace">{{ attr }}</h2>
+            {%- if value.as_svg -%}
+            {{ value.as_svg|safe }}
+            {% elif value._short_html_ -%}
+            <p>{{ value._short_html_() }}</p>
+            {% else -%}
+            <p>{{ value }}</p>
+            {% endif -%}
+        {% else %}
+            {% set _none = empty_attrs.append(attr) %}
+        {% endif %}
+    {% endif %}
+    {% endfor -%}
+
+    {% if empty_attrs %}
+    <h3>Unset attributes</h3>
+    <p>The object has the following attributes in unset state (empty values): {{ ", ".join(empty_attrs) }}</p>
+    {% endif %}
+    {% if not hide_rules_check %}
+    {{ show_compliance_to_modeling_rules(object) | safe }}
+    {% endif %}
+{% endmacro %}
+
+{% macro req_rels(rels) %}
+{% if rels %}
+<ul>
+{% for rel in rels %}
+    <li>
+        <a href="{{ rel.type | make_href }}">{{rel.type.long_name }}</a>
+        {{ rel.target.__class__.__name__ }} {{ linked_name_with_icon(rel.target) | safe}}</a>
+    </li>
+{% endfor %}
+</ul>
+{% else %}
+<p style="color: red;">Not linked to any model objects</p>
+{% endif%}
+{% endmacro %}
+
+{% macro render_requirements_table(reqs) %}
+    <table>
+    {% for req in reqs %}
+        <tr>
+            <td>
+                <a href="{{ req | make_href }}">
+                    {{ req.identifier if req.identifier else "REQ-"+req.uuid[-5:] | upper }}
+                </a>
+            </td>
+            <td>
+                {{ req.text if req.text else req.long_name }}
+                {{req_rels(req.relations) | safe}}
+            </td>
+        </div>
+        </tr>
+    {% endfor %}
+    </table>
+{% endmacro %}
+
+{% macro render_reqs_by_type(reqs, types) %}
+    {% for req_type in types+[None] %}
+        {% set reqs = reqs.by_type(req_type)%}
+        {% if reqs %}
+            <h3>Of type "{{ req_type | string }}"</h3>
+            {{ render_requirements_table(reqs) | safe }}
+        {% endif %}
+    {% endfor %}
+{% endmacro %}
+
+{% macro description(obj) %}
+    {% if obj.description %}
+        <p>{{ obj.description | safe }}</p>
+    {% else %}
+    <p style="color:red">No description available.</p>
+    {% endif %}
+{% endmacro %}
+
+{%- macro typed_name(object) -%}<b>{{ object.__class__.__name__ }}</b> <a href="{{ object | make_href }}">{{ object.name  | trim }}</a>{%- endmacro -%}
+
+{%- macro linked_name(object) -%}<a href="{{ object | make_href }}">{{ object.name  | trim }}</a>{%- endmacro -%}
+
+{% macro draw_icon(obj, size) %}
+{% set icon = obj._get_icon("datauri_svg", size=size) %}
+{% if icon %}
+    <img src="{{ icon | safe }}" height="{{size}}" width="{{size}}" style="display:inline-block"/>
+{% endif %}
+{% endmacro %}
+
+{% macro linked_name_with_icon(obj) %}
+    <a href="hlink://{{obj.uuid}}">
+        {{ obj.name }}
+    </a>
+{% endmacro %}
+
+{%- macro display_traceability(object, complain=False) -%}
+    {%- set realized_attrs = [] -%}
+    {%- set realizing_attrs = [] -%}
+    {%- for attr in object.__dir__() -%}
+        {%- if attr.startswith("realized_") -%}
+            {% set _none = realized_attrs.append(attr) %}
+        {%- elif attr.startswith("realizing_") -%}
+            {% set _none = realizing_attrs.append(attr) %}
+        {%- endif-%}
+    {%- endfor -%}
+    {%- set realized_objects = object[realized_attrs | first] if realized_attrs else None -%}
+    {%- set realizing_objects = object[realizing_attrs | first] if realizing_attrs else None -%}
+
+    <h2>Traceability</h2>
+    <p>The figure below provides an overview of objects that "{{ object.name}}" realizes but also those that realize "{{ object.name }}"</p>
+    {{ object.realization_view.as_svg | safe }}
+    {% if realized_objects %}
+    <p>{{ object.name }} realizes the following objects:<p>
+    <ul>
+    {%- for obj in realized_objects -%}<li>{{ linked_name_with_icon(obj) | safe}}</li>{%- endfor -%}
+    </ul>
+    {%- else -%}
+        <p style="color: red;">{{ first_upper(object.name) }} doesn't seem to realize any object</p>
+    {%- endif -%}
+    {% if realizing_objects %}
+    <p>{{ object.name }} is realized by the following objects:</p>
+    <ul>
+    {%- for obj in realizing_objects -%}<li>{{ linked_name_with_icon(obj) | safe}}</li>{%- endfor -%}
+    </ul>
+    {%- else -%}
+        <p style="color: red;">{{ first_upper(object.name) }} doesn't seem to be realized by any object</p>
+    {% endif %}
+{%- endmacro -%}
+
+{% macro display_property_values(object) %}
+{% if object.property_value_groups  %}
+<h2>Other properties (PVMT)</h2>
+    <p>The following properties were additionally assigned to {{ object.name }} via PVMT extension</p>
+    {% for group in object.property_value_groups %}
+        <p><b>{{ group.name | safe}}</b></p>
+        <table>
+            <thead>
+                <tr>
+                    <th><b>Property</b></th>
+                    <th><b>Value</b></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for prop in group.property_values %}
+            <tr>
+                <td>{{ prop.name }}</td>
+                <td>{{ prop.value.name | safe if prop.value.name else prop.value }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+{% endif %}
+{% endmacro %}
+
+{% macro display_property_label(object, property) %}
+    <p>
+        <b>{{ property.name }}</b> :
+        {% set type = None %}
+        {% if "type" in property.__dir__() %}
+            {% set type = property.type %}
+        {% elif "abstract_type" in property.__dir__() %}
+            {% set type = property.abstract_type %}
+        {% endif %}
+        {% if type %}
+            {{ linked_name_with_icon(type) | safe }}
+        {% else %}
+            <span style="color:red">No type defined</span>
+        {% endif %}
+        {% if property.min_card.value == property.max_card.value and property.max_card.value == "1" %}
+        {% elif property.min_card.value == property.max_card.value %}
+        [ {{ property.min_card.value }} ]
+        {% else %}
+        [ {{ property.min_card.value }} .. {{ property.max_card.value }} ]
+        {% endif %}
+        {% if property.parent != object %}
+        (inherited from {{ linked_name_with_icon(property.parent) | safe }})
+        {% endif %}
+    </p>
+{% endmacro %}

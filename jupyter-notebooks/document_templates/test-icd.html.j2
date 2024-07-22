@@ -1,0 +1,88 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+{% set table_attributes='class="polarion-Document-table" style="margin: auto;margin-left: 0px;empty-cells: show;border-collapse: collapse;max-width: 1280px;border: 1px solid #CCCCCC;" id="polarion_wiki macro name=table"' %}
+{% set th_attributes='style="height: 12px;text-align: left;vertical-align: top;font-weight: bold;background-color: #F0F0F0;border: 1px solid #CCCCCC;padding: 5px;"' %}
+{% set td_attributes='style="height: 12px;text-align: left;vertical-align: top;line-height: 18px;border: 1px solid #CCCCCC;padding: 5px;"' %}
+
+{% macro add_class_dependencies(cls, classes) %}
+    {% if not cls in classes %}
+        {% set _none = classes.append(cls) %}
+        {% if cls.super %}
+            {{ add_class_dependencies(cls.super, classes) }}
+        {% endif %}
+        {% for property in cls.properties %}
+            {% set type = None %}
+            {% if "type" in property.__dir__() %}
+                {% set type = property.type %}
+            {% elif "abstract_type" in property.__dir__() %}
+                {% set type = property.abstract_type %}
+            {% endif %}
+            {% if type and type.xtype == "org.polarsys.capella.core.data.information:Class" %}
+                {{ add_class_dependencies(type, classes) }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endmacro %}
+{% set interface = model.by_uuid(interface) %}
+{{ heading(1, "Interface " + interface.name, session)}}
+{{ heading(2, "Introduction", session)}}
+<p>
+This Interface Control Document only covers software message based communication (application layer) between ETCS compatible components.
+At the moment physical interface definition is not in scope for this document.
+The scope of the document covers Interface Requirements and Definition
+</p>
+{{ heading(2, "Interface Partners", session)}}
+<p>The figure below provides an overview of the interface partners:</p>
+<p>There may be a diagram with 2 boxes and a blue line</p>
+<p>
+This interface control document defines functional interactions between the following 2 software components:
+</p>
+{{ heading(3, "Source", session)}}
+{{ insert_work_item(interface.source.owner, session) }}
+{{ heading(3, "Target", session)}}
+{{ insert_work_item(interface.target.owner, session) }}
+{{ heading(3, "Exchanges", session)}}
+<p>This document describes the following functional exchanges:
+    <table {{table_attributes}}>
+        <tbody>
+            <tr>
+                <th {{th_attributes}}>Exchange</th>
+                <th {{th_attributes}}>Exchange Items</th>
+                <th {{th_attributes}}>Source</th>
+                <th {{th_attributes}}>Target</th>
+            </tr>
+            {% for _, fex_group in interface.allocated_functional_exchanges | sort(attribute='name') | groupby('name') %}
+                {% for _, fex_source_group in fex_group | sort(attribute='source.owner.name') | groupby('source.owner.name')%}
+                    {% for fex in fex_source_group | sort(attribute='target.owner.name')%}
+                        <tr>
+                            <td {{td_attributes}}>{{ fex | link_work_item }}</td>
+                            <td {{td_attributes}}>
+                            {% for ei in fex.exchange_items %}
+                                {{ ei | link_work_item }}<br/>
+                            {% endfor %}
+                            </td>
+                            <td {{td_attributes}}>{{ fex.source.owner | link_work_item }} <br/>of {{ fex.source.owner.owner | link_work_item }}</td>
+                            <td {{td_attributes}}>{{ fex.target.owner | link_work_item }} <br/>of {{ fex.target.owner.owner | link_work_item }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+{{ heading(2, "Interface Definition", session)}}
+{{ heading(3, "Message Catalog", session)}}
+<p>This section identifies messages used within the interface.</p>
+{%- set classes = [] %}
+{% for ei in interface.exchange_items | unique %}
+{{ insert_work_item(ei, session) }}
+{% for el in ei.elements %}
+{{ add_class_dependencies(el.abstract_type, classes) }}
+{% endfor %}
+{% endfor %}
+{{ heading(3, "Message Description", session)}}
+<p>This section provides a detailed description of each message used within the interface.</p>
+{% for cl in classes | unique %}
+{{ insert_work_item(cl, session) }}
+{% endfor %}

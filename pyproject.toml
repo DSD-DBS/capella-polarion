@@ -32,9 +32,11 @@ dependencies = [
   "capellambse_context_diagrams",
   "click",
   "PyYAML",
-  "polarion-rest-api-client>=1.0.0",
+  "polarion-rest-api-client==1.1.0",
   "bidict",
   "cairosvg",
+  "jinja2",
+  "pydantic"
 ]
 
 [project.urls]

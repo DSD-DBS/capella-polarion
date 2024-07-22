@@ -14,6 +14,7 @@ from collections import abc as cabc
 
 import cairosvg
 import capellambse
+import jinja2
 import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
@@ -24,21 +25,12 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session
+from capella2polarion.converters import data_session, polarion_html_helper
 
-RE_DESCR_DELETED_PATTERN = re.compile(
-    f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
-)
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
-
-POLARION_WORK_ITEM_URL = (
-    '<span class="polarion-rte-link" data-type="workItem" '
-    'id="fake" data-item-id="{pid}" data-option-id="long">'
-    "</span>"
-)
 
 PrePostConditionElement = t.Union[
     oa.OperationalCapability, interaction.Scenario
@@ -51,13 +43,6 @@ C2P_IMAGE_PREFIX = "__C2P__"
 def resolve_element_type(type_: str) -> str:
     """Return a valid Type ID for polarion for a given ``obj``."""
     return type_[0].lower() + type_[1:]
-
-
-def strike_through(string: str) -> str:
-    """Return a striked-through html span from given ``string``."""
-    if match := RE_DESCR_DELETED_PATTERN.match(string):
-        string = match.group(1)
-    return f'<span style="text-decoration: line-through;">{string}</span>'
 
 
 def _format_texts(
@@ -87,19 +72,7 @@ def _condition(
     }
 
 
-def _generate_image_html(
-    title: str, attachment_id: str, max_width: int, cls: str
-) -> str:
-    """Generate an image as HTMl with the given source."""
-    description = (
-        f'<span><img title="{title}" class="{cls}" '
-        f'src="workitemimg:{attachment_id}" '
-        f'style="max-width: {max_width}px;"/></span>'
-    )
-    return description
-
-
-class CapellaWorkItemSerializer:
+class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     """The general serializer class for CapellaWorkItems."""
 
     diagram_cache_path: pathlib.Path
@@ -118,6 +91,7 @@ class CapellaWorkItemSerializer:
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
         self.type_prefix = type_prefix
+        self.jinja_envs: dict[str, jinja2.Environment] = {}
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
@@ -145,7 +119,9 @@ class CapellaWorkItemSerializer:
                 ] = getattr(self, f"_{converter}")
                 serializer(converter_data, **params)
             except Exception as error:
-                converter_data.errors.add(error.args[0])
+                converter_data.errors.add(
+                    ", ".join([str(a) for a in error.args])
+                )
                 converter_data.work_item = None
 
         if self.type_prefix and converter_data.work_item is not None:
@@ -222,9 +198,34 @@ class CapellaWorkItemSerializer:
             attachment = None
 
         return (
-            _generate_image_html(title, file_name, max_width, cls),
+            polarion_html_helper.generate_image_html(
+                title, file_name, max_width, cls
+            ),
             attachment,
         )
+
+    def _render_jinja_template(
+        self,
+        template_folder: str | pathlib.Path,
+        template_path: str | pathlib.Path,
+        model_element: capellambse.model.GenericElement,
+    ):
+        env = self._get_jinja_env(str(template_folder))
+        template = env.get_template(template_path)
+        rendered_jinja = template.render(
+            object=model_element, model=self.model
+        )
+        _, text, _ = self._sanitize_text(model_element, rendered_jinja)
+        return text
+
+    def setup_env(self, env: jinja2.Environment):
+        """Add the link rendering filter."""
+        env.filters["make_href"] = self.__make_href_filter
+
+    def __make_href_filter(self, obj: object) -> str | None:
+        if (obj := self.check_model_element(obj)) is None:
+            return "#"
+        return f"hlink://{obj.uuid}"
 
     def _draw_additional_attributes_diagram(
         self,
@@ -258,8 +259,8 @@ class CapellaWorkItemSerializer:
         linked_text = getattr(
             obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
         )["capella:linkedText"]
-        linked_text = RE_DESCR_DELETED_PATTERN.sub(
-            lambda match: strike_through(
+        linked_text = polarion_html_helper.RE_DESCR_DELETED_PATTERN.sub(
+            lambda match: polarion_html_helper.strike_through(
                 self._replace_markup(obj.uuid, match, [])
             ),
             linked_text,
@@ -341,10 +342,12 @@ class CapellaWorkItemSerializer:
             self.converter_session[origin_uuid].errors.add(
                 f"Non-existing model element referenced in description: {uuid}"
             )
-            return strike_through(match.group(default_group))
+            return polarion_html_helper.strike_through(
+                match.group(default_group)
+            )
         if pid := self.capella_polarion_mapping.get_work_item_id(uuid):
             referenced_uuids.append(uuid)
-            return POLARION_WORK_ITEM_URL.format(pid=pid)
+            return polarion_html_helper.POLARION_WORK_ITEM_URL.format(pid=pid)
 
         self.converter_session[origin_uuid].errors.add(
             f"Non-existing work item referenced in description: {uuid}"
@@ -509,4 +512,36 @@ class CapellaWorkItemSerializer:
             render_params,
         )
 
+        return converter_data.work_item
+
+    def _add_jinja_fields(
+        self,
+        converter_data: data_session.ConverterData,
+        fields: dict[str, dict[str, str]],
+    ) -> data_models.CapellaWorkItem:
+        """Add a new custom field and fill it with rendered jinja content."""
+        assert converter_data.work_item, "No work item set yet"
+        for field, jinja_properties in fields.items():
+            converter_data.work_item.additional_attributes[field] = {
+                "type": "text/html",
+                "value": self._render_jinja_template(
+                    jinja_properties.get("template_folder", ""),
+                    jinja_properties["template_path"],
+                    converter_data.capella_element,
+                ),
+            }
+
+        return converter_data.work_item
+
+    def _jinja_as_description(
+        self,
+        converter_data: data_session.ConverterData,
+        template_path: str,
+        template_folder: str = "",
+    ) -> data_models.CapellaWorkItem:
+        """Use a Jinja template to render the description content."""
+        assert converter_data.work_item, "No work item set yet"
+        converter_data.work_item.description = self._render_jinja_template(
+            template_folder, template_path, converter_data.capella_element
+        )
         return converter_data.work_item

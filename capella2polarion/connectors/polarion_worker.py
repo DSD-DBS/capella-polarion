@@ -15,7 +15,7 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import converter_config, data_session
+from capella2polarion.converters import data_session
 
 logger = logging.getLogger(__name__)
 
@@ -43,19 +43,11 @@ class CapellaPolarionWorker:
     """CapellaPolarionWorker encapsulate the Polarion API Client work."""
 
     def __init__(
-        self,
-        params: PolarionWorkerParams,
-        config: converter_config.ConverterConfig,
-        force_update: bool = False,
-        type_prefix: str = "",
-        role_prefix: str = "",
+        self, params: PolarionWorkerParams, force_update: bool = False
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
-        self.config = config
         self.force_update = force_update
-        self.type_prefix = type_prefix
-        self.role_prefix = role_prefix
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -98,11 +90,11 @@ class CapellaPolarionWorker:
         """Return a map from Capella UUIDs to Polarion work items."""
         work_items = self.client.get_all_work_items(
             "HAS_VALUE:uuid_capella",
-            {"workitems": "id,uuid_capella,checksum,status"},
+            {"workitems": "id,uuid_capella,checksum,status,type"},
         )
         self.polarion_data_repo.update_work_items(work_items)
 
-    def delete_work_items(
+    def delete_orphaned_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Delete work items in a Polarion project.
@@ -132,7 +124,7 @@ class CapellaPolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Deleting work items failed. %s", error.args[0])
 
-    def post_work_items(
+    def create_missing_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Post work items in a Polarion project."""
@@ -158,7 +150,9 @@ class CapellaPolarionWorker:
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
 
-    def patch_work_item(self, converter_data: data_session.ConverterData):
+    def compare_and_update_work_item(
+        self, converter_data: data_session.ConverterData
+    ):
         """Patch a given WorkItem."""
         new = converter_data.work_item
         assert new is not None
@@ -420,10 +414,35 @@ class CapellaPolarionWorker:
             )
         )
 
-    def patch_work_items(
+    def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
         for uuid, data in converter_session.items():
             if uuid in self.polarion_data_repo and data.work_item is not None:
-                self.patch_work_item(data)
+                self.compare_and_update_work_item(data)
+
+    def post_document(self, document: polarion_api.Document):
+        """Create a new document."""
+        self.client.project_client.documents.create(document)
+
+    def update_document(self, document: polarion_api.Document):
+        """Update an existing document."""
+        self.client.project_client.documents.update(document)
+
+    def get_document(
+        self, space: str, name: str
+    ) -> polarion_api.Document | None:
+        """Get a document from polarion and return None if not found."""
+        try:
+            return self.client.project_client.documents.get(
+                space, name, fields={"documents": "@all"}
+            )
+        except polarion_api.PolarionApiBaseException as e:
+            if e.args[0] == 404:
+                return None
+            raise e
+
+    def update_work_items(self, work_items: list[polarion_api.WorkItem]):
+        """Update the given workitems without any additional checks."""
+        self.client.project_client.work_items.update(work_items)

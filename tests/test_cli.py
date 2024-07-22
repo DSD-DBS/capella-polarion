@@ -31,15 +31,21 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker, "delete_work_items", mock_delete_work_items
+        CapellaPolarionWorker,
+        "delete_orphaned_work_items",
+        mock_delete_work_items,
     )
     mock_post_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker, "post_work_items", mock_post_work_items
+        CapellaPolarionWorker,
+        "create_missing_work_items",
+        mock_post_work_items,
     )
     mock_patch_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker, "patch_work_items", mock_patch_work_items
+        CapellaPolarionWorker,
+        "compare_and_update_work_items",
+        mock_patch_work_items,
     )
 
     command: list[str] = [
@@ -52,9 +58,9 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "--polarion-delete-work-items",
         "--capella-model",
         json.dumps(TEST_MODEL),
+        "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
-        "synchronize",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)

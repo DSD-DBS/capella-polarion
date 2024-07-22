@@ -59,15 +59,13 @@ DIAGRAM_CHECKSUM = json.dumps(
 def worker(monkeypatch: pytest.MonkeyPatch):
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
-    config = mock.Mock(converter_config.ConverterConfig)
     return polarion_worker.CapellaPolarionWorker(
         polarion_worker.PolarionWorkerParams(
             "TEST",
             "http://localhost",
             "TESTPAT",
             False,
-        ),
-        config,
+        )
     )
 
 
@@ -134,7 +132,9 @@ def test_diagram_attachments_new(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
@@ -194,7 +194,9 @@ def test_new_diagram(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
@@ -250,7 +252,9 @@ def test_diagram_attachments_updated(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -312,7 +316,9 @@ def test_diagram_attachments_unchanged_work_item_changed(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -353,7 +359,9 @@ def test_diagram_attachments_fully_unchanged(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 0
     assert worker.client.create_work_item_attachments.call_count == 0
@@ -382,7 +390,7 @@ def test_add_context_diagram(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[uuid])
+    worker.compare_and_update_work_item(converter.converter_session[uuid])
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 1
@@ -461,7 +469,9 @@ def test_diagram_delete_attachments(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.patch_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.client.update_work_item.call_count == 1
     assert worker.client.create_work_item_attachments.call_count == 0
