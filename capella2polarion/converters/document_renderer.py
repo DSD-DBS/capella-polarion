@@ -105,7 +105,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             )
 
         return polarion_html_helper.RED_TEXT.format(
-            text=f"Missing WorkItem for UUID {obj.uuid}"
+            text=f"Missing WorkItem for {obj.xtype} {obj.name} ({obj.uuid})"
         )
 
     def __heading(self, level: int, text: str, session: RenderingSession):
