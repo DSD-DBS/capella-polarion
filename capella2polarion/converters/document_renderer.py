@@ -3,6 +3,7 @@
 """A jinja renderer for Polarion documents."""
 
 import dataclasses
+import logging
 import pathlib
 import re
 import typing as t
@@ -20,6 +21,7 @@ from . import polarion_html_helper
 heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
 h_regex = re.compile("h[0-9]")
 wi_regex = re.compile(f"{heading_id_prefix}(.*)")
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -31,6 +33,9 @@ class RenderingSession:
     )
     heading_ids: list[str] = dataclasses.field(default_factory=list)
     rendering_layouts: list[polarion_api.RenderingLayout] = dataclasses.field(
+        default_factory=list
+    )
+    inserted_work_items: list[polarion_api.WorkItem] = dataclasses.field(
         default_factory=list
     )
 
@@ -64,6 +69,14 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
         ):
+            if wi in session.inserted_work_items:
+                logger.info(
+                    "WorkItem %s is already in the document."
+                    "A link will be added instead of inserting it.",
+                    wi.id,
+                )
+                return f"<p>{self.__link_work_item(obj)}</p>"
+
             layout_index = 0
             for layout in session.rendering_layouts:
                 if layout.type == wi.type:
@@ -84,6 +97,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             custom_info = ""
             if level is not None:
                 custom_info = f"level={level}|"
+
+            session.inserted_work_items.append(wi)
 
             return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
                 pid=wi.id, lid=layout_index, custom_info=custom_info
