@@ -6,7 +6,7 @@ from lxml import etree, html
 
 from capella2polarion import data_models as dm
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import document_renderer
+from capella2polarion.converters import document_config, document_renderer
 
 
 def test_create_new_document(
@@ -99,7 +99,7 @@ def test_update_document(
                 label="Class",
                 type="class",
                 layouter="section",
-                properties=[{"key": "value"}],
+                properties=[{"key": "fieldsAtStart", "value": "ID"}],
             )
         ],
         home_page_content=polarion_api.TextContent(
@@ -118,7 +118,11 @@ def test_update_document(
 
     content = html.fromstring(new_doc.home_page_content.value)
     assert len(new_doc.rendering_layouts) == 1
-    assert new_doc.rendering_layouts[0].properties == [{"key": "value"}]
+    assert new_doc.rendering_layouts[
+        0
+    ].properties == polarion_api.data_models.RenderingProperties(
+        fields_at_start=["ID"]
+    )
     assert (
         etree.tostring(content[0])
         .decode("utf-8")
@@ -135,3 +139,41 @@ def test_update_document(
     assert len(wis) == 1
     assert wis[0].id == "ATSY-16062"
     assert wis[0].title == "Class Document"
+
+
+def test_document_config():
+    with open("tests/data/documents/config.yaml", "r", encoding="utf-8") as f:
+        conf = document_config.read_config_file(f)
+
+    no_rendering_layouts = document_config.generate_work_item_layouts(
+        conf[0].work_item_layouts
+    )
+    rendering_layouts = document_config.generate_work_item_layouts(
+        conf[1].work_item_layouts
+    )
+
+    assert len(conf) == 2
+    assert len(no_rendering_layouts) == 0
+    assert len(rendering_layouts) == 2
+    assert conf[0].template_directory == "jupyter-notebooks/document_templates"
+    assert conf[0].template == "test-icd.html.j2"
+    assert conf[0].heading_numbering is False
+    assert len(conf[0].instances) == 2
+    assert conf[0].instances[0].polarion_space == "_default"
+    assert conf[0].instances[0].polarion_name == "id123"
+    assert conf[0].instances[0].polarion_title == "Interface23"
+    assert conf[0].instances[0].params == {
+        "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
+    }
+    assert rendering_layouts[0].label == "Component Exchange"
+    assert rendering_layouts[0].type == "componentExchange"
+    assert rendering_layouts[0].layouter.value == "section"
+    assert rendering_layouts[0].properties.fields_at_start == ["ID"]
+    assert rendering_layouts[0].properties.fields_at_end == ["context_diagram"]
+    assert rendering_layouts[0].properties.sidebar_work_item_fields == [
+        "ID",
+        "context_diagram",
+    ]
+    assert rendering_layouts[0].properties.fields_at_end_as_table is True
+    assert rendering_layouts[0].properties.hidden is True
+    assert rendering_layouts[1].layouter.value == "paragraph"

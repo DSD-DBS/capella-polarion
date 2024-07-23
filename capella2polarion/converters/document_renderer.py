@@ -123,6 +123,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         polarion_folder: str,
         polarion_name: str,
         document_title: str | None = None,
+        heading_numbering: bool = False,
+        rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         **kwargs: t.Any,
     ):
         """Render a new Polarion document."""
@@ -145,6 +147,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         polarion_folder: str | None = None,
         polarion_name: str | None = None,
         document_title: str | None = None,
+        heading_numbering: bool = False,
+        rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         document: polarion_api.Document | None = None,
         **kwargs: t.Any,
     ):
@@ -171,7 +175,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 title=document_title,
                 module_folder=polarion_folder,
                 module_name=polarion_name,
+                outline_numbering=heading_numbering,
             )
+            if rendering_layouts is not None:
+                session.rendering_layouts = rendering_layouts
 
         document.home_page_content = polarion_api.TextContent(
             "text/html",

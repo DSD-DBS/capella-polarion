@@ -137,10 +137,14 @@ def synchronize(
     type=click.File(mode="r", encoding="utf8"),
     default=None,
 )
+@click.option("--overwrite-layouts", is_flag=True, default=False)
+@click.option("--overwrite-numbering", is_flag=True, default=False)
 @click.pass_context
 def render_documents(
     ctx: click.core.Context,
     document_rendering_config: typing.TextIO,
+    overwrite_layouts: bool,
+    overwrite_numbering: bool,
 ) -> None:
     """Call this command to render documents based on a config file."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -157,12 +161,19 @@ def render_documents(
         capella_to_polarion_cli.capella_model,
     )
     for c in configs:
+        rendering_layouts = document_config.generate_work_item_layouts(
+            c.work_item_layouts
+        )
         for inst in c.instances:
             old_doc = polarion_worker.get_document(
                 inst.polarion_space, inst.polarion_name
             )
             if old_doc:
                 old_doc.title = inst.polarion_title
+                if overwrite_layouts:
+                    old_doc.rendering_layouts = rendering_layouts
+                if overwrite_numbering:
+                    old_doc.outline_numbering = c.heading_numbering
                 new_doc, wis = renderer.render_document(
                     c.template_directory,
                     c.template,
@@ -178,6 +189,8 @@ def render_documents(
                     inst.polarion_space,
                     inst.polarion_name,
                     inst.polarion_title,
+                    c.heading_numbering,
+                    rendering_layouts,
                     **inst.params,
                 )
                 polarion_worker.post_document(new_doc)
