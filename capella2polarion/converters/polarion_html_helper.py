@@ -9,6 +9,12 @@ import re
 import capellambse
 import jinja2
 from capellambse import helpers as chelpers
+from lxml import etree, html
+
+heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
+h_regex = re.compile("h[0-9]")
+wi_regex = re.compile(f"{heading_id_prefix}(.*)")
+
 
 POLARION_WORK_ITEM_URL = (
     '<span class="polarion-rte-link" data-type="workItem" '
@@ -102,3 +108,41 @@ class JinjaRendererMixin:
 
     def setup_env(self, env: jinja2.Environment):
         """Implement this method to adjust a newly created environment."""
+
+
+def remove_table_ids(
+    html_content: str | list[etree._Element],
+) -> list[etree._Element]:
+    """Remove the ID field from all tables.
+
+    This is necessary due to a bug in Polarion.
+    """
+    html_fragments = _ensure_fragments(html_content)
+
+    for element in html_fragments:
+        if element.tag == "table":
+            element.remove("id")
+
+    return html_fragments
+
+
+def _ensure_fragments(
+    html_content: str | list[etree._Element],
+) -> list[etree._Element]:
+    if isinstance(html_content, str):
+        return html.fragments_fromstring(html_content)
+    return html_content
+
+
+def extract_headings(html_content: str | list[etree._Element]) -> list[str]:
+    """Return a list of work item IDs for all headings in the given content."""
+    heading_ids = []
+    html_fragments = _ensure_fragments(html_content)
+
+    for element in html_fragments:
+        if h_regex.fullmatch(element.tag):
+            matches = wi_regex.match(element.get("id"))
+            if matches:
+                heading_ids.append(matches.group(1))
+
+    return heading_ids

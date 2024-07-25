@@ -3,24 +3,21 @@
 """A jinja renderer for Polarion documents."""
 
 import dataclasses
+import html
 import logging
 import pathlib
-import re
 import typing as t
 
 import capellambse
 import jinja2
 import polarion_rest_api_client as polarion_api
-from capellambse import helpers as chelpers
 from lxml import etree
+from lxml import html as lxmlhtml
 
 from capella2polarion.connectors import polarion_repo
 
 from . import polarion_html_helper
 
-heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
-h_regex = re.compile("h[0-9]")
-wi_regex = re.compile(f"{heading_id_prefix}(.*)")
 logger = logging.getLogger(__name__)
 
 
@@ -56,11 +53,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         """Add globals and filters to the environment."""
         env.globals["insert_work_item"] = self.__insert_work_item
         env.globals["heading"] = self.__heading
+        env.globals["work_item_field"] = self.__work_item_field
         env.filters["link_work_item"] = self.__link_work_item
 
     def __insert_work_item(
         self, obj: object, session: RenderingSession, level: int | None = None
-    ) -> str | None:
+    ) -> str:
         if (obj := self.check_model_element(obj)) is None:
             return polarion_html_helper.RED_TEXT.format(
                 text="A none model object was passed to insert a work item."
@@ -108,7 +106,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             text=f"Missing WorkItem for UUID {obj.uuid}"
         )
 
-    def __link_work_item(self, obj: object) -> str | None:
+    def __link_work_item(self, obj: object) -> str:
         if (obj := self.check_model_element(obj)) is None:
             raise TypeError("object passed was no model element")
 
@@ -127,8 +125,25 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if session.heading_ids:
             hid = session.heading_ids.pop(0)
             session.headings.append(polarion_api.WorkItem(id=hid, title=text))
-            return f'<h{level} id="{heading_id_prefix}{hid}"></h{level}>'
+            return (
+                f"<h{level} "
+                f'id="{polarion_html_helper.heading_id_prefix}{hid}">'
+                f"</h{level}>"
+            )
         return f"<h{level}>{text}</h{level}>"
+
+    def __work_item_field(self, obj: object, field: str) -> t.Any:
+        if (obj := self.check_model_element(obj)) is None:
+            raise TypeError("object passed was no model element")
+
+        if wi := self.polarion_repository.get_work_item_by_capella_uuid(
+            obj.uuid
+        ):
+            return getattr(
+                wi, field, f"Missing field {field} for work item {wi.id}"
+            )
+
+        return f"No work item for {obj.uuid}"
 
     @t.overload
     def render_document(
@@ -184,7 +199,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if document is not None:
             session.rendering_layouts = document.rendering_layouts or []
             if document.home_page_content and document.home_page_content.value:
-                session.heading_ids = self._extract_headings(document)
+                session.heading_ids = polarion_html_helper.extract_headings(
+                    document.home_page_content.value
+                )
         else:
             document = polarion_api.Document(
                 title=document_title,
@@ -203,16 +220,112 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
         return document, session.headings
 
-    def _extract_headings(self, document):
-        heading_ids = []
-
-        def collect_heading_work_items(element: etree._Element):
-            if h_regex.fullmatch(element.tag):
-                matches = wi_regex.match(element.get("id"))
-                if matches:
-                    heading_ids.append(matches.group(1))
-
-        chelpers.process_html_fragments(
-            document.home_page_content.value, collect_heading_work_items
+    def update_mixed_authority_document(
+        self,
+        document: polarion_api.Document,
+        template_folder: str | pathlib.Path,
+        sections: dict[str, str],
+        global_parameters: dict[str, t.Any],
+        section_parameters: dict[str, dict[str, t.Any]],
+    ):
+        """Update a mixed authority document."""
+        assert (
+            document.home_page_content and document.home_page_content.value
+        ), "In mixed authority the document must have content"
+        html_elements = lxmlhtml.fragments_fromstring(
+            document.home_page_content.value
         )
-        return heading_ids
+        section_areas = self._extract_section_areas(html_elements)
+
+        session = RenderingSession(
+            rendering_layouts=document.rendering_layouts
+        )
+        env = self._get_jinja_env(template_folder)
+
+        new_content = []
+        last_section_end = 0
+
+        for section_name, area in section_areas.items():
+            if section_name not in sections:
+                logger.warning(
+                    "Found section %s in document, "
+                    "but it is not defined in the config",
+                    section_name,
+                )
+                continue
+            new_content += html_elements[last_section_end : area[0] + 1]
+            last_section_end = area[1]
+            current_content = html_elements[area[0] + 1 : area[1]]
+            session.heading_ids = polarion_html_helper.extract_headings(
+                current_content
+            )
+            template = env.get_template(sections[section_name])
+            content = template.render(
+                model=self.model,
+                session=session,
+                **(
+                    global_parameters
+                    | section_parameters.get(section_name, {})
+                ),
+            )
+            new_content += lxmlhtml.fragments_fromstring(content)
+
+        new_content += html_elements[last_section_end:]
+        new_content = polarion_html_helper.remove_table_ids(new_content)
+
+        document.home_page_content = polarion_api.TextContent(
+            "text/html",
+            "\n".join(
+                [
+                    lxmlhtml.tostring(element).decode("utf-8")
+                    for element in new_content
+                ]
+            ),
+        )
+        document.rendering_layouts = session.rendering_layouts
+
+        return document, session.headings
+
+    def _extract_section_areas(self, html_elements: list[etree._Element]):
+        section_areas = {}
+        current_area_id = None
+        current_area_start = None
+        for element_index, element in enumerate(html_elements):
+            if (
+                element.tag != "div"
+                or element.get("class") != "polarion-dle-wiki-block"
+            ):
+                continue
+            for child in element.iterchildren():
+                if child.get("class") == "polarion-dle-wiki-block-source":
+                    text = html.unescape(child.text)
+                    content = lxmlhtml.fragments_fromstring(text)
+                    if (
+                        content
+                        and not isinstance(content[0], str)
+                        and content[0].tag == "div"
+                    ):
+                        element_id = content[0].get("id")
+                        if content[0].get("class") == "c2pAreaStart":
+                            assert (
+                                element_id is not None
+                            ), "There was no id set to identify the area"
+                            assert (
+                                current_area_id is None
+                            ), f"Started a new area {element_id} while being in area {current_area_id}"
+                            current_area_id = element_id
+                            current_area_start = element_index
+                        elif content[0].get("class") == "c2pAreaEnd":
+                            assert (
+                                element_id is not None
+                            ), "There was no id set to identify the area"
+                            assert (
+                                current_area_id == element_id
+                            ), f"Ended area {element_id} while being in area {current_area_id}"
+                            section_areas[current_area_id] = (
+                                current_area_start,
+                                element_index,
+                            )
+                            current_area_id = None
+                            current_area_start = None
+        return section_areas

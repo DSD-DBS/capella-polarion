@@ -160,11 +160,11 @@ def render_documents(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
     )
-    for c in configs:
+    for config in configs:
         rendering_layouts = document_config.generate_work_item_layouts(
-            c.work_item_layouts
+            config.work_item_layouts
         )
-        for inst in c.instances:
+        for inst in config.instances:
             old_doc = polarion_worker.get_document(
                 inst.polarion_space, inst.polarion_name
             )
@@ -173,23 +173,23 @@ def render_documents(
                 if overwrite_layouts:
                     old_doc.rendering_layouts = rendering_layouts
                 if overwrite_numbering:
-                    old_doc.outline_numbering = c.heading_numbering
+                    old_doc.outline_numbering = config.heading_numbering
                 new_doc, wis = renderer.render_document(
-                    c.template_directory,
-                    c.template,
+                    config.template_directory,
+                    config.template,
                     document=old_doc,
                     **inst.params,
                 )
                 polarion_worker.update_document(new_doc)
                 polarion_worker.update_work_items(wis)
             else:
-                new_doc, _ = renderer.render_document(
-                    c.template_directory,
-                    c.template,
+                new_doc, wis = renderer.render_document(
+                    config.template_directory,
+                    config.template,
                     inst.polarion_space,
                     inst.polarion_name,
                     inst.polarion_title,
-                    c.heading_numbering,
+                    config.heading_numbering,
                     rendering_layouts,
                     **inst.params,
                 )
