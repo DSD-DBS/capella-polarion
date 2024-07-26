@@ -310,18 +310,20 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"
-                            assert (
-                                current_area_id is None
-                            ), f"Started a new area {element_id} while being in area {current_area_id}"
+                            assert current_area_id is None, (
+                                f"Started a new area {element_id} "
+                                f"while being in area {current_area_id}"
+                            )
                             current_area_id = element_id
                             current_area_start = element_index
                         elif content[0].get("class") == "c2pAreaEnd":
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"
-                            assert (
-                                current_area_id == element_id
-                            ), f"Ended area {element_id} while being in area {current_area_id}"
+                            assert current_area_id == element_id, (
+                                f"Ended area {element_id} "
+                                f"while being in area {current_area_id}"
+                            )
                             section_areas[current_area_id] = (
                                 current_area_start,
                                 element_index,

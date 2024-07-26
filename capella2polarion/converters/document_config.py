@@ -65,7 +65,8 @@ def generate_work_item_layouts(
             if not conf.show_title:
                 logger.warning(
                     "Either the title or the description must be shown."
-                    f"For that reason, the title will be shown for {_type}."
+                    "For that reason, the title will be shown for %s.",
+                    _type,
                 )
             layouter = polarion_api.data_models.Layouter.TITLE
         results.append(
