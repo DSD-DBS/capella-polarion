@@ -8,7 +8,6 @@ import typing
 
 import capellambse
 import click
-import polarion_rest_api_client as polarion_api
 from capellambse import cli_helpers
 
 from capella2polarion.cli import Capella2PolarionCli
@@ -206,9 +205,10 @@ def render_documents(
                 rendering_layouts if overwrite_layouts else None,
                 config.heading_numbering if overwrite_numbering else None,
             )
-            assert (
-                old_doc is not None
-            ), f"Did not find document {instance.polarion_space}/{instance.polarion_name}"
+            assert old_doc is not None, (
+                "Did not find document "
+                f"{instance.polarion_space}/{instance.polarion_name}"
+            )
             new_doc, work_items = renderer.update_mixed_authority_document(
                 old_doc,
                 config.template_directory,
