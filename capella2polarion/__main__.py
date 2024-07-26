@@ -8,6 +8,7 @@ import typing
 
 import capellambse
 import click
+import polarion_rest_api_client as polarion_api
 from capellambse import cli_helpers
 
 from capella2polarion.cli import Capella2PolarionCli
@@ -160,40 +161,63 @@ def render_documents(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
     )
-    for config in configs:
+    for config in configs.full_authority:
         rendering_layouts = document_config.generate_work_item_layouts(
             config.work_item_layouts
         )
-        for inst in config.instances:
-            old_doc = polarion_worker.get_document(
-                inst.polarion_space, inst.polarion_name
-            )
-            if old_doc:
-                old_doc.title = inst.polarion_title
-                if overwrite_layouts:
-                    old_doc.rendering_layouts = rendering_layouts
-                if overwrite_numbering:
-                    old_doc.outline_numbering = config.heading_numbering
-                new_doc, wis = renderer.render_document(
+        for instance in config.instances:
+            if old_doc := polarion_worker.get_and_customize_document(
+                instance.polarion_space,
+                instance.polarion_name,
+                instance.polarion_title,
+                rendering_layouts if overwrite_layouts else None,
+                config.heading_numbering if overwrite_numbering else None,
+            ):
+                new_doc, work_items = renderer.render_document(
                     config.template_directory,
                     config.template,
                     document=old_doc,
-                    **inst.params,
+                    **instance.params,
                 )
                 polarion_worker.update_document(new_doc)
-                polarion_worker.update_work_items(wis)
+                polarion_worker.update_work_items(work_items)
             else:
-                new_doc, wis = renderer.render_document(
+                new_doc, _ = renderer.render_document(
                     config.template_directory,
                     config.template,
-                    inst.polarion_space,
-                    inst.polarion_name,
-                    inst.polarion_title,
+                    instance.polarion_space,
+                    instance.polarion_name,
+                    instance.polarion_title,
                     config.heading_numbering,
                     rendering_layouts,
-                    **inst.params,
+                    **instance.params,
                 )
                 polarion_worker.post_document(new_doc)
+
+    for config in configs.mixed_authority:
+        rendering_layouts = document_config.generate_work_item_layouts(
+            config.work_item_layouts
+        )
+        for instance in config.instances:
+            old_doc = polarion_worker.get_and_customize_document(
+                instance.polarion_space,
+                instance.polarion_name,
+                instance.polarion_title,
+                rendering_layouts if overwrite_layouts else None,
+                config.heading_numbering if overwrite_numbering else None,
+            )
+            assert (
+                old_doc is not None
+            ), f"Did not find document {instance.polarion_space}/{instance.polarion_name}"
+            new_doc, work_items = renderer.update_mixed_authority_document(
+                old_doc,
+                config.template_directory,
+                config.sections,
+                instance.params,
+                instance.section_params,
+            )
+            polarion_worker.update_document(new_doc)
+            polarion_worker.update_work_items(work_items)
 
 
 if __name__ == "__main__":

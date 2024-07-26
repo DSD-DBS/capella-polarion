@@ -141,30 +141,85 @@ def test_update_document(
     assert wis[0].title == "Class Document"
 
 
-def test_document_config():
-    with open("tests/data/documents/config.yaml", "r", encoding="utf-8") as f:
+def test_full_authority_document_config():
+    with open(
+        "tests/data/documents/full_authority_config.yaml",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        conf = document_config.read_config_file(f)
+
+    assert len(conf.full_authority) == 2
+    assert (
+        conf.full_authority[0].template_directory
+        == "jupyter-notebooks/document_templates"
+    )
+    assert conf.full_authority[0].template == "test-icd.html.j2"
+    assert conf.full_authority[0].heading_numbering is False
+    assert len(conf.full_authority[0].instances) == 2
+    assert conf.full_authority[0].instances[0].polarion_space == "_default"
+    assert conf.full_authority[0].instances[0].polarion_name == "id123"
+    assert conf.full_authority[0].instances[0].polarion_title == "Interface23"
+    assert conf.full_authority[0].instances[0].params == {
+        "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
+    }
+
+
+def test_mixed_authority_document_config():
+    with open(
+        "tests/data/documents/mixed_config.yaml", "r", encoding="utf-8"
+    ) as f:
+        conf = document_config.read_config_file(f)
+
+    assert len(conf.full_authority) == 0
+    assert len(conf.mixed_authority) == 2
+    assert (
+        conf.mixed_authority[0].template_directory
+        == "jupyter-notebooks/document_templates"
+    )
+    assert conf.mixed_authority[0].sections == {
+        "section1": "test-icd.html.j2",
+        "section2": "test-icd.html.j2",
+    }
+    assert conf.mixed_authority[0].heading_numbering is False
+    assert len(conf.mixed_authority[0].instances) == 2
+    assert conf.mixed_authority[0].instances[0].polarion_space == "_default"
+    assert conf.mixed_authority[0].instances[0].polarion_name == "id123"
+    assert conf.mixed_authority[0].instances[0].polarion_title == "Interface23"
+    assert conf.mixed_authority[0].instances[0].params == {
+        "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
+    }
+    assert conf.mixed_authority[1].instances[0].section_params == {
+        "section1": {"param_1": "Test"}
+    }
+
+
+def test_combined_config():
+    with open(
+        "tests/data/documents/combined_config.yaml", "r", encoding="utf-8"
+    ) as f:
+        conf = document_config.read_config_file(f)
+    assert len(conf.full_authority) == 2
+    assert len(conf.mixed_authority) == 2
+
+
+def test_rendering_config():
+    with open(
+        "tests/data/documents/full_authority_config.yaml",
+        "r",
+        encoding="utf-8",
+    ) as f:
         conf = document_config.read_config_file(f)
 
     no_rendering_layouts = document_config.generate_work_item_layouts(
-        conf[0].work_item_layouts
+        conf.full_authority[0].work_item_layouts
     )
     rendering_layouts = document_config.generate_work_item_layouts(
-        conf[1].work_item_layouts
+        conf.full_authority[1].work_item_layouts
     )
 
-    assert len(conf) == 2
     assert len(no_rendering_layouts) == 0
     assert len(rendering_layouts) == 2
-    assert conf[0].template_directory == "jupyter-notebooks/document_templates"
-    assert conf[0].template == "test-icd.html.j2"
-    assert conf[0].heading_numbering is False
-    assert len(conf[0].instances) == 2
-    assert conf[0].instances[0].polarion_space == "_default"
-    assert conf[0].instances[0].polarion_name == "id123"
-    assert conf[0].instances[0].polarion_title == "Interface23"
-    assert conf[0].instances[0].params == {
-        "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
-    }
     assert rendering_layouts[0].label == "Component Exchange"
     assert rendering_layouts[0].type == "componentExchange"
     assert rendering_layouts[0].layouter.value == "section"

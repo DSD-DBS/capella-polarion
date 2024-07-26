@@ -1,0 +1,68 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mixed_authority:
+  - template_directory: jupyter-notebooks/document_templates
+    sections:
+      section1: test-icd.html.j2
+      section2: test-icd.html.j2
+    instances:
+      - polarion_space: _default
+        polarion_name: id123
+        polarion_title: Interface23
+        params:
+          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+      - polarion_space: _default
+        polarion_name: id1234
+        params:
+          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+  - template_directory: jupyter-notebooks/document_templates
+    sections:
+      section1: test-icd.html.j2
+      section2: test-icd.html.j2
+    heading_numbering: True
+    work_item_layouts:
+      componentExchange:
+        fields_at_start:
+          - ID
+        fields_at_end:
+          - context_diagram
+      class:
+        show_title: False
+        fields_at_end:
+          - tree_view_diagram
+    instances:
+      - polarion_space: _default
+        polarion_name: id1234
+        section_params:
+          section1:
+            param_1: Test
+full_authority:
+  - template_directory: jupyter-notebooks/document_templates
+    template: test-icd.html.j2
+    instances:
+      - polarion_space: _default
+        polarion_name: id123
+        polarion_title: Interface23
+        params:
+          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+      - polarion_space: _default
+        polarion_name: id1234
+        params:
+          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+  - template_directory: jupyter-notebooks/document_templates
+    template: test-no-args.html.j2
+    heading_numbering: True
+    work_item_layouts:
+      componentExchange:
+        fields_at_start:
+          - ID
+        fields_at_end:
+          - context_diagram
+      class:
+        show_title: False
+        fields_at_end:
+          - tree_view_diagram
+    instances:
+      - polarion_space: _default
+        polarion_name: id1234

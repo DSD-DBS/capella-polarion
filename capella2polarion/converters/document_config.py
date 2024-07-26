@@ -33,11 +33,18 @@ class DocumentRenderingInstance(pydantic.BaseModel):
     params: dict[str, t.Any] = pydantic.Field(default_factory=dict)
 
 
-class DocumentRenderingConfig(pydantic.BaseModel):
+class SectionBasedDocumentRenderingInstance(DocumentRenderingInstance):
+    """An instance of a mixed authority doc with section specific params."""
+
+    section_params: dict[str, dict[str, t.Any]] = pydantic.Field(
+        default_factory=dict
+    )
+
+
+class BaseDocumentRenderingConfig(pydantic.BaseModel):
     """A template config, which can result in multiple Polarion documents."""
 
     template_directory: str | pathlib.Path
-    template: str
     heading_numbering: bool = False
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
@@ -45,10 +52,36 @@ class DocumentRenderingConfig(pydantic.BaseModel):
     instances: list[DocumentRenderingInstance]
 
 
-def read_config_file(config: t.TextIO):
+class FullAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
+    """Full authority document config with one template per document."""
+
+    template: str
+
+
+class MixedAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
+    """Mixed authority document with multiple auto generated sections."""
+
+    sections: dict[str, str]
+    instances: list[SectionBasedDocumentRenderingInstance]
+
+
+class DocumentConfigs(pydantic.BaseModel):
+    """The overall document configuration repository."""
+
+    full_authority: list[FullAuthorityDocumentRenderingConfig] = (
+        pydantic.Field(default_factory=list)
+    )
+    mixed_authority: list[MixedAuthorityDocumentRenderingConfig] = (
+        pydantic.Field(default_factory=list)
+    )
+
+
+def read_config_file(config: t.TextIO) -> DocumentConfigs:
     """Read a yaml containing a list of DocumentRenderingConfigs."""
     config_content = yaml.safe_load(config)
-    return [DocumentRenderingConfig(**c) for c in config_content]
+    if isinstance(config_content, list):
+        config_content = {"full_authority": config_content}
+    return DocumentConfigs(**config_content)
 
 
 def generate_work_item_layouts(
