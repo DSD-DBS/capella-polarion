@@ -4,7 +4,7 @@
 variables:
   CAPELLA2POLARION_DEBUG: "0"
 
-capella2polarion_synchronise_elements:
+capella2polarion_render_documents:
   needs:
     - job: update_capella_diagram_cache
       artifacts: true
