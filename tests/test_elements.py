@@ -1492,6 +1492,42 @@ class TestSerializers:
                 },
                 id="constraint",
             ),
+            pytest.param(
+                "sa",
+                "00e7b925-cf4c-4cb0-929e-5409a1cd872b",
+                {
+                    "type": "systemFunction",
+                    "title": "Sysexfunc",
+                    "uuid_capella": "00e7b925-cf4c-4cb0-929e-5409a1cd872b",
+                    "description_type": "text/html",
+                    "description": markupsafe.Markup(""),
+                    "additional_attributes": {
+                        "a different type": {
+                            "type": "text/html",
+                            "value": "<p>More text other text. Req text</p>\n",
+                        },
+                        "other": {
+                            "type": "text/html",
+                            "value": "<p>A little bit of text. Such that it is"
+                            " displayed.</p>\n\n<p>...</p>\n",
+                        },
+                        "rationale": {
+                            "type": "text/html",
+                            "value": "<p>And some text</p>\n",
+                        },
+                        "reqtype": {
+                            "type": "text/html",
+                            "value": "<p>Test requirement 1 really l o n g "
+                            "text that is&nbsp;way too long to display here as"
+                            " that</p>\n\n<p>&lt; &gt; &quot; &#39;</p>\n\n"
+                            "<ul>\n\t<li>This&nbsp;is a list</li>\n\t<li>an"
+                            " unordered one</li>\n</ul>\n\n<ol>\n\t<li>Ordered"
+                            " list</li>\n\t<li>Ok</li>\n</ol>\n",
+                        },
+                    },
+                },
+                id="Requirements",
+            ),
         ],
     )
     def test_generic_work_item(

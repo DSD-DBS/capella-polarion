@@ -79,7 +79,8 @@
                 target="#85d41db2-9e17-438b-95cf-49342452ddf3"/>
             <ownedRelations xsi:type="CapellaRequirements:CapellaIncomingRelation"
                 id="24c824ef-b187-4725-a051-a68707e82d70" ReqIFLongName="Test req"
-                source="#3c2d312c-37c9-41b5-8c32-67578fa52dc3" target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
+                relationType="#f1aceb81-5f70-4469-a127-94830eb9be04" source="#3c2d312c-37c9-41b5-8c32-67578fa52dc3"
+                target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
           </ownedRequirements>
           <ownedRequirements xsi:type="Requirements:Requirement" id="0a9a68b1-ba9a-4793-b2cf-4448f0b4b8cc"
               ReqIFLongName="TypedReq2" ReqIFName="" requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e">
@@ -91,12 +92,16 @@
           <ownedRequirements xsi:type="Requirements:Folder" id="e179d6ff-5301-42a6-bf6f-4fec79b18827"
               ReqIFName="Subfolder" requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e">
             <ownedRequirements xsi:type="Requirements:Requirement" id="79291c33-5147-4543-9398-9077d582576d"
-                ReqIFName="" requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e"
-                requirementTypeProxy="">
+                ReqIFLongName="Has a long name" ReqIFName="" requirementType="#15006fdf-9098-4d8d-af5b-5aae6880c571"
+                ReqIFText="&lt;p>And some text&lt;/p>&#xA;" requirementTypeProxy="">
               <ownedRelations xsi:type="CapellaRequirements:CapellaIncomingRelation"
                   id="41e1b786-a6a1-46cb-9b9c-b302d9278c1c" ReqIFLongName="this one"
+                  relationType="#f1aceb81-5f70-4469-a127-94830eb9be04" relationTypeProxy=""
                   source="#79291c33-5147-4543-9398-9077d582576d" target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
             </ownedRequirements>
+            <ownedRequirements xsi:type="Requirements:Requirement" id="8bb7ccda-9114-4061-94c2-f9fa18080e8d"
+                ReqIFLongName="Other one" requirementType="#00195554-8fae-4687-86ca-77c93330893d"
+                ReqIFText="&lt;p>A little bit of text. Such that it is displayed.&lt;/p>&#xA;&#xA;&lt;p>...&lt;/p>&#xA;"/>
           </ownedRequirements>
         </ownedRequirements>
         <ownedRequirements xsi:type="Requirements:Requirement" id="85d41db2-9e17-438b-95cf-49342452ddf3"
@@ -148,6 +153,8 @@
           <ownedAttributes xsi:type="Requirements:AttributeDefinition" id="0bd40628-10a5-451e-86da-187c93bc3b10"
               ReqIFLongName="version" definitionType="#3b7ec38a-e26a-4c23-9fa3-275af3f629ee"/>
         </ownedTypes>
+        <ownedTypes xsi:type="Requirements:RequirementType" id="15006fdf-9098-4d8d-af5b-5aae6880c571"
+            ReqIFLongName="Rationale"/>
       </ownedExtensions>
       <ownedExtensions xsi:type="CapellaRequirements:CapellaModule" id="637aeba7-4125-4bf4-95e4-3ce603ac3d40"
           ReqIFLongName="Module" ReqIFName="Next Module" moduleType="#3a284e44-3b63-48a7-85e9-caeb967c930c">
@@ -163,6 +170,8 @@
             ReqIFLongName="Other Module"/>
         <ownedTypes xsi:type="Requirements:RequirementType" id="00195554-8fae-4687-86ca-77c93330893d"
             ReqIFLongName="Other"/>
+        <ownedTypes xsi:type="Requirements:RequirementType" id="b2517968-72f0-43c3-b858-b50ff5a66acb"
+            ReqIFLongName="A different type"/>
       </ownedExtensions>
       <ownedFunctionPkg xsi:type="org.polarsys.capella.core.data.oa:OperationalActivityPkg"
           id="fb79bf91-f946-4d5b-8a3f-a4b2d28eed5c" name="Operational Activities">
@@ -1091,14 +1100,26 @@ The predator is far away</bodies>
         id="79d35fe7-f172-4405-b499-48aef545148a" name="System Analysis">
       <ownedExtensions xsi:type="CapellaRequirements:CapellaModule" id="f66cb4f3-7593-44aa-a7b2-1e42d8b9f160">
         <ownedRequirements xsi:type="Requirements:Requirement" id="32d66740-e428-4600-be68-8410d9d568cc"
-            requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e">
+            requirementType="#b2517968-72f0-43c3-b858-b50ff5a66acb" ReqIFText="&lt;p>More text other text. Req text&lt;/p>&#xA;">
           <ownedAttributes xsi:type="Requirements:IntegerValueAttribute" id="8359da37-21bf-4394-b7d2-22686ccebe55"
               definition="#0bd40628-10a5-451e-86da-187c93bc3b10" value="1"/>
+          <ownedRelations xsi:type="CapellaRequirements:CapellaIncomingRelation" id="9e1e268e-ef50-4423-85b4-1395bd0309f8"
+              relationType="#f1aceb81-5f70-4469-a127-94830eb9be04" source="#32d66740-e428-4600-be68-8410d9d568cc"
+              target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
         </ownedRequirements>
         <ownedRequirements xsi:type="Requirements:Requirement" id="7e8d0edf-67f0-48c5-82f6-ec9cdb809eee"
-            ReqIFLongName="Undefined type"/>
+            ReqIFLongName="Undefined type">
+          <ownedRelations xsi:type="CapellaRequirements:CapellaIncomingRelation" id="a99d5db5-8a17-436d-af50-8eb81d7a7191"
+              relationType="#f1aceb81-5f70-4469-a127-94830eb9be04" source="#7e8d0edf-67f0-48c5-82f6-ec9cdb809eee"
+              target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
+        </ownedRequirements>
         <ownedRequirements xsi:type="Requirements:Requirement" id="db4d4c74-b913-4d9a-8905-7d93d3360560"
-            ReqIFLongName="Other type" requirementType="#00195554-8fae-4687-86ca-77c93330893d"/>
+            ReqIFLongName="Other type" requirementType="#00195554-8fae-4687-86ca-77c93330893d"
+            ReqIFText="&lt;p>A little bit of text. Such that it is displayed.&lt;/p>&#xA;&#xA;&lt;p>...&lt;/p>&#xA;">
+          <ownedRelations xsi:type="CapellaRequirements:CapellaIncomingRelation" id="ff350353-78aa-4336-a0ec-f39b76a18e17"
+              relationType="#f1aceb81-5f70-4469-a127-94830eb9be04" source="#db4d4c74-b913-4d9a-8905-7d93d3360560"
+              target="#00e7b925-cf4c-4cb0-929e-5409a1cd872b"/>
+        </ownedRequirements>
       </ownedExtensions>
       <ownedFunctionPkg xsi:type="org.polarsys.capella.core.data.ctx:SystemFunctionPkg"
           id="17cbefe8-c2ca-49aa-9aef-23259969ac91" name="System Functions">
