@@ -57,7 +57,7 @@ def _format_texts(
         return {"type": "text/html", "value": text}
 
     requirement_types = {}
-    for typ, texts in type_texts.items():
+    for typ, texts in sorted(type_texts.items()):
         requirement_types[typ.lower()] = _format(texts)
     return requirement_types
 
