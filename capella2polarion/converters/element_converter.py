@@ -494,9 +494,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         obj = converter_data.capella_element
         assert hasattr(obj, "precondition"), "Missing PreCondition Attribute"
         assert hasattr(obj, "postcondition"), "Missing PostCondition Attribute"
-        assert isinstance(obj, PrePostConditionElementTypes)
+        assert not isinstance(obj, diag.Diagram)
 
-        def get_condition(cap: PrePostConditionElement, name: str) -> str:
+        def get_condition(cap: common.GenericElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
                 return ""
             _, value, _ = self._sanitize_linked_text(condition)
