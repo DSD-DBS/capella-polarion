@@ -71,13 +71,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 layout_index += 1
 
             if layout_index >= len(session.rendering_layouts):
+                assert wi.type is not None
+                label = polarion_html_helper.camel_case_to_words(wi.type)
                 session.rendering_layouts.append(
                     polarion_api.RenderingLayout(
-                        type=wi.type,
-                        layouter="section",
-                        label=polarion_html_helper.camel_case_to_words(
-                            wi.type
-                        ),
+                        type=wi.type, layouter="section", label=label
                     )
                 )
 

@@ -19,6 +19,7 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
+from capellambse.model import diagram as diag
 from capellambse.model.crosslayer import interaction
 from capellambse.model.layers import oa
 from lxml import etree
@@ -32,9 +33,10 @@ RE_DESCR_LINK_PATTERN = re.compile(
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 
-PrePostConditionElement = t.Union[
+PrePostConditionElement: t.TypeAlias = t.Union[
     oa.OperationalCapability, interaction.Scenario
 ]
+PrePostConditionElementTypes = (oa.OperationalCapability, interaction.Scenario)
 
 logger = logging.getLogger(__name__)
 C2P_IMAGE_PREFIX = "__C2P__"
@@ -95,7 +97,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
-        work_items = [self.serialize(uuid) for uuid in self.converter_session]
+        work_items = (self.serialize(uuid) for uuid in self.converter_session)
         return list(filter(None, work_items))
 
     def serialize(self, uuid: str) -> data_models.CapellaWorkItem | None:
@@ -150,6 +152,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         work_item: data_models.CapellaWorkItem,
         attachment: polarion_api.WorkItemAttachment,
     ):
+        assert attachment.file_name is not None
         attachment.work_item_id = work_item.id or ""
         work_item.attachments.append(attachment)
         if attachment.mime_type == "image/svg+xml":
@@ -208,10 +211,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         self,
         template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
-        model_element: capellambse.model.GenericElement,
+        model_element: common.GenericElement | diag.Diagram,
     ):
         env = self._get_jinja_env(str(template_folder))
-        template = env.get_template(template_path)
+        template = env.get_template(str(template_path))
         rendered_jinja = template.render(
             object=model_element, model=self.model
         )
@@ -252,7 +255,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         }
 
     def _sanitize_linked_text(
-        self, obj: common.GenericElement
+        self, obj: common.GenericElement | diag.Diagram
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -269,7 +272,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return self._sanitize_text(obj, linked_text)
 
     def _sanitize_text(
-        self, obj: common.GenericElement, text: markupsafe.Markup | str
+        self,
+        obj: common.GenericElement | diag.Diagram,
+        text: markupsafe.Markup | str,
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -356,7 +361,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _get_requirement_types_text(
         self,
-        obj: common.GenericElement,
+        obj: common.GenericElement | diag.Diagram,
     ) -> dict[str, dict[str, str]]:
         type_texts = collections.defaultdict(list)
         for req in getattr(obj, "requirements", []):
@@ -401,8 +406,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             description_type="text/html",
             description=value,
             status="open",
-            **requirement_types,
+            **requirement_types,  # type:ignore[arg-type]
         )
+        assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
 
@@ -416,6 +422,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         """Serialize a diagram for Polarion."""
         diagram = converter_data.capella_element
         assert converter_data.work_item is not None
+        assert isinstance(diagram, diag.Diagram)
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
@@ -443,6 +450,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         obj = converter_data.capella_element
         assert hasattr(obj, "precondition"), "Missing PreCondition Attribute"
         assert hasattr(obj, "postcondition"), "Missing PostCondition Attribute"
+        assert isinstance(obj, PrePostConditionElementTypes)
 
         def get_condition(cap: PrePostConditionElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
