@@ -32,6 +32,7 @@ class PolarionDataRepository:
             {
                 work_item.uuid_capella: work_item.id
                 for work_item in polarion_work_items
+                if work_item.id is not None
             },
         )
         self._id_mapping.on_dup = bidict.OnDup(
@@ -50,11 +51,9 @@ class PolarionDataRepository:
         """Return the amount of registered Capella UUIDs."""
         return len(self._id_mapping)
 
-    def __getitem__(
-        self, item: str
-    ) -> tuple[str, data_models.CapellaWorkItem]:
-        """Return the polarion ID and work_item for a given Capella UUID."""
-        return self._id_mapping[item], self._work_items[item]
+    def __getitem__(self, item: str) -> data_models.CapellaWorkItem:
+        """Return the work_item for a given Capella UUID."""
+        return self._work_items[item]
 
     def __iter__(self) -> cabc.Iterator[str]:
         """Iterate all Capella UUIDs."""
@@ -89,12 +88,10 @@ class PolarionDataRepository:
             self.get_capella_uuid(work_item_id)  # type: ignore
         )
 
-    def update_work_items(
-        self,
-        work_items: list[data_models.CapellaWorkItem],
-    ):
+    def update_work_items(self, work_items: list[data_models.CapellaWorkItem]):
         """Update all mappings for the given Work Items."""
         for work_item in work_items:
+            assert work_item.id is not None
             if uuid_capella := self._id_mapping.inverse.get(work_item.id):
                 del self._id_mapping[uuid_capella]
                 del self._work_items[uuid_capella]

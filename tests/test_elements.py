@@ -959,7 +959,7 @@ class TestModelElements:
         link = polarion_api.WorkItemLink(
             "Obj-1", "Obj-2", "attribute", True, "project_id"
         )
-        _, work_item = base_object.pw.polarion_data_repo["uuid1"]
+        work_item = base_object.pw.polarion_data_repo["uuid1"]
         work_item.linked_work_items = [link]
         base_object.pw.polarion_data_repo.update_work_items(
             [
@@ -1000,10 +1000,10 @@ class TestModelElements:
         )
 
         work_item_1 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid1"][1].to_dict()
+            **base_object.pw.polarion_data_repo["uuid1"].to_dict()
         )
         work_item_2 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid2"][1].to_dict()
+            **base_object.pw.polarion_data_repo["uuid2"].to_dict()
         )
         work_item_1.linked_work_items_truncated = True
         work_item_2.linked_work_items_truncated = True

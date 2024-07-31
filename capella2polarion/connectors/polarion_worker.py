@@ -136,7 +136,6 @@ class CapellaPolarionWorker:
         If the delete flag is set to ``False`` in the context work items
         are marked as ``to be deleted`` via the status attribute.
         """
-
         existing_work_items = {
             uuid
             for uuid, _, work_item in self.polarion_data_repo.items()
@@ -192,8 +191,9 @@ class CapellaPolarionWorker:
         new = converter_data.work_item
         assert new is not None
         uuid = new.uuid_capella
-        _, old = self.polarion_data_repo[uuid]
+        old: data_models.CapellaWorkItem | None = self.polarion_data_repo[uuid]
         assert old is not None
+        assert isinstance(old.id, str)
 
         new.calculate_checksum()
         if not self.force_update and new == old:
@@ -204,12 +204,15 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        if old.get_current_checksum()[0] != "{":  # XXX: Remove in next release
-            old_checksums = {"__C2P__WORK_ITEM": old.get_current_checksum()}
+        old_checksum = old.get_current_checksum() or "None"
+        if old_checksum[0] != "{":  # XXX: Remove in next release
+            old_checksums = {"__C2P__WORK_ITEM": old_checksum}
         else:
-            old_checksums = json.loads(old.get_current_checksum())
+            old_checksums = json.loads(old_checksum)
 
-        new_checksums = json.loads(new.get_current_checksum())
+        new_checksum = new.get_current_checksum()
+        assert new_checksum is not None
+        new_checksums = json.loads(new_checksum)
 
         new_work_item_check_sum = new_checksums.pop("__C2P__WORK_ITEM")
         old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
@@ -220,6 +223,8 @@ class CapellaPolarionWorker:
                 old = self.project_client.work_items.get(
                     old.id, work_item_cls=data_models.CapellaWorkItem
                 )
+                assert old is not None
+                assert old.id is not None
                 if old.attachments:
                     old_attachments = (
                         self.project_client.work_items.attachments.get_all(
@@ -370,10 +375,14 @@ class CapellaPolarionWorker:
         all attachments of the new work item should have IDs.
         """
         new_attachment_dict = {
-            attachment.file_name: attachment for attachment in new.attachments
+            attachment.file_name: attachment
+            for attachment in new.attachments
+            if attachment.file_name is not None
         }
         old_attachment_dict = {
-            attachment.file_name: attachment for attachment in old_attachments
+            attachment.file_name: attachment
+            for attachment in old_attachments
+            if attachment.file_name is not None
         }
 
         created = False
@@ -396,22 +405,21 @@ class CapellaPolarionWorker:
                 old_attachment_dict[file_name]
             )
 
-        if new_attachments := list(
-            map(
-                new_attachment_dict.get,
-                new_attachment_file_names - old_attachment_file_names,
-            )
-        ):
+        new_attachments: cabc.Iterable[polarion_api.WorkItemAttachment] = map(
+            new_attachment_dict.get,  # type:ignore[arg-type]
+            new_attachment_file_names - old_attachment_file_names,
+        )
+        if new_attachments := list(filter(None, new_attachments)):
             self.project_client.work_items.attachments.create(new_attachments)
             created = True
 
-        attachments_for_update = {}
+        attachments_for_update: dict[str, polarion_api.WorkItemAttachment] = {}
         for common_attachment_file_name in (
             old_attachment_file_names & new_attachment_file_names
         ):
             attachment = new_attachment_dict[common_attachment_file_name]
             attachment.id = old_attachment_dict[common_attachment_file_name].id
-            if (
+            if attachment.file_name is not None and (
                 new_checksums.get(attachment.file_name)
                 != old_checksums.get(attachment.file_name)
                 or self.force_update
@@ -449,14 +457,10 @@ class CapellaPolarionWorker:
 
     @staticmethod
     def _get_link_id(link: polarion_api.WorkItemLink) -> str:
-        return "/".join(
-            (
-                link.primary_work_item_id,
-                link.role,
-                link.secondary_work_item_project,
-                link.secondary_work_item_id,
-            )
-        )
+        secondary_id = link.secondary_work_item_id
+        if link.secondary_work_item_project:
+            secondary_id = f"{link.secondary_work_item_project}/{secondary_id}"
+        return "/".join((link.primary_work_item_id, link.role, secondary_id))
 
     def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
