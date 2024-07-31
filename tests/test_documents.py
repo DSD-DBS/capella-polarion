@@ -232,3 +232,16 @@ def test_rendering_config():
     assert rendering_layouts[0].properties.fields_at_end_as_table is True
     assert rendering_layouts[0].properties.hidden is True
     assert rendering_layouts[1].layouter.value == "paragraph"
+
+
+def test_rendering_config_jinja(model: capellambse.MelodyModel):
+    with open(
+        "tests/data/documents/config.yaml.j2",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        conf = document_config.read_config_file(f, model)
+
+    assert len(conf.full_authority) == 1
+    assert len(conf.full_authority[0].work_item_layouts) == 3
+    assert len(conf.full_authority[0].instances) == 7

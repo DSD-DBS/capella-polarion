@@ -5,6 +5,8 @@ import logging
 import pathlib
 import typing as t
 
+import capellambse
+import jinja2
 import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
@@ -76,9 +78,16 @@ class DocumentConfigs(pydantic.BaseModel):
     )
 
 
-def read_config_file(config: t.TextIO) -> DocumentConfigs:
+def read_config_file(
+    config: t.TextIO, model: capellambse.MelodyModel | None = None
+) -> DocumentConfigs:
     """Read a yaml containing a list of DocumentRenderingConfigs."""
-    config_content = yaml.safe_load(config)
+    if config.name.endswith(".j2"):
+        assert model is not None, "For jinja configs the model is mandatory"
+        template = jinja2.Template(config.read())
+        config_content = yaml.safe_load(template.render(model=model))
+    else:
+        config_content = yaml.safe_load(config)
     if isinstance(config_content, list):
         config_content = {"full_authority": config_content}
     return DocumentConfigs(**config_content)

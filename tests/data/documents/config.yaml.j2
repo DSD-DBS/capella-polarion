@@ -1,0 +1,29 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+full_authority:
+  - template_directory: jinja/document_templates
+    template: icd.html.j2
+    heading_numbering: True
+    work_item_layouts:
+      componentExchange:
+        fields_at_start:
+          - ID
+        fields_at_end:
+          - context_diagram
+      class:
+        show_title: False
+        fields_at_end:
+          - tree_view_diagram
+      exchangeItem:
+        show_title: False
+    instances:
+    {%- for pl in model.search("PhysicalLink") %}
+    {%- if pl.ends %}
+    - polarion_space: ICDs
+      polarion_name: {{ pl.uuid }}
+      polarion_title: {{ pl.name }}
+      params:
+        physical_link: {{ pl.uuid }}
+    {%- endif -%}
+    {% endfor %}

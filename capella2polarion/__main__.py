@@ -155,7 +155,9 @@ def render_documents(
 
     polarion_worker.load_polarion_work_item_map()
 
-    configs = document_config.read_config_file(document_rendering_config)
+    configs = document_config.read_config_file(
+        document_rendering_config, capella_to_polarion_cli.capella_model
+    )
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
