@@ -364,14 +364,12 @@ class CapellaPolarionWorker:
                 old_attachment_dict[file_name]
             )
 
-        new_attachments: cabc.Iterator[polarion_api.WorkItemAttachment]
-        if new_attachments := map(
+        new_attachments: cabc.Iterator[polarion_api.WorkItemAttachment] = map(
             new_attachment_dict.get,  # type:ignore[arg-type]
             new_attachment_file_names - old_attachment_file_names,
-        ):
-            self.client.create_work_item_attachments(
-                list(filter(None, new_attachments))
-            )
+        )
+        if new_attachments := list(filter(None, new_attachments)):
+            self.client.create_work_item_attachments(new_attachments)
             created = True
 
         attachments_for_update: dict[str, polarion_api.WorkItemAttachment] = {}

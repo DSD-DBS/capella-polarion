@@ -21,12 +21,14 @@ from capella2polarion.converters import converter_config, data_session
 logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
-_GenericElementSerializer: t.TypeAlias = cabc.Callable[
-    [common.GenericElement, str, str, str, dict[str, t.Any]],
-    list[polarion_api.WorkItemLink],
-]
-_DiagramSerializer: t.TypeAlias = cabc.Callable[
-    [diag.Diagram, str, str, str, dict[str, t.Any]],
+_Serializer: t.TypeAlias = cabc.Callable[
+    [
+        t.Union[common.GenericElement, diag.Diagram],
+        str,
+        str,
+        str,
+        dict[str, t.Any],
+    ],
     list[polarion_api.WorkItemLink],
 ]
 
@@ -48,9 +50,7 @@ class LinkSerializer:
         self.model = model
         self.role_prefix = role_prefix
 
-        self.serializers: dict[
-            str, _GenericElementSerializer | _DiagramSerializer
-        ] = {
+        self.serializers: dict[str, _Serializer] = {
             "description_reference": self._handle_description_reference_links,
             "diagram_elements": self._handle_diagram_reference_links,
             "input_exchanges": self._handle_exchanges,
