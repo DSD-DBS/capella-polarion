@@ -48,7 +48,9 @@ def test_create_new_document(
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
     )
 
-    content = html.fromstring(new_doc.home_page_content.value)
+    content: list[etree._Element] = html.fromstring(
+        new_doc.home_page_content.value
+    )
     assert len(wis) == 0
     assert new_doc.rendering_layouts == [
         polarion_api.RenderingLayout(
@@ -56,26 +58,17 @@ def test_create_new_document(
         )
     ]
     assert len(content) == 4
-    assert (
-        etree.tostring(content[0])
-        .decode("utf-8")
-        .startswith("<h1>Class Document</h1>")
+    assert content[0].tag == "h1"
+    assert content[0].text == "Class Document"
+    assert content[2].tag == "div"
+    assert content[2].get("id") == (
+        "polarion_wiki macro name=module-workitem;"
+        "params=id=ATSY-1234|layout=0|external=true"
     )
-    assert (
-        etree.tostring(content[2])
-        .decode("utf-8")
-        .startswith(
-            '<div id="polarion_wiki macro name=module-workitem;'
-            'params=id=ATSY-1234|layout=0|external=true"/>'
-        )
-    )
-    assert (
-        etree.tostring(content[3])
-        .decode("utf-8")
-        .startswith(
-            '<div id="polarion_wiki macro name=module-workitem;'
-            'params=id=ATSY-4321|layout=0|external=true"/>'
-        )
+    assert content[3].tag == "div"
+    assert content[3].get("id") == (
+        "polarion_wiki macro name=module-workitem;"
+        "params=id=ATSY-4321|layout=0|external=true"
     )
 
 
@@ -125,26 +118,21 @@ def test_update_document(
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
     )
 
-    content = html.fromstring(new_doc.home_page_content.value)
+    content: list[etree._Element] = html.fromstring(
+        new_doc.home_page_content.value
+    )
     assert len(new_doc.rendering_layouts) == 1
     assert new_doc.rendering_layouts[
         0
     ].properties == polarion_api.data_models.RenderingProperties(
         fields_at_start=["ID"]
     )
-    assert (
-        etree.tostring(content[0])
-        .decode("utf-8")
-        .startswith(
-            '<h1 id="polarion_wiki macro name='
-            'module-workitem;params=id=ATSY-16062"'
-        )
+    assert content[0].get("id") == (
+        "polarion_wiki macro name=module-workitem;params=id=ATSY-16062"
     )
-    assert (
-        etree.tostring(content[1])
-        .decode("utf-8")
-        .startswith("<h2>Data Classes</h2>")
-    )
+    assert content[0].tag == "h1"
+    assert content[1].text == "Data Classes"
+    assert content[1].tag == "h2"
     assert len(wis) == 1
     assert wis[0].id == "ATSY-16062"
     assert wis[0].title == "Class Document"
@@ -188,14 +176,14 @@ def test_mixed_authority_document(
 
     assert len(content) == 15
     assert [c.tag for c in content[:3]] == ["h1", "p", "p"]
-    assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading" 
+    assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading"
     assert content[5].text == "Global Test"
     assert content[6].text == "Local Test section 1"
     assert content[8].text == "This will be kept."
-    assert content[10].id == (
-        "polarion_wiki macro name=module-workitem;'
-        'params=id=ATSY-18305"'
+    assert content[10].get("id") == (
+        "polarion_wiki macro name=module-workitem;params=id=ATSY-18305"
     )
+    assert content[10].tag == "h3"
     assert content[11].text == "Overwritten: Overwrite global param"
     assert content[12].text == "Local Test section 2"
     assert content[14].text == "Some postfix stuff"

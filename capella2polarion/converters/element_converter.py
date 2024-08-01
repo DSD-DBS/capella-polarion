@@ -239,8 +239,8 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         diagram: capellambse.model.diagram.AbstractDiagram,
         file_name: str,
         render_params: dict[str, t.Any] | None = None,
+        max_width: int = 800,
     ):
-        max_width = 800
         if attachment := next(
             (
                 att

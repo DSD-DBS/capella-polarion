@@ -115,7 +115,10 @@ def remove_table_ids(
 ) -> list[etree._Element]:
     """Remove the ID field from all tables.
 
-    This is necessary due to a bug in Polarion.
+    This is necessary due to a bug in Polarion where Polarion does not
+    ensure that the tables added in the UI have unique IDs. At the same
+    time the REST-API does not allow posting or patching a document with
+    multiple tables having the same ID.
     """
     html_fragments = _ensure_fragments(html_content)
 
