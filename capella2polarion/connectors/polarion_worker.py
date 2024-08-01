@@ -443,6 +443,24 @@ class CapellaPolarionWorker:
                 return None
             raise e
 
+    def get_and_customize_document(
+        self,
+        space: str,
+        name: str,
+        new_title: str | None,
+        rendering_layouts: list[polarion_api.RenderingLayout] | None,
+        heading_numbering: bool | None,
+    ) -> polarion_api.Document | None:
+        """Get a document from polarion and return None if not found."""
+        if document := self.get_document(space, name):
+            document.title = new_title
+            if rendering_layouts is not None:
+                document.rendering_layouts = rendering_layouts
+            if heading_numbering is not None:
+                document.outline_numbering = heading_numbering
+
+        return document
+
     def update_work_items(self, work_items: list[polarion_api.WorkItem]):
         """Update the given workitems without any additional checks."""
         self.client.project_client.work_items.update(work_items)

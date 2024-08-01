@@ -38,6 +38,7 @@ PrePostConditionElement = t.Union[
 
 logger = logging.getLogger(__name__)
 C2P_IMAGE_PREFIX = "__C2P__"
+JINJA_RENDERED_IMG_CLS = "jinja-rendered-image"
 
 
 def resolve_element_type(type_: str) -> str:
@@ -166,7 +167,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _draw_diagram_svg(
         self,
-        diagram: capellambse.model.diagram.Diagram,
+        diagram: capellambse.model.diagram.AbstractDiagram,
         file_name: str,
         title: str,
         max_width: int,
@@ -208,29 +209,70 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         self,
         template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
-        model_element: capellambse.model.GenericElement,
+        converter_data: data_session.ConverterData,
     ):
         env = self._get_jinja_env(str(template_folder))
         template = env.get_template(template_path)
         rendered_jinja = template.render(
-            object=model_element, model=self.model
+            object=converter_data.capella_element,
+            model=self.model,
+            work_item=converter_data.work_item,
         )
-        _, text, _ = self._sanitize_text(model_element, rendered_jinja)
+        _, text, _ = self._sanitize_text(
+            converter_data.capella_element, rendered_jinja
+        )
         return text
 
     def setup_env(self, env: jinja2.Environment):
         """Add the link rendering filter."""
         env.filters["make_href"] = self.__make_href_filter
+        env.globals["insert_diagram"] = self.__insert_diagram
 
     def __make_href_filter(self, obj: object) -> str | None:
         if (obj := self.check_model_element(obj)) is None:
             return "#"
         return f"hlink://{obj.uuid}"
 
+    def __insert_diagram(
+        self,
+        work_item: data_models.CapellaWorkItem,
+        diagram: capellambse.model.diagram.AbstractDiagram,
+        file_name: str,
+        render_params: dict[str, t.Any] | None = None,
+        max_width: int = 800,
+    ):
+        if attachment := next(
+            (
+                att
+                for att in work_item.attachments
+                if att.file_name == f"{C2P_IMAGE_PREFIX}{file_name}.svg"
+            ),
+            None,
+        ):
+            return polarion_html_helper.generate_image_html(
+                diagram.name,
+                attachment.file_name,
+                max_width,
+                JINJA_RENDERED_IMG_CLS,
+            )
+
+        diagram_html, attachment = self._draw_diagram_svg(
+            diagram,
+            file_name,
+            diagram.name,
+            max_width,
+            JINJA_RENDERED_IMG_CLS,
+            render_params,
+        )
+        if attachment:
+            self._add_attachment(work_item, attachment)
+
+        return diagram_html
+
     def _draw_additional_attributes_diagram(
         self,
         work_item: data_models.CapellaWorkItem,
-        diagram: capellambse.model.diagram.Diagram,
+        diagram: capellambse.model.diagram.AbstractDiagram,
         attribute: str,
         title: str,
         render_params: dict[str, t.Any] | None = None,
@@ -284,7 +326,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         attachments: list[polarion_api.WorkItemAttachment] = []
 
         def repair_images(node: etree._Element) -> None:
-            if node.tag != "img" or not self.generate_attachments:
+            if (
+                node.tag != "img"
+                or not self.generate_attachments
+                or node.get("class") == JINJA_RENDERED_IMG_CLS
+            ):
                 return
 
             file_url = pathlib.PurePosixPath(node.get("src"))
@@ -527,7 +573,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 "value": self._render_jinja_template(
                     jinja_properties.get("template_folder", ""),
                     jinja_properties["template_path"],
-                    converter_data.capella_element,
+                    converter_data,
                 ),
             }
 
@@ -542,6 +588,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         """Use a Jinja template to render the description content."""
         assert converter_data.work_item, "No work item set yet"
         converter_data.work_item.description = self._render_jinja_template(
-            template_folder, template_path, converter_data.capella_element
+            template_folder, template_path, converter_data
         )
         return converter_data.work_item

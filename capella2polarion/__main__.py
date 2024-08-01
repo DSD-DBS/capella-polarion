@@ -137,10 +137,14 @@ def synchronize(
     type=click.File(mode="r", encoding="utf8"),
     default=None,
 )
+@click.option("--overwrite-layouts", is_flag=True, default=False)
+@click.option("--overwrite-numbering", is_flag=True, default=False)
 @click.pass_context
 def render_documents(
     ctx: click.core.Context,
     document_rendering_config: typing.TextIO,
+    overwrite_layouts: bool,
+    overwrite_numbering: bool,
 ) -> None:
     """Call this command to render documents based on a config file."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -151,36 +155,71 @@ def render_documents(
 
     polarion_worker.load_polarion_work_item_map()
 
-    configs = document_config.read_config_file(document_rendering_config)
+    configs = document_config.read_config_file(
+        document_rendering_config, capella_to_polarion_cli.capella_model
+    )
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
     )
-    for c in configs:
-        for inst in c.instances:
-            old_doc = polarion_worker.get_document(
-                inst.polarion_space, inst.polarion_name
-            )
-            if old_doc:
-                old_doc.title = inst.polarion_title
-                new_doc, wis = renderer.render_document(
-                    c.template_directory,
-                    c.template,
+    for config in configs.full_authority:
+        rendering_layouts = document_config.generate_work_item_layouts(
+            config.work_item_layouts
+        )
+        for instance in config.instances:
+            if old_doc := polarion_worker.get_and_customize_document(
+                instance.polarion_space,
+                instance.polarion_name,
+                instance.polarion_title,
+                rendering_layouts if overwrite_layouts else None,
+                config.heading_numbering if overwrite_numbering else None,
+            ):
+                new_doc, work_items = renderer.render_document(
+                    config.template_directory,
+                    config.template,
                     document=old_doc,
-                    **inst.params,
+                    **instance.params,
                 )
                 polarion_worker.update_document(new_doc)
-                polarion_worker.update_work_items(wis)
+                polarion_worker.update_work_items(work_items)
             else:
                 new_doc, _ = renderer.render_document(
-                    c.template_directory,
-                    c.template,
-                    inst.polarion_space,
-                    inst.polarion_name,
-                    inst.polarion_title,
-                    **inst.params,
+                    config.template_directory,
+                    config.template,
+                    instance.polarion_space,
+                    instance.polarion_name,
+                    instance.polarion_title,
+                    config.heading_numbering,
+                    rendering_layouts,
+                    **instance.params,
                 )
                 polarion_worker.post_document(new_doc)
+
+    for config in configs.mixed_authority:
+        rendering_layouts = document_config.generate_work_item_layouts(
+            config.work_item_layouts
+        )
+        for instance in config.instances:
+            old_doc = polarion_worker.get_and_customize_document(
+                instance.polarion_space,
+                instance.polarion_name,
+                instance.polarion_title,
+                rendering_layouts if overwrite_layouts else None,
+                config.heading_numbering if overwrite_numbering else None,
+            )
+            assert old_doc is not None, (
+                "Did not find document "
+                f"{instance.polarion_space}/{instance.polarion_name}"
+            )
+            new_doc, work_items = renderer.update_mixed_authority_document(
+                old_doc,
+                config.template_directory,
+                config.sections,
+                instance.params,
+                instance.section_params,
+            )
+            polarion_worker.update_document(new_doc)
+            polarion_worker.update_work_items(work_items)
 
 
 if __name__ == "__main__":

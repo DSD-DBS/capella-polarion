@@ -16,6 +16,8 @@ capella2polarion_render_documents:
       python \
         -m capella2polarion \
         $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
+        $([[ $CAPELLA2POLARION_OVERWRITE_LAYOUTS -eq 1 ]] && echo '--overwrite-layouts') \
+        $([[ $CAPELLA2POLARION_OVERWRITE_NUMBERING -eq 1 ]] && echo '--overwrite-numbering') \
         --polarion-project-id=${CAPELLA2POLARION_PROJECT_ID:?} \
         --capella-model="${CAPELLA2POLARION_MODEL_JSON:?}" \
         render-documents \
