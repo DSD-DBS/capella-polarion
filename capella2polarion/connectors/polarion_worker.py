@@ -105,7 +105,7 @@ class CapellaPolarionWorker:
 
         def serialize_for_delete(uuid: str) -> str:
             work_item_id = self.polarion_data_repo.get_work_item_id(uuid)
-            assert work_item_id is not None
+            assert work_item_id is not None, f"No work item for {uuid!r}"
             logger.info("Delete work item %r...", work_item_id)
             return work_item_id
 
@@ -364,7 +364,7 @@ class CapellaPolarionWorker:
                 old_attachment_dict[file_name]
             )
 
-        new_attachments: cabc.Iterator[polarion_api.WorkItemAttachment] = map(
+        new_attachments: cabc.Iterable[polarion_api.WorkItemAttachment] = map(
             new_attachment_dict.get,  # type:ignore[arg-type]
             new_attachment_file_names - old_attachment_file_names,
         )
