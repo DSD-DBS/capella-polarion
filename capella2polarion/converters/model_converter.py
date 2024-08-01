@@ -38,12 +38,14 @@ class ModelConverter:
         self.role_prefix = role_prefix
 
         self.converter_session: data_session.ConverterSession = {}
+        self.config: converter_config.ConverterConfig | None = None
 
     def read_model(
         self,
         config: converter_config.ConverterConfig,
     ):
         """Read the model using a given config and diagram_idx."""
+        self.config = config
         missing_types: set[tuple[str, str, dict[str, t.Any]]] = set()
         for layer, c_type in config.layers_and_types():
             below = getattr(self.model, layer)
@@ -134,6 +136,7 @@ class ModelConverter:
             self.project_id,
             self.model,
             self.role_prefix,
+            self.config,
         )
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:

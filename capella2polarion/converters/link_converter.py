@@ -37,12 +37,14 @@ class LinkSerializer:
         converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
+        config: converter_config.ConverterConfig,
         role_prefix: str = "",
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.project_id = project_id
         self.model = model
+        self.config = config
         self.role_prefix = role_prefix
 
         self.serializers: dict[str, _Serializer] = {
@@ -60,6 +62,11 @@ class LinkSerializer:
         obj = converter_data.capella_element
         work_item = converter_data.work_item
         assert work_item is not None
+        global_unspecific_links: list[str] = [
+            link.capella_attr
+            for link in self.config._global_config.links
+            if link.capella_attr is not None
+        ]
         new_links: list[polarion_api.WorkItemLink] = []
         link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
@@ -89,9 +96,10 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                request_text = f"Requested attribute: {attr_id}"
-                error_text = f"{type(error).__name__} {str(error)}"
-                link_errors.extend([request_text, error_text, "--------"])
+                if role_id not in global_unspecific_links:
+                    request_text = f"Requested attribute: {attr_id}"
+                    error_text = f"{type(error).__name__} {str(error)}"
+                    link_errors.extend([request_text, error_text, "--------"])
 
         if link_errors:
             for link_error in link_errors:
