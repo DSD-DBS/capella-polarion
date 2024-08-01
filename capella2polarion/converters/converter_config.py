@@ -65,7 +65,7 @@ class ConverterConfig:
         self._global_configs: dict[str, CapellaTypeConfig] = {}
         self.polarion_types = set[str]()
         self.diagram_config: CapellaTypeConfig | None = None
-        self.__global_config = CapellaTypeConfig()
+        self._global_config = CapellaTypeConfig()
 
     def read_config_file(self, synchronize_config: t.TextIO):
         """Read a given yaml file as config."""
@@ -74,7 +74,7 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = _force_link_config(global_links)
+        self._global_config.links = _force_link_config(global_links)
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
@@ -111,7 +111,7 @@ class ConverterConfig:
                     actor=type_config.get("is_actor", _C2P_DEFAULT),
                     nature=type_config.get("nature", _C2P_DEFAULT),
                 )
-                or self.__global_config
+                or self._global_config
             )
             p_type = (
                 type_config.get("polarion_type")
@@ -140,7 +140,7 @@ class ConverterConfig:
             p_type,
             type_config.get("serializer"),
             _force_link_config(type_config.get("links", []))
-            + self.__global_config.links,
+            + self._global_config.links,
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
@@ -153,7 +153,7 @@ class ConverterConfig:
         self.diagram_config = CapellaTypeConfig(
             p_type,
             diagram_config.get("serializer") or "diagram",
-            links + self.__global_config.links,
+            links + self._global_config.links,
         )
 
     def get_type_config(
