@@ -187,29 +187,18 @@ def test_mixed_authority_document(
     )
 
     assert len(content) == 15
-    assert content[0].tag == "h1"
-    assert content[1].tag == "p"
-    assert content[2].tag == "p"
-    assert (
-        etree.tostring(content[4])
-        .decode("utf-8")
-        .startswith("<h3>New Heading</h3>")
-    )
+    assert [c.tag for c in content[:3]] == ["h1", "p", "p"]
+    assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading" 
     assert content[5].text == "Global Test"
     assert content[6].text == "Local Test section 1"
     assert content[8].text == "This will be kept."
-    assert (
-        etree.tostring(content[10])
-        .decode("utf-8")
-        .startswith(
-            '<h3 id="polarion_wiki macro name=module-workitem;'
-            'params=id=ATSY-18305"'
-        )
+    assert content[10].id == (
+        "polarion_wiki macro name=module-workitem;'
+        'params=id=ATSY-18305"'
     )
     assert content[11].text == "Overwritten: Overwrite global param"
     assert content[12].text == "Local Test section 2"
     assert content[14].text == "Some postfix stuff"
-
     assert len(wis) == 1
     assert wis[0].id == "ATSY-18305"
     assert wis[0].title == "Keep Heading"
@@ -269,6 +258,7 @@ def test_mixed_authority_document_config():
 def test_combined_config():
     with open(COMBINED_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
+
     assert len(conf.full_authority) == 2
     assert len(conf.mixed_authority) == 2
 
