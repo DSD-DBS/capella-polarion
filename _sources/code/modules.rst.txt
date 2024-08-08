@@ -1,0 +1,8 @@
+capella-polarion
+================
+
+.. toctree::
+   :maxdepth: 4
+
+   capella2polarion
+   tests
