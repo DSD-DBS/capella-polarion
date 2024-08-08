@@ -68,7 +68,7 @@ def dummy_work_items() -> dict[str, data_models.CapellaWorkItem]:
     }
 
 
-class FakeModelObject:
+class FakeModelObject(mock.MagicMock):
     """Mimicks a capellambse model objectyping."""
 
     def __init__(
@@ -77,6 +77,7 @@ class FakeModelObject:
         name: str = "",
         attribute: t.Any | None = None,
     ):
+        super().__init__(spec=capellambse.model.GenericElement)
         self.uuid = uuid
         self.name = name
         self.attribute = attribute

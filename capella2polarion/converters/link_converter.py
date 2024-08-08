@@ -393,8 +393,8 @@ def _resolve_attribute(
 ) -> common.ElementList[common.GenericElement] | common.GenericElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
-    if isinstance(objs, common.GenericElement):
-        return _resolve_attribute(objs, map_id)
     if map_id:
+        if isinstance(objs, common.GenericElement):
+            return _resolve_attribute(objs, map_id)
         objs = objs.map(map_id)
     return objs
