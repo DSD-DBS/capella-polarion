@@ -10,8 +10,7 @@ from collections import defaultdict
 
 import capellambse
 import polarion_rest_api_client as polarion_api
-from capellambse.model import common
-from capellambse.model import diagram as diag
+from capellambse import model as m
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 _Serializer: t.TypeAlias = cabc.Callable[
-    [diag.Diagram | common.GenericElement, str, str, dict[str, t.Any]],
+    [m.ModelObject, str, str, dict[str, t.Any]],
     list[polarion_api.WorkItemLink],
 ]
 
@@ -73,7 +72,7 @@ class LinkSerializer:
                 else:
                     refs = _resolve_attribute(obj, link_config.capella_attr)
                     new: cabc.Iterable[str]
-                    if isinstance(refs, common.ElementList):
+                    if isinstance(refs, m.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
                     elif refs is None:
                         logger.info(
@@ -140,23 +139,24 @@ class LinkSerializer:
 
     def _handle_description_reference_links(
         self,
-        obj: common.GenericElement | diag.Diagram,
+        obj: m.ModelObject,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
+        assert isinstance(obj, m.ModelElement)
         refs = self.converter_session[obj.uuid].description_references
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
 
     def _handle_diagram_reference_links(
         self,
-        diagram: common.GenericElement | diag.Diagram,
+        diagram: m.ModelObject,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        assert isinstance(diagram, diag.Diagram)
+        assert isinstance(diagram, m.Diagram)
         try:
             refs = set(self._collect_uuids(diagram.nodes))
             refs = set(self._get_work_item_ids(work_item_id, refs, role_id))
@@ -173,7 +173,7 @@ class LinkSerializer:
 
     def _collect_uuids(
         self,
-        nodes: cabc.Iterable[common.GenericElement],
+        nodes: cabc.Iterable[m.ModelElement],
     ) -> cabc.Iterator[str]:
         type_resolvers = TYPE_RESOLVERS
         for node in nodes:
@@ -288,9 +288,8 @@ class LinkSerializer:
                             obj._short_repr_(),
                         )
 
-                    uuids: cabc.Iterable[str]
-                    if isinstance(attr, common.ElementList):
-                        uuids = attr.by_uuid  # type: ignore[assignment]
+                    if isinstance(attr, m.ElementList):
+                        uuids: list[str] = list(attr.by_uuid)
                     else:
                         assert hasattr(attr, "uuid")
                         uuids = [attr.uuid]
@@ -385,12 +384,12 @@ def _sorted_unordered_html_list(
 
 
 def _resolve_attribute(
-    obj: common.GenericElement | diag.Diagram, attr_id: str
-) -> common.ElementList[common.GenericElement] | common.GenericElement | None:
+    obj: m.ModelObject, attr_id: str
+) -> m.ElementList[m.ModelElement] | m.ModelElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
     if map_id and objs is not None:
-        if isinstance(objs, common.GenericElement):
+        if isinstance(objs, m.ModelElement):
             return _resolve_attribute(objs, map_id)
         objs = objs.map(map_id)
     return objs

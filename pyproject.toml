@@ -28,8 +28,8 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "capellambse>=0.5.69,<0.6",
-  "capellambse_context_diagrams>=0.3.1,<0.4",
+  "capellambse>=0.6.5,<0.7",
+  "capellambse_context_diagrams>=0.3.4",
   "click",
   "PyYAML",
   "polarion-rest-api-client==1.1.2",
