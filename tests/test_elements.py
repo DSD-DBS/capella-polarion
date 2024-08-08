@@ -12,7 +12,7 @@ import capellambse_context_diagrams.context
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
-from capellambse.model import common
+from capellambse import model as m
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
@@ -567,7 +567,7 @@ class TestModelElements:
         obj = FakeModelObject(
             "uuid6",
             name="Fake 6",
-            attribute=common.ElementList(
+            attribute=m.ElementList(
                 base_object.c2pcli.capella_model,
                 [fake, fake1],
                 FakeModelObject,

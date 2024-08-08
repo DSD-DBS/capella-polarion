@@ -18,9 +18,8 @@ import jinja2
 import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
-from capellambse.model import common
-from capellambse.model.crosslayer import interaction
-from capellambse.model.layers import oa
+from capellambse import model as m
+from capellambse.metamodel import interaction, oa
 from lxml import etree
 
 from capella2polarion import data_models
@@ -167,7 +166,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _draw_diagram_svg(
         self,
-        diagram: capellambse.model.diagram.AbstractDiagram,
+        diagram: m.AbstractDiagram,
         file_name: str,
         title: str,
         max_width: int,
@@ -236,7 +235,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     def __insert_diagram(
         self,
         work_item: data_models.CapellaWorkItem,
-        diagram: capellambse.model.diagram.AbstractDiagram,
+        diagram: m.AbstractDiagram,
         file_name: str,
         render_params: dict[str, t.Any] | None = None,
         max_width: int = 800,
@@ -272,7 +271,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     def _draw_additional_attributes_diagram(
         self,
         work_item: data_models.CapellaWorkItem,
-        diagram: capellambse.model.diagram.AbstractDiagram,
+        diagram: m.AbstractDiagram,
         attribute: str,
         title: str,
         render_params: dict[str, t.Any] | None = None,
@@ -294,7 +293,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         }
 
     def _sanitize_linked_text(
-        self, obj: common.GenericElement
+        self, obj: m.GenericElement
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -311,7 +310,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return self._sanitize_text(obj, linked_text)
 
     def _sanitize_text(
-        self, obj: common.GenericElement, text: markupsafe.Markup | str
+        self, obj: m.GenericElement, text: markupsafe.Markup | str
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -402,7 +401,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _get_requirement_types_text(
         self,
-        obj: common.GenericElement,
+        obj: m.GenericElement,
     ) -> dict[str, dict[str, str]]:
         type_texts = collections.defaultdict(list)
         for req in getattr(obj, "requirements", []):

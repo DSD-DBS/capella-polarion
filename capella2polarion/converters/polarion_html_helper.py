@@ -6,9 +6,9 @@ from __future__ import annotations
 import pathlib
 import re
 
-import capellambse
 import jinja2
 from capellambse import helpers as chelpers
+from capellambse import model as m
 from lxml import etree, html
 
 heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
@@ -80,11 +80,7 @@ class JinjaRendererMixin:
 
     def check_model_element(
         self, obj: object
-    ) -> (
-        capellambse.model.GenericElement
-        | capellambse.model.diagram.AbstractDiagram
-        | None
-    ):
+    ) -> m.GenericElement | m.AbstractDiagram | None:
         """Check if a model element was passed.
 
         Return None if no element and raise a TypeError if a wrong typed
@@ -94,15 +90,9 @@ class JinjaRendererMixin:
         if jinja2.is_undefined(obj) or obj is None:
             return None
 
-        if isinstance(obj, capellambse.model.ElementList):
+        if isinstance(obj, m.ElementList):
             raise TypeError("Cannot make an href to a list of elements")
-        if not isinstance(
-            obj,
-            (
-                capellambse.model.GenericElement,
-                capellambse.model.diagram.AbstractDiagram,
-            ),
-        ):
+        if not isinstance(obj, (m.GenericElement, m.AbstractDiagram)):
             raise TypeError(f"Expected a model object, got {obj!r}")
         return obj
 

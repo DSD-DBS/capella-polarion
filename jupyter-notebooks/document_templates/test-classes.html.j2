@@ -27,6 +27,6 @@
 {{ heading(1, "Class Document", session)}}
 {{ add_class_dependencies(cls, classes) }}
 {{ heading(2, "Data Classes", session)}}
-{% for cl in classes | unique %}
+{% for cl in classes | unique(attribute="uuid") %}
 {{ insert_work_item(cl, session) }}
 {% endfor %}
