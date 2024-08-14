@@ -1750,3 +1750,27 @@ class TestSerializers:
             serializer.serialize_all()
             assert wrapped_render.call_count == 1
             assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+
+    @staticmethod
+    def test_read_config_links(caplog: pytest.LogCaptureFixture):
+        caplog.set_level("DEBUG")
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        assert config.diagram_config
+        assert not any(
+            link
+            for link in config.diagram_config.links
+            if link.capella_attr == "parent"
+        )
+        assert caplog.record_tuples[0][1] == 20
+        assert (
+            caplog.record_tuples[0][2]
+            == "Global link parent is not available on Capella type diagram"
+        )
+        assert caplog.record_tuples[1][1] == 40
+        assert (
+            caplog.record_tuples[1][2]
+            == "Link exchanged_items is not available on Capella type FunctionalExchange"
+        )
