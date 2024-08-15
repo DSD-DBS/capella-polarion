@@ -25,6 +25,8 @@ TEST_DATA_ROOT = pathlib.Path(__file__).parent / "data"
 TEST_DIAGRAM_CACHE = TEST_DATA_ROOT / "diagram_cache"
 TEST_MODEL_ELEMENTS = TEST_DATA_ROOT / "model_elements"
 TEST_MODEL_ELEMENTS_CONFIG = TEST_MODEL_ELEMENTS / "config.yaml"
+TEST_DOCUMENT_ROOT = TEST_DATA_ROOT / "documents"
+TEST_COMBINED_DOCUMENT_CONFIG = TEST_DOCUMENT_ROOT / "combined_config.yaml"
 TEST_MODEL = {
     "path": str(TEST_DATA_ROOT / "model" / "Melody Model Test.aird"),
     "diagram_cache": str(TEST_DIAGRAM_CACHE),

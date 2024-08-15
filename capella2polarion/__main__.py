@@ -165,10 +165,12 @@ def render_documents(
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
+        overwrite_numbering,
+        overwrite_layouts,
     )
 
     new_documents, updated_documents, work_items = renderer.render_documents(
-        configs, documents, overwrite_layouts, overwrite_numbering
+        configs, documents
     )
 
     polarion_worker.post_documents(new_documents)
