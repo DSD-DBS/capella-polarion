@@ -346,10 +346,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                     except Exception as e:
                         logger.error(
-                            "Rendering for document %s/%s failed with the following errors %s",
+                            "Rendering for document %s/%s failed with the following error",
                             instance.polarion_space,
                             instance.polarion_name,
-                            "\n".join(str(e) for e in e.args),
+                            exc_info=e,
                         )
                         continue
 
@@ -369,10 +369,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                     except Exception as e:
                         logger.error(
-                            "Rendering for document %s/%s failed with the following errors %s",
+                            "Rendering for document %s/%s failed with the following error",
                             instance.polarion_space,
                             instance.polarion_name,
-                            "\n".join(str(e) for e in e.args),
+                            exc_info=e,
                         )
                         continue
 
@@ -397,14 +397,23 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         instance.polarion_name,
                     )
                     continue
+                try:
+                    new_doc, work_items = self.update_mixed_authority_document(
+                        old_doc,
+                        config.template_directory,
+                        config.sections,
+                        instance.params,
+                        instance.section_params,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Rendering for document %s/%s failed with the following error",
+                        instance.polarion_space,
+                        instance.polarion_name,
+                        exc_info=e,
+                    )
+                    continue
 
-                new_doc, work_items = self.update_mixed_authority_document(
-                    old_doc,
-                    config.template_directory,
-                    config.sections,
-                    instance.params,
-                    instance.section_params,
-                )
                 updated_docs.append(new_doc)
                 work_items += work_items
 
