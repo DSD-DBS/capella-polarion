@@ -425,13 +425,15 @@ class CapellaPolarionWorker:
             if uuid in self.polarion_data_repo and data.work_item is not None:
                 self.compare_and_update_work_item(data)
 
-    def post_document(self, document: polarion_api.Document):
-        """Create a new document."""
-        self.client.project_client.documents.create(document)
+    def post_documents(self, documents: list[polarion_api.Document]):
+        """Create new documents."""
+        if documents:
+            self.client.project_client.documents.create(documents)
 
-    def update_document(self, document: polarion_api.Document):
-        """Update an existing document."""
-        self.client.project_client.documents.update(document)
+    def update_documents(self, documents: list[polarion_api.Document]):
+        """Update existing documents."""
+        if documents:
+            self.client.project_client.documents.update(documents)
 
     def get_document(
         self, space: str, name: str
@@ -446,24 +448,16 @@ class CapellaPolarionWorker:
                 return None
             raise e
 
-    def get_and_customize_document(
-        self,
-        space: str,
-        name: str,
-        new_title: str | None,
-        rendering_layouts: list[polarion_api.RenderingLayout] | None,
-        heading_numbering: bool | None,
-    ) -> polarion_api.Document | None:
-        """Get a document from polarion and return None if not found."""
-        if document := self.get_document(space, name):
-            document.title = new_title
-            if rendering_layouts is not None:
-                document.rendering_layouts = rendering_layouts
-            if heading_numbering is not None:
-                document.outline_numbering = heading_numbering
-
-        return document
-
     def update_work_items(self, work_items: list[polarion_api.WorkItem]):
         """Update the given workitems without any additional checks."""
-        self.client.project_client.work_items.update(work_items)
+        if work_items:
+            self.client.project_client.work_items.update(work_items)
+
+    def load_polarion_documents(
+        self, document_paths: t.Iterable[tuple[str, str]]
+    ) -> dict[tuple[str, str], polarion_api.Document | None]:
+        """Load the given document references from Polarion."""
+        return {
+            (space, name): self.get_document(space, name)
+            for space, name in document_paths
+        }

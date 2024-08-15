@@ -16,7 +16,7 @@ from lxml import html as lxmlhtml
 
 from capella2polarion.connectors import polarion_repo
 
-from . import polarion_html_helper
+from . import document_config, polarion_html_helper
 
 logger = logging.getLogger(__name__)
 
@@ -285,6 +285,130 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document.rendering_layouts = session.rendering_layouts
 
         return document, session.headings
+
+    def render_documents(
+        self,
+        configs: document_config.DocumentConfigs,
+        existing_documents: dict[
+            tuple[str, str], polarion_api.Document | None
+        ],
+        overwrite_layouts: bool,
+        overwrite_numbering: bool,
+    ) -> tuple[
+        list[polarion_api.Document],
+        list[polarion_api.Document],
+        list[polarion_api.WorkItem],
+    ]:
+        """Render all documents defined in the given config.
+
+        Returns a list new documents followed by updated documents and
+        work items, which need to be updated
+        """
+
+        def _get_and_customize_doc(
+            space: str,
+            name: str,
+            title: str | None,
+            rendering_layouts: list[polarion_api.RenderingLayout],
+            heading_numbering: bool,
+        ) -> polarion_api.Document | None:
+            if old_doc := existing_documents.get((space, name)):
+                if title:
+                    old_doc.title = title
+                if overwrite_layouts:
+                    old_doc.rendering_layouts = rendering_layouts
+                if overwrite_numbering:
+                    old_doc.outline_numbering = heading_numbering
+
+            return old_doc
+
+        new_docs = []
+        updated_docs = []
+        work_items = []
+        for config in configs.full_authority:
+            rendering_layouts = document_config.generate_work_item_layouts(
+                config.work_item_layouts
+            )
+            for instance in config.instances:
+                if old_doc := _get_and_customize_doc(
+                    instance.polarion_space,
+                    instance.polarion_name,
+                    instance.polarion_title,
+                    rendering_layouts,
+                    config.heading_numbering,
+                ):
+                    try:
+                        new_doc, wis = self.render_document(
+                            config.template_directory,
+                            config.template,
+                            document=old_doc,
+                            **instance.params,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "Rendering for document %s/%s failed with the following errors %s",
+                            instance.polarion_space,
+                            instance.polarion_name,
+                            "\n".join(str(e) for e in e.args),
+                        )
+                        continue
+
+                    updated_docs.append(new_doc)
+                    work_items += wis
+                else:
+                    try:
+                        new_doc, _ = self.render_document(
+                            config.template_directory,
+                            config.template,
+                            instance.polarion_space,
+                            instance.polarion_name,
+                            instance.polarion_title,
+                            config.heading_numbering,
+                            rendering_layouts,
+                            **instance.params,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "Rendering for document %s/%s failed with the following errors %s",
+                            instance.polarion_space,
+                            instance.polarion_name,
+                            "\n".join(str(e) for e in e.args),
+                        )
+                        continue
+
+                new_docs.append(new_doc)
+
+        for config in configs.mixed_authority:
+            rendering_layouts = document_config.generate_work_item_layouts(
+                config.work_item_layouts
+            )
+            for instance in config.instances:
+                old_doc = _get_and_customize_doc(
+                    instance.polarion_space,
+                    instance.polarion_name,
+                    instance.polarion_title,
+                    rendering_layouts,
+                    config.heading_numbering,
+                )
+                if old_doc is None:
+                    logger.error(
+                        "For document %s/%s no document was found, but it's mandatory to have one in mixed authority mode",
+                        instance.polarion_space,
+                        instance.polarion_name,
+                    )
+                    continue
+
+                new_doc, work_items = self.update_mixed_authority_document(
+                    old_doc,
+                    config.template_directory,
+                    config.sections,
+                    instance.params,
+                    instance.section_params,
+                )
+                updated_docs.append(new_doc)
+                work_items += work_items
+
+        return new_docs, updated_docs, work_items
 
     def _extract_section_areas(self, html_elements: list[etree._Element]):
         section_areas = {}

@@ -77,6 +77,12 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
+    def iterate_documents(self) -> t.Iterator[tuple[str, str]]:
+        """Yield all document paths of the config as tuples."""
+        for conf in self.full_authority + self.mixed_authority:
+            for inst in conf.instances:
+                yield inst.polarion_space, inst.polarion_name
+
 
 def read_config_file(
     config: t.TextIO, model: capellambse.MelodyModel | None = None
