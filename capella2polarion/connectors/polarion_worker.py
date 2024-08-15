@@ -123,6 +123,7 @@ class CapellaPolarionWorker:
                 )
             except polarion_api.PolarionApiException as error:
                 logger.error("Deleting work items failed. %s", error.args[0])
+                raise error
 
     def create_missing_work_items(
         self, converter_session: data_session.ConverterSession
@@ -149,6 +150,7 @@ class CapellaPolarionWorker:
                 self.polarion_data_repo.update_work_items(missing_work_items)
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
+                raise error
 
     def compare_and_update_work_item(
         self, converter_data: data_session.ConverterData
@@ -205,7 +207,7 @@ class CapellaPolarionWorker:
                 *log_args,
                 error.args[0],
             )
-            return
+            raise error
 
         assert new.id is not None
         delete_links = None
@@ -281,6 +283,7 @@ class CapellaPolarionWorker:
                 *log_args,
                 error.args[0],
             )
+            raise error
 
     def _refactor_attached_images(self, new: data_models.CapellaWorkItem):
         def set_attachment_id(node: etree._Element) -> None:
