@@ -14,6 +14,8 @@ from capellambse.model import common, diagram
 logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
+DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
+DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 
 
 @dataclasses.dataclass
@@ -287,9 +289,9 @@ def _filter_links(
     for link in links:
         cappela_attr = link.capella_attr.split(".")[0]
         if (
-            cappela_attr == "description_reference"
+            cappela_attr == DESCRIPTION_REFERENCE_SERIALIZER
             or (
-                cappela_attr == "diagram_elements"
+                cappela_attr == DIAGRAM_ELEMENTS_SERIALIZER
                 and c_class == diagram.Diagram
             )
             or hasattr(c_class, cappela_attr)
