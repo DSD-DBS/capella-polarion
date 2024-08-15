@@ -12,6 +12,7 @@ import capellambse
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
+from capellambse import model as m
 
 from capella2polarion import cli, data_models
 from capella2polarion.connectors import polarion_repo, polarion_worker
@@ -77,7 +78,7 @@ class FakeModelObject(mock.MagicMock):
         name: str = "",
         attribute: t.Any | None = None,
     ):
-        super().__init__(spec=capellambse.model.GenericElement)
+        super().__init__(spec=m.GenericElement)
         self.uuid = uuid
         self.name = name
         self.attribute = attribute
