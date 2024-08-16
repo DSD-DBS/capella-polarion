@@ -11,9 +11,7 @@ from capella2polarion.converters import document_config, document_renderer
 from tests.conftest import TEST_COMBINED_DOCUMENT_CONFIG, TEST_DOCUMENT_ROOT
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
-
 JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
-
 DOCUMENT_SECTIONS = TEST_DOCUMENT_ROOT / "sections"
 MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
@@ -237,9 +235,15 @@ def test_render_all_documents_partially_successfully(
         conf, existing_documents()
     )
 
+    # There are 6 documents in the config, we expect 3 rendering to fail
     assert len(caplog.records) == 3
+    # For one valid config we did not pass a document, so we expect a new one
     assert len(new_docs) == 1
+    # And two updated documents
     assert len(updated_docs) == 2
+    # In both existing documents we had 2 headings. In full authority mode
+    # both should be updated and in mixed authority mode only one of them as
+    # the other is outside the rendering area
     assert len(work_items) == 3
     assert len(updated_docs[0].rendering_layouts) == 0
     assert len(updated_docs[1].rendering_layouts) == 1
