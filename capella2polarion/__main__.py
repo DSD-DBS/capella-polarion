@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 @click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
 @click.option("--polarion-delete-work-items", is_flag=True, default=False)
 @click.option("--capella-model", type=cli_helpers.ModelCLI(), default=None)
+@click.option("--determine-exit-code-from-logs", is_flag=True, default=False)
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -48,6 +49,7 @@ def cli(
     polarion_pat: str,
     polarion_delete_work_items: bool,
     capella_model: capellambse.MelodyModel,
+    determine_exit_code_from_logs: bool,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
     if capella_model.diagram_cache is None:
@@ -60,6 +62,7 @@ def cli(
         polarion_pat,
         polarion_delete_work_items,
         capella_model,
+        determine_exit_code_from_logs=determine_exit_code_from_logs,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -87,7 +90,6 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     type=click.File(mode="r", encoding="utf8"),
     default=None,
 )
-@click.option("--determine-exit-code-from-logs", is_flag=True, default=False)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -95,7 +97,6 @@ def synchronize(
     synchronize_config: typing.TextIO,
     type_prefix: str,
     role_prefix: str,
-    determine_exit_code_from_logs: bool,
 ) -> None:
     """Synchronise model elements."""
     capella2polarion_cli: Capella2PolarionCli = ctx.obj
@@ -107,9 +108,6 @@ def synchronize(
     capella2polarion_cli.force_update = force_update
     capella2polarion_cli.type_prefix = type_prefix
     capella2polarion_cli.role_prefix = role_prefix
-    capella2polarion_cli.determine_exit_code_from_logs = (
-        determine_exit_code_from_logs
-    )
 
     converter = model_converter.ModelConverter(
         capella2polarion_cli.capella_model,
@@ -122,10 +120,7 @@ def synchronize(
 
     polarion_worker = pw.CapellaPolarionWorker(
         capella2polarion_cli.polarion_params,
-        capella2polarion_cli.config,
         capella2polarion_cli.force_update,
-        type_prefix=capella2polarion_cli.type_prefix,
-        role_prefix=capella2polarion_cli.role_prefix,
     )
 
     polarion_worker.load_polarion_work_item_map()
@@ -144,6 +139,12 @@ def synchronize(
 
     polarion_worker.compare_and_update_work_items(converter.converter_session)
 
+    capella2polarion_cli.exit_code_handler.create_html_report()
+    if capella2polarion_cli.exit_code_handler.has_error:
+        sys.exit(2)
+
+    sys.exit(0)
+
 
 @cli.command()
 @click.option(
@@ -161,20 +162,20 @@ def render_documents(
     overwrite_numbering: bool,
 ) -> None:
     """Call this command to render documents based on a config file."""
-    capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
+    capella2polarion_cli: Capella2PolarionCli = ctx.obj
     polarion_worker = pw.CapellaPolarionWorker(
-        capella_to_polarion_cli.polarion_params,
-        capella_to_polarion_cli.force_update,
+        capella2polarion_cli.polarion_params,
+        capella2polarion_cli.force_update,
     )
 
     polarion_worker.load_polarion_work_item_map()
 
     configs = document_config.read_config_file(
-        document_rendering_config, capella_to_polarion_cli.capella_model
+        document_rendering_config, capella2polarion_cli.capella_model
     )
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
-        capella_to_polarion_cli.capella_model,
+        capella2polarion_cli.capella_model,
     )
     for config in configs.full_authority:
         rendering_layouts = document_config.generate_work_item_layouts(
@@ -236,8 +237,6 @@ def render_documents(
             polarion_worker.update_work_items(work_items)
 
     if capella2polarion_cli.exit_code_handler.has_error:
-        sys.exit(1)
-    elif capella2polarion_cli.exit_code_handler.has_warning:
         sys.exit(2)
 
     sys.exit(0)

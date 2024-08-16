@@ -20,9 +20,7 @@ from .conftest import (  # type: ignore[import]
 )
 
 
-def test_migrate_model_elements(
-    monkeypatch: pytest.MonkeyPatch, flaggs: list[str]
-):
+def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     mock_get_polarion_wi_map = mock.MagicMock()
@@ -78,9 +76,8 @@ def test_migrate_model_elements(
 @pytest.mark.parametrize(
     "exit_code",
     [
-        pytest.param([0], id="Successful"),
-        pytest.param([1], id="Failure"),
-        pytest.param([2], id="Warning"),
+        pytest.param(0, id="Successful"),
+        pytest.param(2, id="Failure"),
     ],
 )
 def test_migrate_model_elements_with_exit_codes_determined_from_logging(
@@ -106,15 +103,21 @@ def test_migrate_model_elements_with_exit_codes_determined_from_logging(
         side_effect=lambda *_, **__: log_from_exit_code(exit_code)
     )
     monkeypatch.setattr(
-        CapellaPolarionWorker, "delete_work_items", mock_delete_work_items
+        CapellaPolarionWorker,
+        "delete_orphaned_work_items",
+        mock_delete_work_items,
     )
     mock_post_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker, "post_work_items", mock_post_work_items
+        CapellaPolarionWorker,
+        "create_missing_work_items",
+        mock_post_work_items,
     )
     mock_patch_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker, "patch_work_items", mock_patch_work_items
+        CapellaPolarionWorker,
+        "compare_and_update_work_items",
+        mock_patch_work_items,
     )
 
     command: list[str] = [
@@ -127,10 +130,10 @@ def test_migrate_model_elements_with_exit_codes_determined_from_logging(
         "--polarion-delete-work-items",
         "--capella-model",
         json.dumps(TEST_MODEL),
-        "--synchronize-config",
-        str(TEST_MODEL_ELEMENTS_CONFIG),
         "--determine-exit-code-from-logs",
         "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)

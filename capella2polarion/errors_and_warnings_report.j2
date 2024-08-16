@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .warning {
+            background-color: #fff3cd;
+        }
+        .error {
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <h1>Errors and Warnings</h1>
+
+    <h2>Errors</h2>
+    {% for module, errors in messages.errors.items() %}
+    <h3>Module: {{ module }}</h3>
+    <table>
+        <tr>
+            <th>Function</th>
+            <th>Message</th>
+        </tr>
+        {% for error in errors %}
+        <tr class="error">
+            <td>{{ error.keys() | list | first }}</td>
+            <td>{{ error.values() | list | first }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endfor %}
+
+    <h2>Warnings</h2>
+    {% for module, warnings in messages.warnings.items() %}
+    <h3>Module: {{ module }}</h3>
+    <table>
+        <tr>
+            <th>Function</th>
+            <th>Message</th>
+        </tr>
+        {% for warning in warnings %}
+        <tr class="warning">
+            <td>{{ warning.keys() | list | first }}</td>
+            <td>{{ warning.values() | list | first }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endfor %}
+</body>
+
+</html>

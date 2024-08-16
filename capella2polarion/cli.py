@@ -9,28 +9,56 @@ import typing
 
 import capellambse
 import click
+import jinja2
 
 from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.converters import converter_config
 
 logger = logging.getLogger(__name__)
+ERRORS_AND_WARNINGS_TEMPLATE_PATH = (
+    pathlib.Path(__file__).parent / "errors_and_warnings_report.j2"
+)
 
 
 class ExitCodeHandler(logging.Handler):
     def __init__(self, determine: bool = True):
         super().__init__()
         self.determine = determine
-        self.has_warning = False
         self.has_error = False
+
+        self.messages: dict[str, dict[str, list[dict[str, str]]]] = {
+            "errors": {},
+            "warnings": {},
+        }
 
     def emit(self, record: logging.LogRecord):
         if not self.determine:
             return
 
         if record.levelno == logging.WARNING:
-            self.has_warning = True
+            module_warnings = self.messages["warnings"].setdefault(
+                record.module, []
+            )
+            module_warnings.append({record.funcName: self.format(record)})
         elif record.levelno == logging.ERROR:
             self.has_error = True
+            module_warnings = self.messages["errors"].setdefault(
+                record.module, []
+            )
+            module_warnings.append({record.funcName: self.format(record)})
+
+    def create_html_report(
+        self, template_path: pathlib.Path = ERRORS_AND_WARNINGS_TEMPLATE_PATH
+    ) -> str:
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_path.parent)
+        )
+        template = env.get_template(template_path.name)
+        html_content = template.render(messages=self.messages)
+        template_path.with_suffix(".html").write_text(
+            html_content, encoding="utf8"
+        )
+        return html_content
 
 
 class Capella2PolarionCli:
@@ -114,8 +142,8 @@ class Capella2PolarionCli:
             level=max_logging_level,
             format="%(asctime)-15s - %(levelname)-8s %(message)s",
         )
-        logging.getLogger("httpx").setLevel("WARNING")
-        logging.getLogger("httpcore").setLevel("WARNING")
+        logging.getLogger("httpx").setLevel(max_logging_level)
+        logging.getLogger("httpcore").setLevel(max_logging_level)
         self.exit_code_handler = ExitCodeHandler(
             self.determine_exit_code_from_logs
         )
