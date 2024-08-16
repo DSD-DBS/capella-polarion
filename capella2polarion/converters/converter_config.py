@@ -279,8 +279,7 @@ def _filter_links(
     if c_type == "diagram":
         c_class = diagram.Diagram
     else:
-        c_classes = common.find_wrapper(c_type)
-        if not c_classes:
+        if not (c_classes := common.find_wrapper(c_type)):
             logger.error("Did not find any matching Wrapper for %s", c_type)
             return links
         c_class = c_classes[0]
