@@ -374,7 +374,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 )
                 if old_doc is None:
                     logger.error(
-                        "For document %s/%s no document was found, but it's mandatory to have one in mixed authority mode",
+                        "For document %s/%s no document was found, but it's "
+                        "mandatory to have one in mixed authority mode",
                         instance.polarion_space,
                         instance.polarion_name,
                     )
@@ -389,7 +390,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     )
                 except Exception as e:
                     logger.error(
-                        "Rendering for document %s/%s failed with the following error",
+                        "Rendering for document %s/%s failed with the "
+                        "following error",
                         instance.polarion_space,
                         instance.polarion_name,
                         exc_info=e,
