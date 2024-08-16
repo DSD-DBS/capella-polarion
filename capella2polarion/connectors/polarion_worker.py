@@ -427,13 +427,11 @@ class CapellaPolarionWorker:
 
     def post_documents(self, documents: list[polarion_api.Document]):
         """Create new documents."""
-        if documents:
-            self.client.project_client.documents.create(documents)
+        self.client.project_client.documents.create(documents)
 
     def update_documents(self, documents: list[polarion_api.Document]):
         """Update existing documents."""
-        if documents:
-            self.client.project_client.documents.update(documents)
+        self.client.project_client.documents.update(documents)
 
     def get_document(
         self, space: str, name: str
@@ -450,8 +448,7 @@ class CapellaPolarionWorker:
 
     def update_work_items(self, work_items: list[polarion_api.WorkItem]):
         """Update the given workitems without any additional checks."""
-        if work_items:
-            self.client.project_client.work_items.update(work_items)
+        self.client.project_client.work_items.update(work_items)
 
     def load_polarion_documents(
         self, document_paths: t.Iterable[tuple[str, str]]
