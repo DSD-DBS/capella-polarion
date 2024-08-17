@@ -46,8 +46,8 @@ class LinkSerializer:
         self.role_prefix = role_prefix
 
         self.serializers: dict[str, _Serializer] = {
-            "description_reference": self._handle_description_reference_links,
-            "diagram_elements": self._handle_diagram_reference_links,
+            converter_config.DESCRIPTION_REFERENCE_SERIALIZER: self._handle_description_reference_links,  # pylint: disable=line-too-long
+            converter_config.DIAGRAM_ELEMENTS_SERIALIZER: self._handle_diagram_reference_links,  # pylint: disable=line-too-long
             "input_exchanges": self._handle_exchanges,
             "output_exchanges": self._handle_exchanges,
         }

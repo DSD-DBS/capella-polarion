@@ -9,10 +9,13 @@ import typing as t
 from collections import abc as cabc
 
 import yaml
+from capellambse.model import common, diagram
 
 logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
+DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
+DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 
 
 @dataclasses.dataclass
@@ -33,7 +36,7 @@ class LinkConfig:
         lists. They also need be migrated for working references.
     """
 
-    capella_attr: str | None = None
+    capella_attr: str
     polarion_role: str | None = None
     include: dict[str, str] = dataclasses.field(default_factory=dict)
 
@@ -94,6 +97,9 @@ class ConverterConfig:
         """Add a new layer without configuring any types."""
         self._layer_configs[layer] = {}
 
+    def _get_global_links(self, c_type: str):
+        return _filter_links(c_type, self.__global_config.links, True)
+
     def set_layer_config(
         self,
         c_type: str,
@@ -113,6 +119,9 @@ class ConverterConfig:
                 )
                 or self.__global_config
             )
+            # As we set up all types this way, we can expect that all
+            # non-compliant links are coming from global context here
+            closest_links = _filter_links(c_type, closest_config.links, True)
             p_type = (
                 type_config.get("polarion_type")
                 or closest_config.p_type
@@ -123,8 +132,11 @@ class ConverterConfig:
                 CapellaTypeConfig(
                     p_type,
                     type_config.get("serializer") or closest_config.converters,
-                    _force_link_config(type_config.get("links", []))
-                    + closest_config.links,
+                    _filter_links(
+                        c_type,
+                        _force_link_config(type_config.get("links", [])),
+                    )
+                    + closest_links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
                 )
@@ -139,21 +151,26 @@ class ConverterConfig:
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
             type_config.get("serializer"),
-            _force_link_config(type_config.get("links", []))
-            + self.__global_config.links,
+            _filter_links(
+                c_type, _force_link_config(type_config.get("links", []))
+            )
+            + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
 
     def set_diagram_config(self, diagram_config: dict[str, t.Any]):
         """Set the diagram config."""
+        c_type = "diagram"
         p_type = diagram_config.get("polarion_type") or "diagram"
         self.polarion_types.add(p_type)
-        links = _force_link_config(diagram_config.get("links", []))
+        links = _filter_links(
+            c_type, _force_link_config(diagram_config.get("links", []))
+        )
         self.diagram_config = CapellaTypeConfig(
             p_type,
             diagram_config.get("serializer") or "diagram",
-            links + self.__global_config.links,
+            links + self._get_global_links(c_type),
         )
 
     def get_type_config(
@@ -242,7 +259,7 @@ def _force_link_config(links: t.Any) -> list[LinkConfig]:
             config = LinkConfig(capella_attr=link, polarion_role=link)
         elif isinstance(link, dict):
             config = LinkConfig(
-                capella_attr=(lid := link.get("capella_attr")),
+                capella_attr=(lid := link["capella_attr"]),
                 polarion_role=link.get("polarion_role", lid),
                 include=link.get("include", {}),
             )
@@ -254,3 +271,42 @@ def _force_link_config(links: t.Any) -> list[LinkConfig]:
             continue
         result.append(config)
     return result
+
+
+def _filter_links(
+    c_type: str, links: list[LinkConfig], is_global: bool = False
+):
+    if c_type == "diagram":
+        c_class = diagram.Diagram
+    else:
+        if not (c_classes := common.find_wrapper(c_type)):
+            logger.error("Did not find any matching Wrapper for %s", c_type)
+            return links
+        c_class = c_classes[0]
+
+    available_links = []
+    for link in links:
+        cappela_attr = link.capella_attr.split(".")[0]
+        if (
+            cappela_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            or (
+                cappela_attr == DIAGRAM_ELEMENTS_SERIALIZER
+                and c_class == diagram.Diagram
+            )
+            or hasattr(c_class, cappela_attr)
+        ):
+            available_links.append(link)
+        else:
+            if is_global:
+                logger.info(
+                    "Global link %s is not available on Capella type %s",
+                    cappela_attr,
+                    c_type,
+                )
+            else:
+                logger.error(
+                    "Link %s is not available on Capella type %s",
+                    cappela_attr,
+                    c_type,
+                )
+    return available_links
