@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from capellambse.model import common, diagram
+from capellambse import model as m
 
 from capella2polarion import data_models as dm
 from capella2polarion.converters import converter_config
@@ -17,7 +17,7 @@ class ConverterData:
 
     layer: str
     type_config: converter_config.CapellaTypeConfig
-    capella_element: diagram.Diagram | common.GenericElement
+    capella_element: m.Diagram | m.GenericElement
     work_item: dm.CapellaWorkItem | None = None
     description_references: list[str] = dataclasses.field(default_factory=list)
     errors: set[str] = dataclasses.field(default_factory=set)
