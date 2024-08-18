@@ -2,20 +2,47 @@
 # SPDX-License-Identifier: Apache-2.0
 import capellambse
 import polarion_rest_api_client as polarion_api
+import pytest
 from lxml import etree, html
 
 from capella2polarion import data_models as dm
 from capella2polarion.connectors import polarion_worker
 from capella2polarion.converters import document_config, document_renderer
-from tests.conftest import TEST_DATA_ROOT
+from tests.conftest import TEST_COMBINED_DOCUMENT_CONFIG, TEST_DOCUMENT_ROOT
 
-DOCUMENT_ROOT = TEST_DATA_ROOT / "documents"
-DOCUMENT_SECTIONS = DOCUMENT_ROOT / "sections"
-MIXED_CONFIG = DOCUMENT_ROOT / "mixed_config.yaml"
-COMBINED_CONFIG = DOCUMENT_ROOT / "combined_config.yaml"
-FULL_AUTHORITY_CONFIG = DOCUMENT_ROOT / "full_authority_config.yaml"
-DOCUMENTS_CONFIG_JINJA = DOCUMENT_ROOT / "config.yaml.j2"
-MIXED_AUTHORITY_DOCUMENT = DOCUMENT_ROOT / "mixed_authority_doc.html"
+CLASSES_TEMPLATE = "test-classes.html.j2"
+JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
+DOCUMENT_SECTIONS = TEST_DOCUMENT_ROOT / "sections"
+MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
+FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
+DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
+MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
+
+
+def existing_documents() -> dict[tuple[str, str], polarion_api.Document]:
+    return {
+        ("_default", "id123"): polarion_api.Document(
+            module_folder="_default",
+            module_name="id123",
+            home_page_content=polarion_api.TextContent(
+                type="text/html",
+                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+            ),
+            rendering_layouts=[
+                polarion_api.RenderingLayout(
+                    "Class", "paragraph", type="class"
+                )
+            ],
+        ),
+        ("_default", "id1237"): polarion_api.Document(
+            module_folder="_default",
+            module_name="id1237",
+            home_page_content=polarion_api.TextContent(
+                type="text/html",
+                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+            ),
+        ),
+    }
 
 
 def test_create_new_document(
@@ -41,8 +68,8 @@ def test_create_new_document(
     )
 
     new_doc, wis = renderer.render_document(
-        "jupyter-notebooks/document_templates",
-        "test-classes.html.j2",
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
         "_default",
         "TEST-DOC",
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
@@ -112,8 +139,8 @@ def test_update_document(
     )
 
     new_doc, wis = renderer.render_document(
-        "jupyter-notebooks/document_templates",
-        "test-classes.html.j2",
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
         document=old_doc,
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
     )
@@ -192,19 +219,67 @@ def test_mixed_authority_document(
     assert wis[0].title == "Keep Heading"
 
 
+def test_render_all_documents_partially_successfully(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+    caplog: pytest.LogCaptureFixture,
+):
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
+        conf = document_config.read_config_file(f)
+
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model
+    )
+
+    new_docs, updated_docs, work_items = renderer.render_documents(
+        conf, existing_documents()
+    )
+
+    # There are 6 documents in the config, we expect 3 rendering to fail
+    assert len(caplog.records) == 3
+    # For one valid config we did not pass a document, so we expect a new one
+    assert len(new_docs) == 1
+    # And two updated documents
+    assert len(updated_docs) == 2
+    # In both existing documents we had 2 headings. In full authority mode
+    # both should be updated and in mixed authority mode only one of them as
+    # the other is outside the rendering area
+    assert len(work_items) == 3
+    assert len(updated_docs[0].rendering_layouts) == 0
+    assert len(updated_docs[1].rendering_layouts) == 1
+    assert updated_docs[0].outline_numbering is None
+    assert updated_docs[1].outline_numbering is None
+
+
+def test_render_all_documents_overwrite_headings_layouts(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
+        conf = document_config.read_config_file(f)
+
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, True, True
+    )
+
+    _, updated_docs, _ = renderer.render_documents(conf, existing_documents())
+
+    assert len(updated_docs[0].rendering_layouts) == 2
+    assert len(updated_docs[1].rendering_layouts) == 2
+    assert updated_docs[0].outline_numbering is False
+    assert updated_docs[1].outline_numbering is False
+
+
 def test_full_authority_document_config():
     with open(
-        "tests/data/documents/full_authority_config.yaml",
+        FULL_AUTHORITY_CONFIG,
         "r",
         encoding="utf-8",
     ) as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 2
-    assert (
-        conf.full_authority[0].template_directory
-        == "jupyter-notebooks/document_templates"
-    )
+    assert conf.full_authority[0].template_directory == JUPYTER_TEMPLATE_FOLDER
     assert conf.full_authority[0].template == "test-icd.html.j2"
     assert conf.full_authority[0].heading_numbering is False
     assert len(conf.full_authority[0].instances) == 2
@@ -223,8 +298,7 @@ def test_mixed_authority_document_config():
     assert len(conf.full_authority) == 0
     assert len(conf.mixed_authority) == 2
     assert (
-        conf.mixed_authority[0].template_directory
-        == "jupyter-notebooks/document_templates"
+        conf.mixed_authority[0].template_directory == JUPYTER_TEMPLATE_FOLDER
     )
     assert conf.mixed_authority[0].sections == {
         "section1": "test-icd.html.j2",
@@ -244,7 +318,7 @@ def test_mixed_authority_document_config():
 
 
 def test_combined_config():
-    with open(COMBINED_CONFIG, "r", encoding="utf-8") as f:
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 2

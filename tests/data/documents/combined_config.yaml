@@ -2,25 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 mixed_authority:
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: tests/data/documents/sections
     sections:
-      section1: test-icd.html.j2
-      section2: test-icd.html.j2
+      section1: section1.html.j2
+      section2: section2.html.j2
     instances:
       - polarion_space: _default
         polarion_name: id123
         polarion_title: Interface23
         params:
-          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+          interface: 4b5bea95-9bc2-477c-a8b2-c4e54b5066fb
       - polarion_space: _default
         polarion_name: id1234
         params:
           interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
-  - template_directory: jupyter-notebooks/document_templates
-    sections:
-      section1: test-icd.html.j2
-      section2: test-icd.html.j2
-    heading_numbering: True
     work_item_layouts:
       componentExchange:
         fields_at_start:
@@ -31,9 +26,14 @@ mixed_authority:
         show_title: False
         fields_at_end:
           - tree_view_diagram
+  - template_directory: jupyter-notebooks/document_templates
+    sections:
+      section1: test-icd.html.j2
+      section2: test-icd.html.j2
+    heading_numbering: True
     instances:
       - polarion_space: _default
-        polarion_name: id1234
+        polarion_name: id1235
         section_params:
           section1:
             param_1: Test
@@ -42,17 +42,14 @@ full_authority:
     template: test-icd.html.j2
     instances:
       - polarion_space: _default
-        polarion_name: id123
+        polarion_name: id1236
         polarion_title: Interface23
         params:
-          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
+          interface: 4b5bea95-9bc2-477c-a8b2-c4e54b5066fb
       - polarion_space: _default
-        polarion_name: id1234
+        polarion_name: id1237
         params:
-          interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
-  - template_directory: jupyter-notebooks/document_templates
-    template: test-no-args.html.j2
-    heading_numbering: True
+          interface: 2681f26a-e492-4e5d-8b33-92fb00a48622
     work_item_layouts:
       componentExchange:
         fields_at_start:
@@ -63,6 +60,9 @@ full_authority:
         show_title: False
         fields_at_end:
           - tree_view_diagram
+  - template_directory: jupyter-notebooks/document_templates
+    template: test-no-args.html.j2
+    heading_numbering: True
     instances:
       - polarion_space: _default
-        polarion_name: id1234
+        polarion_name: id1238

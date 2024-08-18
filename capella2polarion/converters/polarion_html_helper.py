@@ -143,6 +143,9 @@ def extract_headings(html_content: str | list[etree._Element]) -> list[str]:
     html_fragments = _ensure_fragments(html_content)
 
     for element in html_fragments:
+        if isinstance(element, html.HtmlComment):
+            continue
+
         if h_regex.fullmatch(element.tag):
             if matches := wi_regex.match(element.get("id")):
                 heading_ids.append(matches.group(1))
