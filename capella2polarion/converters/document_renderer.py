@@ -433,7 +433,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                     except Exception as e:
                         logger.error(
-                            "Rendering for document %s/%s failed with the following error",
+                            "Rendering for document %s/%s failed with the "
+                            "following error",
                             instance.polarion_space,
                             instance.polarion_name,
                             exc_info=e,
@@ -456,7 +457,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                     except Exception as e:
                         logger.error(
-                            "Rendering for document %s/%s failed with the following error",
+                            "Rendering for document %s/%s failed with the "
+                            "following error",
                             instance.polarion_space,
                             instance.polarion_name,
                             exc_info=e,

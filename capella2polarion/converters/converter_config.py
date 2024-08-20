@@ -37,7 +37,7 @@ class LinkConfig:
     """
 
     capella_attr: str
-    polarion_role: str | None = None
+    polarion_role: str
     include: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
@@ -288,9 +288,9 @@ def _filter_links(
     for link in links:
         cappela_attr = link.capella_attr.split(".")[0]
         if (
-            cappela_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            cappela_attr.endswith(DESCRIPTION_REFERENCE_SERIALIZER)
             or (
-                cappela_attr == DIAGRAM_ELEMENTS_SERIALIZER
+                cappela_attr.endswith(DIAGRAM_ELEMENTS_SERIALIZER)
                 and c_class == diagram.Diagram
             )
             or hasattr(c_class, cappela_attr)

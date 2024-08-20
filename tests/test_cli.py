@@ -101,7 +101,8 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
             module_name=name,
             home_page_content=polarion_api.TextContent(
                 "text/html",
-                '<h1 id="polarion_wiki macro name=module-workitem;params=id=TEST-123></h1>',
+                '<h1 id="polarion_wiki macro name=module-workitem;'
+                'params=id=TEST-123"></h1>',
             ),
         )
         if name == "id1236"
