@@ -11,7 +11,8 @@ import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
-from capella2polarion.connectors.polarion_worker import CapellaPolarionWorker
+from capella2polarion.connectors import polarion_worker
+from capella2polarion.converters import model_converter
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
@@ -26,25 +27,31 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     mock_get_polarion_wi_map = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "load_polarion_work_item_map",
         mock_get_polarion_wi_map,
     )
+    mock_generate_work_items = mock.MagicMock()
+    monkeypatch.setattr(
+        model_converter.ModelConverter,
+        "generate_work_items",
+        mock_generate_work_items,
+    )
     mock_delete_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "delete_orphaned_work_items",
         mock_delete_work_items,
     )
     mock_post_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "create_missing_work_items",
         mock_post_work_items,
     )
     mock_patch_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "compare_and_update_work_items",
         mock_patch_work_items,
     )
@@ -68,6 +75,11 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
 
     assert result.exit_code == 0
     assert mock_get_polarion_wi_map.call_count == 1
+    assert mock_generate_work_items.call_count == 2
+    assert mock_generate_work_items.call_args_list[1][1] == {
+        "generate_links": True,
+        "generate_attachments": True,
+    }
     assert mock_delete_work_items.call_count == 1
     assert mock_patch_work_items.call_count == 1
     assert mock_post_work_items.call_count == 1
@@ -78,7 +90,7 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
     mock_get_polarion_wi_map = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "load_polarion_work_item_map",
         mock_get_polarion_wi_map,
     )
@@ -96,25 +108,25 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         else None
     )
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "get_document",
         mock_get_document,
     )
     mock_post_documents = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "post_documents",
         mock_post_documents,
     )
     mock_update_documents = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "update_documents",
         mock_update_documents,
     )
     mock_update_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        CapellaPolarionWorker,
+        polarion_worker.CapellaPolarionWorker,
         "update_work_items",
         mock_update_work_items,
     )

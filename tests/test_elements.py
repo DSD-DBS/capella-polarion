@@ -474,7 +474,7 @@ class TestModelElements:
             assert False
 
         link_serializer.serializers["invalid_role"] = (
-            lambda obj, work_item_id, role_id, attr_id, links: error()
+            lambda obj, work_item_id, role_id, links: error()
         )
 
         with caplog.at_level(logging.ERROR):
@@ -550,7 +550,7 @@ class TestModelElements:
             assert False
 
         link_serializer.serializers["invalid_role"] = (
-            lambda obj, work_item_id, role_id, attr_id, links: error()
+            lambda obj, work_item_id, role_id, links: error()
         )
 
         with caplog.at_level(logging.WARNING):
