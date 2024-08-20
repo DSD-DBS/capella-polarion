@@ -12,7 +12,6 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 from capellambse.model import diagram as diag
-from capellambse.model.crosslayer import fa
 
 import capella2polarion.converters.polarion_html_helper
 from capella2polarion import data_models
@@ -64,7 +63,7 @@ class LinkSerializer:
         for link_config in converter_data.type_config.links:
             assert (role_id := link_config.polarion_role) is not None
             attr_id = link_config.capella_attr or ""
-            serializer = self.serializers.get(role_id)
+            serializer = self.serializers.get(attr_id)
             if self.role_prefix:
                 role_id = f"{self.role_prefix}_{role_id}"
             try:
@@ -228,11 +227,12 @@ class LinkSerializer:
                     config = link_config
                     break
 
+            role_id = role
+            if self.role_prefix:
+                role_id = role.removeprefix(f"{self.role_prefix}_")
+
             self._create_link_fields(
-                work_item,
-                role.removeprefix(f"{self.role_prefix}_"),
-                grouped_links,
-                config=config,
+                work_item, role_id, grouped_links, config=config
             )
 
     def _create_link_fields(
@@ -315,12 +315,11 @@ class LinkSerializer:
             List of links referencing work_item as secondary
         """
         for role, grouped_links in _group_by("role", links).items():
-            self._create_link_fields(
-                work_item,
-                role.removeprefix(f"{self.role_prefix}_"),
-                grouped_links,
-                True,
-            )
+            role_id = role
+            if self.role_prefix:
+                role_id = role.removeprefix(f"{self.role_prefix}_")
+
+            self._create_link_fields(work_item, role_id, grouped_links, True)
 
 
 def _group_by(
