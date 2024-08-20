@@ -1081,7 +1081,11 @@ class TestModelElements:
     ):
         config = converter_config.CapellaTypeConfig(
             "fakeModelObject",
-            links=[converter_config.LinkConfig("attribute")],
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
         )
         mock_model = mock.MagicMock()
         fake_2 = FakeModelObject("uuid2", "Fale 2")
@@ -1122,6 +1126,48 @@ class TestModelElements:
         assert dummy_work_items["uuid0"].additional_attributes == {}
         assert dummy_work_items["uuid1"].additional_attributes == {}
         assert dummy_work_items["uuid2"].additional_attributes == {}
+
+    @staticmethod
+    def test_maintain_grouped_links_attributes_with_role_prefix(
+        base_object: BaseObjectContainer,
+        dummy_work_items: dict[str, data_models.CapellaWorkItem],
+    ):
+        config = converter_config.CapellaTypeConfig(
+            "fakeModelObject",
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
+        )
+        mock_model = mock.MagicMock()
+        fake_2 = FakeModelObject("uuid2", "Fale 2")
+        fake_1 = FakeModelObject("uuid1", "Fake 1")
+        fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
+        fake_1.attribute = [fake_0, fake_2]
+        mock_model.by_uuid.side_effect = lambda uuid: {
+            "uuid0": fake_0,
+            "uuid1": fake_1,
+            "uuid2": fake_2,
+        }[uuid]
+        for link in dummy_work_items["uuid0"].linked_work_items:
+            link.role = f"_C2P_{link.role}"
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            mock_model,
+            role_prefix="_C2P",
+        )
+
+        for work_item in dummy_work_items.values():
+            converter_data = data_session.ConverterData(
+                "test", config, [], work_item
+            )
+            link_serializer.create_grouped_link_fields(converter_data)
+
+        assert "attribute" in dummy_work_items["uuid0"].additional_attributes
+        assert "attribute" in dummy_work_items["uuid1"].additional_attributes
 
     @staticmethod
     def test_grouped_links_attributes_with_includes(
@@ -1212,7 +1258,11 @@ class TestModelElements:
         back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
         config = converter_config.CapellaTypeConfig(
             "fakeModelObject",
-            links=[converter_config.LinkConfig("attribute")],
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
         )
         mock_model = mock.MagicMock()
         fake_2 = FakeModelObject("uuid2", "Fake 2")
@@ -1267,6 +1317,61 @@ class TestModelElements:
         assert dummy_work_items["uuid0"].additional_attributes == {}
         assert dummy_work_items["uuid1"].additional_attributes == {}
         assert dummy_work_items["uuid2"].additional_attributes == {}
+
+    @staticmethod
+    def test_maintain_reverse_grouped_links_attributes_with_role_prefix(
+        base_object: BaseObjectContainer,
+        dummy_work_items: dict[str, data_models.CapellaWorkItem],
+    ):
+        reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
+        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        config = converter_config.CapellaTypeConfig(
+            "fakeModelObject",
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
+        )
+        mock_model = mock.MagicMock()
+        fake_2 = FakeModelObject("uuid2", "Fake 2")
+        fake_1 = FakeModelObject("uuid1", "Fake 1")
+        fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
+        fake_1.attribute = [fake_0, fake_2]
+        mock_model.by_uuid.side_effect = lambda uuid: {
+            "uuid0": fake_0,
+            "uuid1": fake_1,
+            "uuid2": fake_2,
+        }[uuid]
+        for link in dummy_work_items["uuid0"].linked_work_items:
+            link.role = f"_C2P_{link.role}"
+        link_serializer = link_converter.LinkSerializer(
+            base_object.pw.polarion_data_repo,
+            base_object.mc.converter_session,
+            base_object.pw.polarion_params.project_id,
+            mock_model,
+            role_prefix="_C2P",
+        )
+        for work_item in dummy_work_items.values():
+            converter_data = data_session.ConverterData(
+                "test", config, [], work_item
+            )
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+
+        for work_item_id, links in back_links.items():
+            work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
+            link_serializer.create_grouped_back_link_fields(work_item, links)
+
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid1"].additional_attributes
+        )
 
 
 def test_grouped_linked_work_items_order_consistency(
@@ -1755,6 +1860,15 @@ class TestSerializers:
     def test_read_config_links(caplog: pytest.LogCaptureFixture):
         caplog.set_level("DEBUG")
         config = converter_config.ConverterConfig()
+        expected = (
+            "capella2polarion.converters.converter_config",
+            20,
+            "Global link parent is not available on Capella type diagram",
+            "capella2polarion.converters.converter_config",
+            40,
+            "Link exchanged_items is not available on Capella type "
+            "FunctionalExchange",
+        )
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)
 
@@ -1764,13 +1878,4 @@ class TestSerializers:
             for link in config.diagram_config.links
             if link.capella_attr == "parent"
         )
-        assert caplog.record_tuples[0][1] == 20
-        assert (
-            caplog.record_tuples[0][2]
-            == "Global link parent is not available on Capella type diagram"
-        )
-        assert caplog.record_tuples[1][1] == 40
-        assert (
-            caplog.record_tuples[1][2]
-            == "Link exchanged_items is not available on Capella type FunctionalExchange"
-        )
+        assert caplog.record_tuples[0] + caplog.record_tuples[1] == expected
