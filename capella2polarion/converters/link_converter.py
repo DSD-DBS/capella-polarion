@@ -61,9 +61,8 @@ class LinkSerializer:
         new_links: list[polarion_api.WorkItemLink] = []
         link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
-            assert (role_id := link_config.polarion_role) is not None
-            attr_id = link_config.capella_attr or ""
-            serializer = self.serializers.get(attr_id)
+            serializer = self.serializers.get(link_config.capella_attr)
+            role_id = link_config.polarion_role
             if self.role_prefix:
                 role_id = f"{self.role_prefix}_{role_id}"
             try:
@@ -72,7 +71,7 @@ class LinkSerializer:
                         serializer(obj, work_item.id, role_id, {})
                     )
                 else:
-                    refs = _resolve_attribute(obj, attr_id)
+                    refs = _resolve_attribute(obj, link_config.capella_attr)
                     new: cabc.Iterable[str]
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
@@ -87,9 +86,14 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                request_text = f"Requested attribute: {attr_id}"
                 error_text = f"{type(error).__name__} {str(error)}"
-                link_errors.extend([request_text, error_text, "--------"])
+                link_errors.extend(
+                    [
+                        f"Requested attribute: {link_config.capella_attr}",
+                        error_text,
+                        "--------",
+                    ]
+                )
 
         if link_errors:
             for link_error in link_errors:
@@ -227,10 +231,7 @@ class LinkSerializer:
                     config = link_config
                     break
 
-            role_id = role
-            if self.role_prefix:
-                role_id = role.removeprefix(f"{self.role_prefix}_")
-
+            role_id = self._remove_prefix(role)
             self._create_link_fields(
                 work_item, role_id, grouped_links, config=config
             )
@@ -315,11 +316,13 @@ class LinkSerializer:
             List of links referencing work_item as secondary
         """
         for role, grouped_links in _group_by("role", links).items():
-            role_id = role
-            if self.role_prefix:
-                role_id = role.removeprefix(f"{self.role_prefix}_")
-
+            role_id = self._remove_prefix(role)
             self._create_link_fields(work_item, role_id, grouped_links, True)
+
+    def _remove_prefix(self, role: str) -> str:
+        if self.role_prefix:
+            return role.removeprefix(f"{self.role_prefix}_")
+        return role
 
 
 def _group_by(
