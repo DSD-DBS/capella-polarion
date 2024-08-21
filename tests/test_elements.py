@@ -718,8 +718,10 @@ class TestModelElements:
         )
 
         base_object.pw.polarion_data_repo.update_work_items([work_item_2])
-        base_object.mc.converter_session["uuid2"].work_item = work_item_2
-
+        converter_data = base_object.mc.converter_session["uuid2"]
+        converter_data.work_item = work_item_2
+        link_config = converter_data.type_config.links[0]
+        link_config.polarion_role = f"_C2P_{link_config.polarion_role}"
         expected = polarion_api.WorkItemLink(
             "Obj-2",
             "Obj-1",
@@ -733,6 +735,7 @@ class TestModelElements:
             base_object.c2pcli.capella_model,
             role_prefix="_C2P",
         )
+
         links = link_serializer.create_links_for_work_item("uuid2")
 
         assert links == [expected]
@@ -1730,7 +1733,7 @@ class TestSerializers:
     def test_multiple_serializers(model: capellambse.MelodyModel, prefix: str):
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
-            "test",
+            f"{prefix}_test" if prefix else "test",
             ["include_pre_and_post_condition", "add_context_diagram"],
             [],
         )
@@ -1743,12 +1746,12 @@ class TestSerializers:
                 )
             },
             True,
-            prefix,
         )
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
 
         assert work_item is not None
+        assert work_item.type is not None
         assert work_item.type.startswith(prefix)
         assert "preCondition" in work_item.additional_attributes
         assert "postCondition" in work_item.additional_attributes
@@ -1815,13 +1818,13 @@ class TestSerializers:
         }
         type_config = config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
+        type_config.p_type = f"{prefix}_{type_config.p_type}"
         ework_item = data_models.CapellaWorkItem(id=f"{prefix}_TEST")
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository([ework_item]),
             {uuid: data_session.ConverterData(layer, type_config, obj)},
             False,
-            prefix,
         )
 
         work_item = serializer.serialize(uuid)

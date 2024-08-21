@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 @click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
 @click.option("--polarion-delete-work-items", is_flag=True, default=False)
 @click.option("--capella-model", type=cli_helpers.ModelCLI(), default=None)
+@click.option("--type-prefix", type=str, default="")
+@click.option("--role-prefix", type=str, default="")
 @click.pass_context
 def cli(
     ctx: click.core.Context,
@@ -47,6 +49,8 @@ def cli(
     polarion_pat: str,
     polarion_delete_work_items: bool,
     capella_model: capellambse.MelodyModel,
+    type_prefix: str,
+    role_prefix: str,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
     if capella_model.diagram_cache is None:
@@ -59,6 +63,8 @@ def cli(
         polarion_pat,
         polarion_delete_work_items,
         capella_model,
+        type_prefix=type_prefix,
+        role_prefix=role_prefix,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -79,15 +85,11 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     default=None,
 )
 @click.option("--force-update", is_flag=True, default=False)
-@click.option("--type-prefix", type=str, default="")
-@click.option("--role-prefix", type=str, default="")
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
     force_update: bool,
     synchronize_config: typing.TextIO,
-    type_prefix: str,
-    role_prefix: str,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -97,13 +99,10 @@ def synchronize(
     )
     capella_to_polarion_cli.load_synchronize_config(synchronize_config)
     capella_to_polarion_cli.force_update = force_update
-    capella_to_polarion_cli.type_prefix = type_prefix
-    capella_to_polarion_cli.role_prefix = role_prefix
 
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
-        type_prefix=capella_to_polarion_cli.type_prefix,
         role_prefix=capella_to_polarion_cli.role_prefix,
     )
 

@@ -29,12 +29,10 @@ class ModelConverter:
         self,
         model: capellambse.MelodyModel,
         project_id: str,
-        type_prefix: str = "",
         role_prefix: str = "",
     ):
         self.model = model
         self.project_id = project_id
-        self.type_prefix = type_prefix
         self.role_prefix = role_prefix
 
         self.converter_session: data_session.ConverterSession = {}
@@ -110,7 +108,6 @@ class ModelConverter:
             polarion_data_repo,
             self.converter_session,
             generate_attachments,
-            self.type_prefix,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:

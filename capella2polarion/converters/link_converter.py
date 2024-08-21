@@ -63,8 +63,6 @@ class LinkSerializer:
         for link_config in converter_data.type_config.links:
             serializer = self.serializers.get(link_config.capella_attr)
             role_id = link_config.polarion_role
-            if self.role_prefix:
-                role_id = f"{self.role_prefix}_{role_id}"
             try:
                 if serializer:
                     new_links.extend(
@@ -225,13 +223,13 @@ class LinkSerializer:
                     key = link.secondary_work_item_id
                     back_links.setdefault(key, []).append(link)
 
-            role_id = self._remove_prefix(role)
             config: converter_config.LinkConfig | None = None
             for link_config in data.type_config.links:
-                if link_config.polarion_role == role_id:
+                if link_config.polarion_role == role:
                     config = link_config
                     break
 
+            role_id = self._remove_prefix(role)
             self._create_link_fields(
                 work_item, role_id, grouped_links, config=config
             )
