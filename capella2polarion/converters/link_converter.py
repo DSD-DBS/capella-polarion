@@ -12,7 +12,6 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse.model import common
 from capellambse.model import diagram as diag
-from capellambse.model.crosslayer import fa
 
 import capella2polarion.converters.polarion_html_helper
 from capella2polarion import data_models
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 _Serializer: t.TypeAlias = cabc.Callable[
-    [common.GenericElement, str, str, str, dict[str, t.Any]],
+    [common.GenericElement, str, str, dict[str, t.Any]],
     list[polarion_api.WorkItemLink],
 ]
 
@@ -48,8 +47,6 @@ class LinkSerializer:
         self.serializers: dict[str, _Serializer] = {
             converter_config.DESCRIPTION_REFERENCE_SERIALIZER: self._handle_description_reference_links,  # pylint: disable=line-too-long
             converter_config.DIAGRAM_ELEMENTS_SERIALIZER: self._handle_diagram_reference_links,  # pylint: disable=line-too-long
-            "input_exchanges": self._handle_exchanges,
-            "output_exchanges": self._handle_exchanges,
         }
 
     def create_links_for_work_item(
@@ -60,21 +57,21 @@ class LinkSerializer:
         obj = converter_data.capella_element
         work_item = converter_data.work_item
         assert work_item is not None
+        assert work_item.id is not None
         new_links: list[polarion_api.WorkItemLink] = []
         link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
-            assert (role_id := link_config.polarion_role) is not None
-            attr_id = link_config.capella_attr or ""
-            serializer = self.serializers.get(role_id)
+            serializer = self.serializers.get(link_config.capella_attr)
+            role_id = link_config.polarion_role
             if self.role_prefix:
                 role_id = f"{self.role_prefix}_{role_id}"
             try:
                 if serializer:
                     new_links.extend(
-                        serializer(obj, work_item.id, role_id, attr_id, {})
+                        serializer(obj, work_item.id, role_id, {})
                     )
                 else:
-                    refs = _resolve_attribute(obj, attr_id)
+                    refs = _resolve_attribute(obj, link_config.capella_attr)
                     new: cabc.Iterable[str]
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
@@ -89,9 +86,14 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                request_text = f"Requested attribute: {attr_id}"
                 error_text = f"{type(error).__name__} {str(error)}"
-                link_errors.extend([request_text, error_text, "--------"])
+                link_errors.extend(
+                    [
+                        f"Requested attribute: {link_config.capella_attr}",
+                        error_text,
+                        "--------",
+                    ]
+                )
 
         if link_errors:
             for link_error in link_errors:
@@ -137,10 +139,8 @@ class LinkSerializer:
         obj: common.GenericElement,
         work_item_id: str,
         role_id: str,
-        attr_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        del attr_id
         refs = self.converter_session[obj.uuid].description_references
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
@@ -150,10 +150,8 @@ class LinkSerializer:
         obj: diag.Diagram,
         work_item_id: str,
         role_id: str,
-        attr_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        del attr_id
         try:
             refs = set(self._collect_uuids(obj.nodes))
             refs = set(self._get_work_item_ids(work_item_id, refs, role_id))
@@ -199,20 +197,6 @@ class LinkSerializer:
         ]
         return list(filter(None, _new_links))
 
-    def _handle_exchanges(
-        self,
-        obj: fa.Function,
-        work_item_id: str,
-        role_id: str,
-        attr_id: str,
-        links: dict[str, polarion_api.WorkItemLink],
-    ) -> list[polarion_api.WorkItemLink]:
-        exchanges: list[str] = []
-        objs = _resolve_attribute(obj, attr_id)
-        exs = self._get_work_item_ids(work_item_id, objs.by_uuid, role_id)
-        exchanges.extend(set(exs))
-        return self._create(work_item_id, role_id, exchanges, links)
-
     def create_grouped_link_fields(
         self,
         data: data_session.ConverterData,
@@ -247,11 +231,9 @@ class LinkSerializer:
                     config = link_config
                     break
 
+            role_id = self._remove_prefix(role)
             self._create_link_fields(
-                work_item,
-                role.removeprefix(f"{self.role_prefix}_"),
-                grouped_links,
-                config=config,
+                work_item, role_id, grouped_links, config=config
             )
 
     def _create_link_fields(
@@ -334,12 +316,13 @@ class LinkSerializer:
             List of links referencing work_item as secondary
         """
         for role, grouped_links in _group_by("role", links).items():
-            self._create_link_fields(
-                work_item,
-                role.removeprefix(f"{self.role_prefix}_"),
-                grouped_links,
-                True,
-            )
+            role_id = self._remove_prefix(role)
+            self._create_link_fields(work_item, role_id, grouped_links, True)
+
+    def _remove_prefix(self, role: str) -> str:
+        if self.role_prefix:
+            return role.removeprefix(f"{self.role_prefix}_")
+        return role
 
 
 def _group_by(

@@ -37,7 +37,7 @@ class LinkConfig:
     """
 
     capella_attr: str
-    polarion_role: str | None = None
+    polarion_role: str
     include: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
@@ -286,27 +286,25 @@ def _filter_links(
 
     available_links = []
     for link in links:
-        cappela_attr = link.capella_attr.split(".")[0]
+        capella_attr = link.capella_attr.split(".")[0]
+        is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
         if (
-            cappela_attr == DESCRIPTION_REFERENCE_SERIALIZER
-            or (
-                cappela_attr == DIAGRAM_ELEMENTS_SERIALIZER
-                and c_class == diagram.Diagram
-            )
-            or hasattr(c_class, cappela_attr)
+            capella_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            or (is_diagram_elements and c_class == diagram.Diagram)
+            or hasattr(c_class, capella_attr)
         ):
             available_links.append(link)
         else:
             if is_global:
                 logger.info(
                     "Global link %s is not available on Capella type %s",
-                    cappela_attr,
+                    capella_attr,
                     c_type,
                 )
             else:
                 logger.error(
                     "Link %s is not available on Capella type %s",
-                    cappela_attr,
+                    capella_attr,
                     c_type,
                 )
     return available_links
