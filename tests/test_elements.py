@@ -1219,8 +1219,11 @@ class TestModelElements:
         assert "attribute" in dummy_work_items["uuid1"].additional_attributes
 
     @staticmethod
+    @pytest.mark.parametrize("role_prefix", ["", "_C2P"])
     def test_grouped_links_attributes_with_includes(
-        base_object: BaseObjectContainer, model: capellambse.MelodyModel
+        base_object: BaseObjectContainer,
+        model: capellambse.MelodyModel,
+        role_prefix: str,
     ):
         fnc = model.by_uuid(TEST_SYS_FNC)
         ex = model.by_uuid(TEST_SYS_FNC_EX)
@@ -1257,6 +1260,7 @@ class TestModelElements:
         converter = model_converter.ModelConverter(
             base_object.c2pcli.capella_model,
             base_object.c2pcli.polarion_params.project_id,
+            role_prefix=role_prefix,
         )
         converter.converter_session = base_object.mc.converter_session
         work_items = converter.generate_work_items(
@@ -1274,6 +1278,7 @@ class TestModelElements:
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
+            role_prefix=role_prefix,
         )
         backlinks: dict[str, list[polarion_api.WorkItemLink]] = {}
         work_item = (
