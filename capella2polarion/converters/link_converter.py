@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 _Serializer: t.TypeAlias = cabc.Callable[
-    [common.GenericElement, str, str, dict[str, t.Any]],
+    [diag.Diagram | common.GenericElement, str, str, dict[str, t.Any]],
     list[polarion_api.WorkItemLink],
 ]
 

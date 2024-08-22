@@ -1,15 +1,16 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module with classes and a loader for document rendering configs."""
+import collections.abc as cabc
 import logging
 import pathlib
 import typing as t
 
 import capellambse
 import jinja2
-import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
+from polarion_rest_api_client import data_models
 
 from capella2polarion import data_models
 from capella2polarion.converters import polarion_html_helper
@@ -56,7 +57,7 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
     )
-    instances: list[DocumentRenderingInstance]
+    instances: cabc.Sequence[DocumentRenderingInstance]
 
 
 class FullAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
@@ -69,7 +70,7 @@ class MixedAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
     """Mixed authority document with multiple auto generated sections."""
 
     sections: dict[str, str]
-    instances: list[SectionBasedDocumentRenderingInstance]
+    instances: cabc.Sequence[SectionBasedDocumentRenderingInstance]
 
 
 class DocumentConfigs(pydantic.BaseModel):
@@ -112,14 +113,14 @@ def read_config_file(
 
 def generate_work_item_layouts(
     configs: dict[str, WorkItemLayout]
-) -> list[polarion_api.RenderingLayout]:
+) -> list[data_models.RenderingLayout]:
     """Create polarion_api.RenderingLayouts for a given configuration."""
     results = []
     for _type, conf in configs.items():
         if conf.show_title and conf.show_description:
-            layouter = polarion_api.data_models.Layouter.SECTION
+            layouter = data_models.Layouter.SECTION
         elif conf.show_description:
-            layouter = polarion_api.data_models.Layouter.PARAGRAPH
+            layouter = data_models.Layouter.PARAGRAPH
         else:
             if not conf.show_title:
                 logger.warning(
@@ -127,13 +128,13 @@ def generate_work_item_layouts(
                     "For that reason, the title will be shown for %s.",
                     _type,
                 )
-            layouter = polarion_api.data_models.Layouter.TITLE
+            layouter = data_models.Layouter.TITLE
         results.append(
-            polarion_api.RenderingLayout(
+            data_models.RenderingLayout(
                 type=_type,
                 layouter=layouter,
                 label=polarion_html_helper.camel_case_to_words(_type),
-                properties=polarion_api.data_models.RenderingProperties(
+                properties=data_models.RenderingProperties(
                     fields_at_start=conf.fields_at_start,
                     fields_at_end=conf.fields_at_end,
                     fields_at_end_as_table=conf.show_fields_as_table,

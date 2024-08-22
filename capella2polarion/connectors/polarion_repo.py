@@ -51,10 +51,6 @@ class PolarionDataRepository:
         """Return the amount of registered Capella UUIDs."""
         return len(self._id_mapping)
 
-    def __getitem__(self, item: str) -> data_models.CapellaWorkItem:
-        """Return the work_item for a given Capella UUID."""
-        return self._work_items[item]
-
     def __iter__(self) -> cabc.Iterator[str]:
         """Iterate all Capella UUIDs."""
         return self._id_mapping.__iter__()

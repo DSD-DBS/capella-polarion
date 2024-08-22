@@ -250,6 +250,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             ),
             None,
         ):
+            assert attachment.file_name is not None
             return polarion_html_helper.generate_image_html(
                 diagram.name,
                 attachment.file_name,
