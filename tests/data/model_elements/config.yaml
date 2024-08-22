@@ -55,10 +55,14 @@ sa:
         capella_attr: inputs.exchanges
         include:
           Exchange Items: exchange_items
+        link_field: inputExchanges
+        reverse_field: inputExchangesReverse
       - polarion_role: output_exchanges
         capella_attr: outputs.exchanges
         include:
           Exchange Items: exchange_items
+        link_field: output_exchanges
+        reverse_field: output_exchanges_reverse
   FunctionalExchange:
     links:
       - exchanged_items

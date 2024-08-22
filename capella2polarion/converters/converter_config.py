@@ -39,6 +39,8 @@ class LinkConfig:
     capella_attr: str
     polarion_role: str
     include: dict[str, str] = dataclasses.field(default_factory=dict)
+    link_field: str = ""
+    reverse_field: str = ""
 
 
 @dataclasses.dataclass
@@ -63,18 +65,25 @@ def _default_type_conversion(c_type: str) -> str:
 class ConverterConfig:
     """The overall Config for capella2polarion."""
 
-    def __init__(self, type_prefix: str = "", role_prefix: str = ""):
-        self.type_prefix = type_prefix
-        self.role_prefix = role_prefix
-
+    def __init__(self):
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
         self.polarion_types = set[str]()
         self.diagram_config: CapellaTypeConfig | None = None
         self.__global_config = CapellaTypeConfig()
 
-    def read_config_file(self, synchronize_config: t.TextIO):
+        self._type_prefix: str
+        self._role_prefix: str
+
+    def read_config_file(
+        self,
+        synchronize_config: t.TextIO,
+        type_prefix: str = "",
+        role_prefix: str = "",
+    ):
         """Read a given yaml file as config."""
+        self._type_prefix = type_prefix
+        self._role_prefix = role_prefix
         config_dict = yaml.safe_load(synchronize_config)
         # We handle the cross layer config separately as global_configs
         global_config_dict = config_dict.pop("*", {})
@@ -131,7 +140,7 @@ class ConverterConfig:
                     or closest_config.p_type
                     or _default_type_conversion(c_type)
                 ),
-                self.type_prefix,
+                self._type_prefix,
             )
             self.polarion_types.add(p_type)
             links = self._force_link_config(type_config.get("links", []))
@@ -171,7 +180,7 @@ class ConverterConfig:
             c_type, self._force_link_config(diagram_config.get("links", []))
         )
         self.diagram_config = CapellaTypeConfig(
-            add_prefix(p_type, self.type_prefix),
+            add_prefix(p_type, self._type_prefix),
             diagram_config.get("serializer") or "diagram",
             links + self._get_global_links(c_type),
         )
@@ -182,15 +191,21 @@ class ConverterConfig:
             if isinstance(link, str):
                 config = LinkConfig(
                     capella_attr=link,
-                    polarion_role=add_prefix(link, self.role_prefix),
+                    polarion_role=(pid := add_prefix(link, self._role_prefix)),
+                    link_field=pid,
+                    reverse_field=f"{pid}_reverse",
                 )
             elif isinstance(link, dict):
                 config = LinkConfig(
                     capella_attr=(lid := link["capella_attr"]),
-                    polarion_role=add_prefix(
-                        link.get("polarion_role", lid), self.role_prefix
+                    polarion_role=(
+                        pid := add_prefix(
+                            link.get("polarion_role", lid), self._role_prefix
+                        )
                     ),
                     include=link.get("include", {}),
+                    link_field=(lf := link.get("link_field", pid)),
+                    reverse_field=link.get("reverse_field", f"{lf}_reverse"),
                 )
             else:
                 logger.error(

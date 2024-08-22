@@ -28,8 +28,6 @@ class Capella2PolarionCli:
         polarion_delete_work_items: bool,
         capella_model: capellambse.MelodyModel,
         force_update: bool = False,
-        type_prefix: str = "",
-        role_prefix: str = "",
     ) -> None:
         self.debug = debug
         self.polarion_params = pw.PolarionWorkerParams(
@@ -42,8 +40,6 @@ class Capella2PolarionCli:
         self.capella_model = capella_model
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
-        self.type_prefix = type_prefix
-        self.role_prefix = role_prefix
 
     def _none_save_value_string(self, value: str | None) -> str | None:
         return "None" if value is None else value
@@ -97,7 +93,10 @@ class Capella2PolarionCli:
         logging.getLogger("httpcore").setLevel("WARNING")
 
     def load_synchronize_config(
-        self, synchronize_config_io: typing.TextIO
+        self,
+        synchronize_config_io: typing.TextIO,
+        type_prefix: str = "",
+        role_prefix: str = "",
     ) -> None:
         """Read the sync config into SynchronizeConfigContent.
 
@@ -107,4 +106,6 @@ class Capella2PolarionCli:
             raise RuntimeError("synchronize config io stream is closed ")
         if not synchronize_config_io.readable():
             raise RuntimeError("synchronize config io stream is not readable")
-        self.config.read_config_file(synchronize_config_io)
+        self.config.read_config_file(
+            synchronize_config_io, type_prefix, role_prefix
+        )
