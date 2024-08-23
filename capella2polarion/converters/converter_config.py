@@ -191,17 +191,16 @@ class ConverterConfig:
             if isinstance(link, str):
                 config = LinkConfig(
                     capella_attr=link,
-                    polarion_role=(pid := add_prefix(link, self._role_prefix)),
-                    link_field=pid,
-                    reverse_field=f"{pid}_reverse",
+                    polarion_role=add_prefix(link, self._role_prefix),
+                    link_field=link,
+                    reverse_field=f"{link}_reverse",
                 )
             elif isinstance(link, dict):
                 config = LinkConfig(
                     capella_attr=(lid := link["capella_attr"]),
-                    polarion_role=(
-                        pid := add_prefix(
-                            link.get("polarion_role", lid), self._role_prefix
-                        )
+                    polarion_role=add_prefix(
+                        (pid := link.get("polarion_role", lid)), 
+                        self._role_prefix
                     ),
                     include=link.get("include", {}),
                     link_field=(lf := link.get("link_field", pid)),
