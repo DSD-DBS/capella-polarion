@@ -8,11 +8,11 @@ import typing as t
 from unittest import mock
 
 import capellambse
-import capellambse_context_diagrams.context
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse.model import common
+from capellambse_context_diagrams import context, filters
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
@@ -1717,6 +1717,75 @@ class TestSerializers:
             "__C2P__context_diagram.svg",
         )
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "context_diagram_filter",
+        [
+            "SHOW_EX_ITEMS",
+            "EX_ITEMS",
+            "EX_ITEMS_OR_EXCH",
+            "NO_UUID",
+            "SYSTEM_EX_RELABEL",
+        ],
+    )
+    def test_add_context_diagram_with_params(
+        model: capellambse.MelodyModel,
+        monkeypatch: pytest.MonkeyPatch,
+        context_diagram_filter: str,
+    ):
+        uuid = "00e7b925-cf4c-4cb0-929e-5409a1cd872b"
+        fnc = model.by_uuid(uuid)
+        config = {"add_context_diagram": {"filters": [context_diagram_filter]}}
+        type_config = converter_config.CapellaTypeConfig(
+            "systemFunction", config, []
+        )
+        expected_filter = getattr(filters, context_diagram_filter)
+        monkeypatch.setattr(
+            element_converter.CapellaWorkItemSerializer,
+            "_draw_additional_attributes_diagram",
+            draw_diagram_mock := mock.MagicMock(),
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {uuid: data_session.ConverterData("sa", type_config, fnc)},
+            True,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert draw_diagram_mock.call_count == 1
+        assert (inputs := draw_diagram_mock.call_args[0])[0] == work_item
+        assert expected_filter in inputs[1].filters
+
+    @staticmethod
+    def test_add_tree_view_with_params(
+        model: capellambse.MelodyModel,
+    ):
+        cls = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
+        config = {"add_tree_diagram": {"render_params": {"depth": 1}}}
+        type_config = converter_config.CapellaTypeConfig(
+            "systemFunction", config, []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_OCAP_UUID: data_session.ConverterData(
+                    "pa", type_config, cls
+                )
+            },
+            True,
+        )
+
+        with mock.patch.object(
+            context.ContextDiagram, "render"
+        ) as wrapped_render:
+            serializer.serialize_all()
+
+            assert wrapped_render.call_count == 1
+            assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
         uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
         type_config = converter_config.CapellaTypeConfig(
@@ -1852,7 +1921,28 @@ class TestSerializers:
         assert work_item == data_models.CapellaWorkItem(**expected)
 
     @staticmethod
-    def test_read_config_with_custom_params(model: capellambse.MelodyModel):
+    def test_read_config_context_diagram_with_params():
+        expected_filter = (
+            "capellambse_context_diagrams-show.exchanges.or.exchange.items."
+            "filter"
+        )
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        type_config = config.get_type_config("sa", "SystemFunction")
+
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert "add_context_diagram" in type_config.converters
+        assert type_config.converters["add_context_diagram"]["filters"] == [
+            expected_filter
+        ]
+
+    @staticmethod
+    def test_read_config_tree_view_with_params(
+        model: capellambse.MelodyModel,
+    ):
         cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
@@ -1878,9 +1968,10 @@ class TestSerializers:
         )
 
         with mock.patch.object(
-            capellambse_context_diagrams.context.ContextDiagram, "render"
+            context.ContextDiagram, "render"
         ) as wrapped_render:
             serializer.serialize_all()
+
             assert wrapped_render.call_count == 1
             assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 

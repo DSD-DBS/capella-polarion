@@ -61,6 +61,10 @@ sa:
         capella_attr: outputs.exchanges
         include:
           Exchange Items: exchange_items
+    serializer:
+      add_context_diagram:
+        filters:
+          - EX_ITEMS_OR_EXCH # functional exchange or exchange item name
   FunctionalExchange:
     links:
       - exchanged_items
