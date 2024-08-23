@@ -10,6 +10,7 @@ from collections import abc as cabc
 
 import yaml
 from capellambse.model import common, diagram
+from capellambse_context_diagrams import filters as context_filters
 
 logger = logging.getLogger(__name__)
 
@@ -296,7 +297,7 @@ def _force_dict(
         case list():
             return {c: {} for c in config}
         case dict():
-            return {k: v or {} for k, v in config.items()}
+            return _filter_converter_config(config)
         case _:
             raise TypeError("Unsupported Type")
 
@@ -308,6 +309,47 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
     return polarion_type
 
 
+def _filter_converter_config(
+    config: dict[str, dict[str, t.Any]]
+) -> dict[str, dict[str, t.Any]]:
+    custom_converters = (
+        "include_pre_and_post_condition",
+        "linked_text_as_description",
+        "add_context_diagram",
+        "add_tree_diagram",
+        "add_jinja_fields",
+        "jinja_as_description",
+    )
+    filtered_config = {}
+    for name, params in config.items():
+        params = params or {}
+        if name not in custom_converters:
+            logger.error("Unknown converter in config %r", name)
+            continue
+
+        if name == "add_context_diagram":
+            params = _filter_context_diagram_config(params)
+
+        filtered_config[name] = params
+
+    return filtered_config
+
+
+def _filter_context_diagram_config(
+    config: dict[str, t.Any]
+) -> dict[str, t.Any]:
+    converted_filters = []
+    for filter_name in config.get("filters", []):
+        try:
+            converted_filters.append(getattr(context_filters, filter_name))
+        except AttributeError:
+            logger.error("Unknown diagram filter in config %r", filter_name)
+
+    if converted_filters:
+        config["filters"] = converted_filters
+    return config
+
+
 def _filter_links(
     c_type: str, links: list[LinkConfig], is_global: bool = False
 ):
@@ -315,7 +357,7 @@ def _filter_links(
         c_class = diagram.Diagram
     else:
         if not (c_classes := common.find_wrapper(c_type)):
-            logger.error("Did not find any matching Wrapper for %s", c_type)
+            logger.error("Did not find any matching Wrapper for %r", c_type)
             return links
         c_class = c_classes[0]
 
