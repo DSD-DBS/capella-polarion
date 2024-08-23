@@ -199,8 +199,8 @@ class ConverterConfig:
                 config = LinkConfig(
                     capella_attr=(lid := link["capella_attr"]),
                     polarion_role=add_prefix(
-                        (pid := link.get("polarion_role", lid)), 
-                        self._role_prefix
+                        (pid := link.get("polarion_role", lid)),
+                        self._role_prefix,
                     ),
                     include=link.get("include", {}),
                     link_field=(lf := link.get("link_field", pid)),
