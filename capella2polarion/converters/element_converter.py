@@ -20,8 +20,6 @@ import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse.model import common
 from capellambse.model import diagram as diag
-from capellambse.model.crosslayer import interaction
-from capellambse.model.layers import ctx, la, oa
 from lxml import etree
 
 from capella2polarion import data_models
@@ -32,16 +30,6 @@ RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
 )
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
-
-PrePostConditionElement: t.TypeAlias = t.Union[
-    oa.OperationalCapability, interaction.Scenario
-]
-PrePostConditionElementTypes = (
-    oa.OperationalCapability,
-    ctx.Capability,
-    la.CapabilityRealization,
-    interaction.Scenario,
-)
 
 logger = logging.getLogger(__name__)
 C2P_IMAGE_PREFIX = "__C2P__"

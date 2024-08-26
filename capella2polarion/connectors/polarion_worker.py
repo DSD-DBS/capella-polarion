@@ -206,12 +206,7 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        old_checksum = old.get_current_checksum() or "None"
-        if old_checksum[0] != "{":  # XXX: Remove in next release
-            old_checksums = {"__C2P__WORK_ITEM": old_checksum}
-        else:
-            old_checksums = json.loads(old_checksum)
-
+        old_checksums = {"__C2P__WORK_ITEM": old.get_current_checksum() or ""}
         new_checksum = new.get_current_checksum()
         assert new_checksum is not None
         new_checksums = json.loads(new_checksum)
@@ -245,7 +240,7 @@ class CapellaPolarionWorker:
                 work_item_changed |= self.update_attachments(
                     new, old_checksums, new_checksums, old_attachments
                 )
-        except polarion_api.PolarionApiException as error:
+        except (polarion_api.PolarionApiException, ValueError) as error:
             logger.error(
                 "Updating attachments for WorkItem %r (%s %s) failed. %s",
                 *log_args,
@@ -376,19 +371,25 @@ class CapellaPolarionWorker:
         Returns True if new attachments were created. After execution
         all attachments of the new work item should have IDs.
         """
-        new_attachment_dict = {
-            attachment.file_name: attachment
-            for attachment in new.attachments
-            if attachment.file_name is not None
-        }
-        old_attachment_dict = {
-            attachment.file_name: attachment
-            for attachment in old_attachments
-            if attachment.file_name is not None
-        }
+        new_attachment_dict: dict[str, polarion_api.WorkItemAttachment] = {}
+        for attachment in new.attachments:
+            if attachment.file_name is None:
+                raise ValueError(
+                    f"Found new attachment without filename: {new.id!r} with "
+                    + attachment.id
+                )
+            new_attachment_dict[attachment.file_name] = attachment
+
+        old_attachment_dict: dict[str, polarion_api.WorkItemAttachment] = {}
+        for attachment in old_attachments:
+            if attachment.file_name is None:
+                raise ValueError(
+                    f"Found old attachment without filename: {new!r} with"
+                    + attachment.id
+                )
+            old_attachment_dict[attachment.file_name] = attachment
 
         created = False
-
         for attachment in old_attachments:
             if attachment not in old_attachment_dict.values():
                 logger.error(
@@ -447,10 +448,12 @@ class CapellaPolarionWorker:
     ) -> dict[str, polarion_api.WorkItemLink]:
         """Return an ID-Link dict of links present in left and not in right."""
         left_id_map = {
-            CapellaPolarionWorker._get_link_id(link): link for link in left
+            CapellaPolarionWorker._get_link_id(link): link
+            for link in CapellaPolarionWorker._filter_all_link_ids(left)
         }
         right_id_map = {
-            CapellaPolarionWorker._get_link_id(link): link for link in right
+            CapellaPolarionWorker._get_link_id(link): link
+            for link in CapellaPolarionWorker._filter_all_link_ids(right)
         }
         return {
             lid: left_id_map[lid]
@@ -463,6 +466,25 @@ class CapellaPolarionWorker:
         if link.secondary_work_item_project:
             secondary_id = f"{link.secondary_work_item_project}/{secondary_id}"
         return "/".join((link.primary_work_item_id, link.role, secondary_id))
+
+    @staticmethod
+    def _filter_all_link_ids(
+        links: cabc.Iterable[polarion_api.WorkItemLink],
+    ) -> cabc.Iterator[polarion_api.WorkItemLink]:
+        for link in links:
+            if link.primary_work_item_id is None:
+                logger.error(  # type: ignore[unreachable]
+                    "Found Work Item Link without source ID: %r", link
+                )
+                continue
+
+            if link.secondary_work_item_id is None:
+                logger.error(  # type: ignore[unreachable]
+                    "Found Work Item Link without target ID: %r", link
+                )
+                continue
+
+            yield link
 
     def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
