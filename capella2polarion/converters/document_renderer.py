@@ -470,7 +470,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def _render_full_authority_documents(
         self,
-        full_authority_configs,
+        full_authority_configs: list[
+            document_config.FullAuthorityDocumentRenderingConfig
+        ],
     ):
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
