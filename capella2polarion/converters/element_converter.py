@@ -85,13 +85,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         converter_session: data_session.ConverterSession,
         generate_attachments: bool,
-        type_prefix: str = "",
     ):
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
-        self.type_prefix = type_prefix
         self.jinja_envs: dict[str, jinja2.Environment] = {}
 
     def serialize_all(self) -> list[data_models.CapellaWorkItem]:
@@ -124,11 +122,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                     ", ".join([str(a) for a in error.args])
                 )
                 converter_data.work_item = None
-
-        if self.type_prefix and converter_data.work_item is not None:
-            converter_data.work_item.type = (
-                f"{self.type_prefix}_{converter_data.work_item.type}"
-            )
 
         if converter_data.errors:
             log_args = (

@@ -39,6 +39,8 @@ class LinkConfig:
     capella_attr: str
     polarion_role: str
     include: dict[str, str] = dataclasses.field(default_factory=dict)
+    link_field: str = ""
+    reverse_field: str = ""
 
 
 @dataclasses.dataclass
@@ -70,18 +72,25 @@ class ConverterConfig:
         self.diagram_config: CapellaTypeConfig | None = None
         self.__global_config = CapellaTypeConfig()
 
-    def read_config_file(self, synchronize_config: t.TextIO):
+    def read_config_file(
+        self,
+        synchronize_config: t.TextIO,
+        type_prefix: str = "",
+        role_prefix: str = "",
+    ):
         """Read a given yaml file as config."""
         config_dict = yaml.safe_load(synchronize_config)
         # We handle the cross layer config separately as global_configs
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = _force_link_config(global_links)
+        self.__global_config.links = self._force_link_config(
+            global_links, role_prefix
+        )
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
-            self.set_diagram_config(diagram_config)
+            self.set_diagram_config(diagram_config, type_prefix)
 
         for c_type, type_config in global_config_dict.items():
             type_config = type_config or {}
@@ -91,7 +100,9 @@ class ConverterConfig:
             type_configs = type_configs or {}
             self.add_layer(layer)
             for c_type, c_type_config in type_configs.items():
-                self.set_layer_config(c_type, c_type_config, layer)
+                self.set_layer_config(
+                    c_type, c_type_config, layer, type_prefix, role_prefix
+                )
 
     def add_layer(self, layer: str):
         """Add a new layer without configuring any types."""
@@ -105,6 +116,8 @@ class ConverterConfig:
         c_type: str,
         c_type_config: dict[str, t.Any] | list[dict[str, t.Any]] | None,
         layer: str,
+        type_prefix: str = "",
+        role_prefix: str = "",
     ):
         """Set one or multiple configs for a type to an existing layer."""
         type_configs = _read_capella_type_configs(c_type_config)
@@ -122,21 +135,23 @@ class ConverterConfig:
             # As we set up all types this way, we can expect that all
             # non-compliant links are coming from global context here
             closest_links = _filter_links(c_type, closest_config.links, True)
-            p_type = (
-                type_config.get("polarion_type")
-                or closest_config.p_type
-                or _default_type_conversion(c_type)
+            p_type = add_prefix(
+                (
+                    type_config.get("polarion_type")
+                    or closest_config.p_type
+                    or _default_type_conversion(c_type)
+                ),
+                type_prefix,
             )
             self.polarion_types.add(p_type)
+            links = self._force_link_config(
+                type_config.get("links", []), role_prefix
+            )
             self._layer_configs[layer][c_type].append(
                 CapellaTypeConfig(
                     p_type,
                     type_config.get("serializer") or closest_config.converters,
-                    _filter_links(
-                        c_type,
-                        _force_link_config(type_config.get("links", [])),
-                    )
-                    + closest_links,
+                    _filter_links(c_type, links) + closest_links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
                 )
@@ -152,26 +167,60 @@ class ConverterConfig:
             p_type,
             type_config.get("serializer"),
             _filter_links(
-                c_type, _force_link_config(type_config.get("links", []))
+                c_type, self._force_link_config(type_config.get("links", []))
             )
             + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
 
-    def set_diagram_config(self, diagram_config: dict[str, t.Any]):
+    def set_diagram_config(
+        self, diagram_config: dict[str, t.Any], type_prefix: str = ""
+    ):
         """Set the diagram config."""
         c_type = "diagram"
         p_type = diagram_config.get("polarion_type") or "diagram"
         self.polarion_types.add(p_type)
         links = _filter_links(
-            c_type, _force_link_config(diagram_config.get("links", []))
+            c_type, self._force_link_config(diagram_config.get("links", []))
         )
         self.diagram_config = CapellaTypeConfig(
-            p_type,
+            add_prefix(p_type, type_prefix),
             diagram_config.get("serializer") or "diagram",
             links + self._get_global_links(c_type),
         )
+
+    def _force_link_config(
+        self, links: t.Any, role_prefix: str = ""
+    ) -> list[LinkConfig]:
+        result: list[LinkConfig] = []
+        for link in links:
+            if isinstance(link, str):
+                config = LinkConfig(
+                    capella_attr=link,
+                    polarion_role=add_prefix(link, role_prefix),
+                    link_field=link,
+                    reverse_field=f"{link}_reverse",
+                )
+            elif isinstance(link, dict):
+                config = LinkConfig(
+                    capella_attr=(lid := link["capella_attr"]),
+                    polarion_role=add_prefix(
+                        (pid := link.get("polarion_role", lid)),
+                        role_prefix,
+                    ),
+                    include=link.get("include", {}),
+                    link_field=(lf := link.get("link_field", pid)),
+                    reverse_field=link.get("reverse_field", f"{lf}_reverse"),
+                )
+            else:
+                logger.error(
+                    "Link not configured correctly: %r",
+                    link,
+                )
+                continue
+            result.append(config)
+        return result
 
     def get_type_config(
         self, layer: str, c_type: str, **attributes: t.Any
@@ -252,25 +301,11 @@ def _force_dict(
             raise TypeError("Unsupported Type")
 
 
-def _force_link_config(links: t.Any) -> list[LinkConfig]:
-    result: list[LinkConfig] = []
-    for link in links:
-        if isinstance(link, str):
-            config = LinkConfig(capella_attr=link, polarion_role=link)
-        elif isinstance(link, dict):
-            config = LinkConfig(
-                capella_attr=(lid := link["capella_attr"]),
-                polarion_role=link.get("polarion_role", lid),
-                include=link.get("include", {}),
-            )
-        else:
-            logger.error(
-                "Link not configured correctly: %r",
-                link,
-            )
-            continue
-        result.append(config)
-    return result
+def add_prefix(polarion_type: str, prefix: str) -> str:
+    """Add a prefix to the given ``polarion_type``."""
+    if prefix:
+        return f"{prefix}_{polarion_type}"
+    return polarion_type
 
 
 def _filter_links(

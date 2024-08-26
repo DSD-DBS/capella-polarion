@@ -29,13 +29,9 @@ class ModelConverter:
         self,
         model: capellambse.MelodyModel,
         project_id: str,
-        type_prefix: str = "",
-        role_prefix: str = "",
     ):
         self.model = model
         self.project_id = project_id
-        self.type_prefix = type_prefix
-        self.role_prefix = role_prefix
 
         self.converter_session: data_session.ConverterSession = {}
 
@@ -110,7 +106,6 @@ class ModelConverter:
             polarion_data_repo,
             self.converter_session,
             generate_attachments,
-            self.type_prefix,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:
@@ -133,7 +128,6 @@ class ModelConverter:
             self.converter_session,
             self.project_id,
             self.model,
-            self.role_prefix,
         )
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
@@ -158,7 +152,8 @@ class ModelConverter:
                 )
                 continue
 
+            assert converter_data.work_item.id is not None
             if local_back_links := back_links.get(converter_data.work_item.id):
                 link_serializer.create_grouped_back_link_fields(
-                    converter_data.work_item, local_back_links
+                    converter_data, local_back_links
                 )

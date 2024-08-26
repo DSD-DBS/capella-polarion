@@ -165,8 +165,6 @@ DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", "diagram")
 class GroupedLinksBaseObject(t.TypedDict):
     link_serializer: link_converter.LinkSerializer
     work_items: dict[str, data_models.CapellaWorkItem]
-    back_links: dict[str, list[polarion_api.WorkItemLink]]
-    reverse_polarion_id_map: dict[str, str]
     config: converter_config.CapellaTypeConfig
 
 
@@ -176,13 +174,14 @@ def grouped_links_base_object(
     base_object: BaseObjectContainer,
     dummy_work_items: dict[str, data_models.CapellaWorkItem],
 ) -> GroupedLinksBaseObject:
-    reverse_polarion_id_map = {v: k for k, v in POLARION_ID_MAP.items()}
-    back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
     config = converter_config.CapellaTypeConfig(
         "fakeModelObject",
         links=[
             converter_config.LinkConfig(
-                capella_attr="attribute", polarion_role="attribute"
+                capella_attr="attribute",
+                polarion_role="attribute",
+                link_field="attribute",
+                reverse_field="attribute_reverse",
             )
         ],
     )
@@ -205,8 +204,6 @@ def grouped_links_base_object(
     return {
         "link_serializer": link_serializer,
         "work_items": dummy_work_items,
-        "back_links": back_links,
-        "reverse_polarion_id_map": reverse_polarion_id_map,
         "config": config,
     }
 
@@ -718,8 +715,10 @@ class TestModelElements:
         )
 
         base_object.pw.polarion_data_repo.update_work_items([work_item_2])
-        base_object.mc.converter_session["uuid2"].work_item = work_item_2
-
+        converter_data = base_object.mc.converter_session["uuid2"]
+        converter_data.work_item = work_item_2
+        link_config = converter_data.type_config.links[0]
+        link_config.polarion_role = f"_C2P_{link_config.polarion_role}"
         expected = polarion_api.WorkItemLink(
             "Obj-2",
             "Obj-1",
@@ -731,8 +730,8 @@ class TestModelElements:
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
-            role_prefix="_C2P",
         )
+
         links = link_serializer.create_links_for_work_item("uuid2")
 
         assert links == [expected]
@@ -1132,7 +1131,10 @@ class TestModelElements:
             "fakeModelObject",
             links=[
                 converter_config.LinkConfig(
-                    capella_attr="attribute", polarion_role="attribute"
+                    capella_attr="attribute",
+                    polarion_role="attribute",
+                    link_field="attribute",
+                    reverse_field="attribute_reverse",
                 )
             ],
         )
@@ -1185,7 +1187,10 @@ class TestModelElements:
             "fakeModelObject",
             links=[
                 converter_config.LinkConfig(
-                    capella_attr="attribute", polarion_role="attribute"
+                    capella_attr="attribute",
+                    polarion_role="_C2P_attribute",
+                    link_field="attribute",
+                    reverse_field="attribute_reverse",
                 )
             ],
         )
@@ -1206,7 +1211,6 @@ class TestModelElements:
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             mock_model,
-            role_prefix="_C2P",
         )
 
         for work_item in dummy_work_items.values():
@@ -1216,14 +1220,13 @@ class TestModelElements:
             link_serializer.create_grouped_link_fields(converter_data)
 
         assert "attribute" in dummy_work_items["uuid0"].additional_attributes
-        assert "attribute" in dummy_work_items["uuid1"].additional_attributes
+        assert (  # Link Role on links were not prefixed
+            "attribute" not in dummy_work_items["uuid1"].additional_attributes
+        )
 
     @staticmethod
-    @pytest.mark.parametrize("role_prefix", ["", "_C2P"])
     def test_grouped_links_attributes_with_includes(
-        base_object: BaseObjectContainer,
-        model: capellambse.MelodyModel,
-        role_prefix: str,
+        base_object: BaseObjectContainer, model: capellambse.MelodyModel
     ):
         fnc = model.by_uuid(TEST_SYS_FNC)
         ex = model.by_uuid(TEST_SYS_FNC_EX)
@@ -1231,16 +1234,23 @@ class TestModelElements:
             "systemFunction",
             links=[
                 converter_config.LinkConfig(
-                    "inputs.exchanges",
-                    "input_exchanges",
+                    capella_attr="inputs.exchanges",
+                    polarion_role="input_exchanges",
                     include={"Exchange Items": "exchange_items"},
+                    link_field="input_exchanges",
+                    reverse_field="input_exchanges_reverse",
                 )
             ],
         )
         ex_config = converter_config.CapellaTypeConfig(
             "systemFunctionalExchange",
             links=[
-                converter_config.LinkConfig("exchange_items", "exchange_items")
+                converter_config.LinkConfig(
+                    capella_attr="exchange_items",
+                    polarion_role="exchange_items",
+                    link_field="exchange_items",
+                    reverse_field="exchange_items_reverse",
+                )
             ],
         )
         ex_item_config = converter_config.CapellaTypeConfig("exchangeItem")
@@ -1260,7 +1270,6 @@ class TestModelElements:
         converter = model_converter.ModelConverter(
             base_object.c2pcli.capella_model,
             base_object.c2pcli.polarion_params.project_id,
-            role_prefix=role_prefix,
         )
         converter.converter_session = base_object.mc.converter_session
         work_items = converter.generate_work_items(
@@ -1278,7 +1287,6 @@ class TestModelElements:
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
-            role_prefix=role_prefix,
         )
         backlinks: dict[str, list[polarion_api.WorkItemLink]] = {}
         work_item = (
@@ -1309,22 +1317,21 @@ class TestModelElements:
     ):
         link_serializer = grouped_links_base_object["link_serializer"]
         dummy_work_items = grouped_links_base_object["work_items"]
-        reverse_polarion_id_map = grouped_links_base_object[
-            "reverse_polarion_id_map"
-        ]
-        back_links = grouped_links_base_object["back_links"]
         config = grouped_links_base_object["config"]
+        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        data = {}
 
         for work_item in dummy_work_items.values():
-            converter_data = data_session.ConverterData(
+            data[work_item.id] = converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
         for work_item_id, links in back_links.items():
-            work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
-            link_serializer.create_grouped_back_link_fields(work_item, links)
+            link_serializer.create_grouped_back_link_fields(
+                data[work_item_id], links
+            )
 
         assert (
             dummy_work_items["uuid0"].additional_attributes.pop(
@@ -1351,25 +1358,27 @@ class TestModelElements:
     ):
         link_serializer = grouped_links_base_object["link_serializer"]
         dummy_work_items = grouped_links_base_object["work_items"]
-        reverse_polarion_id_map = grouped_links_base_object[
-            "reverse_polarion_id_map"
-        ]
-        back_links = grouped_links_base_object["back_links"]
         config = grouped_links_base_object["config"]
-        for link in dummy_work_items["uuid0"].linked_work_items:
+        config.links[0].polarion_role = f"_C2P_{config.links[0].polarion_role}"
+        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        data = {}
+        for link in (
+            dummy_work_items["uuid0"].linked_work_items
+            + dummy_work_items["uuid1"].linked_work_items
+        ):
             link.role = f"_C2P_{link.role}"
-        link_serializer.role_prefix = "_C2P"
 
         for work_item in dummy_work_items.values():
-            converter_data = data_session.ConverterData(
+            data[work_item.id] = converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
         for work_item_id, links in back_links.items():
-            work_item = dummy_work_items[reverse_polarion_id_map[work_item_id]]
-            link_serializer.create_grouped_back_link_fields(work_item, links)
+            link_serializer.create_grouped_back_link_fields(
+                data[work_item_id], links
+            )
 
         assert (
             "attribute_reverse"
@@ -1390,12 +1399,24 @@ def test_grouped_linked_work_items_order_consistency(
         base_object.pw.polarion_params.project_id,
         base_object.c2pcli.capella_model,
     )
+    config = converter_config.CapellaTypeConfig(
+        "fakeModelObject",
+        links=[
+            converter_config.LinkConfig(
+                capella_attr="attribute",
+                polarion_role="role1",
+                link_field="attribute1",
+                reverse_field="attribute_reverse",
+            )
+        ],
+    )
     work_item = data_models.CapellaWorkItem("id", "Dummy")
+    converter_data = data_session.ConverterData("test", config, [], work_item)
     links = [
         polarion_api.WorkItemLink("prim1", "id", "role1"),
         polarion_api.WorkItemLink("prim2", "id", "role1"),
     ]
-    link_serializer.create_grouped_back_link_fields(work_item, links)
+    link_serializer.create_grouped_back_link_fields(converter_data, links)
 
     check_sum = work_item.calculate_checksum()
 
@@ -1403,7 +1424,7 @@ def test_grouped_linked_work_items_order_consistency(
         polarion_api.WorkItemLink("prim2", "id", "role1"),
         polarion_api.WorkItemLink("prim1", "id", "role1"),
     ]
-    link_serializer.create_grouped_back_link_fields(work_item, links)
+    link_serializer.create_grouped_back_link_fields(converter_data, links)
 
     assert check_sum == work_item.calculate_checksum()
 
@@ -1730,7 +1751,7 @@ class TestSerializers:
     def test_multiple_serializers(model: capellambse.MelodyModel, prefix: str):
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
-            "test",
+            f"{prefix}_test" if prefix else "test",
             ["include_pre_and_post_condition", "add_context_diagram"],
             [],
         )
@@ -1743,12 +1764,12 @@ class TestSerializers:
                 )
             },
             True,
-            prefix,
         )
 
         work_item = serializer.serialize(TEST_OCAP_UUID)
 
         assert work_item is not None
+        assert work_item.type is not None
         assert work_item.type.startswith(prefix)
         assert "preCondition" in work_item.additional_attributes
         assert "postCondition" in work_item.additional_attributes
@@ -1815,13 +1836,13 @@ class TestSerializers:
         }
         type_config = config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
+        type_config.p_type = f"{prefix}_{type_config.p_type}"
         ework_item = data_models.CapellaWorkItem(id=f"{prefix}_TEST")
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository([ework_item]),
             {uuid: data_session.ConverterData(layer, type_config, obj)},
             False,
-            prefix,
         )
 
         work_item = serializer.serialize(uuid)
@@ -1886,3 +1907,20 @@ class TestSerializers:
             if link.capella_attr == "parent"
         )
         assert caplog.record_tuples[0] + caplog.record_tuples[1] == expected
+        assert (
+            system_fnc_config := config.get_type_config("sa", "SystemFunction")
+        )
+        assert system_fnc_config.links[0] == converter_config.LinkConfig(
+            capella_attr="inputs.exchanges",
+            polarion_role="input_exchanges",
+            include={"Exchange Items": "exchange_items"},
+            link_field="inputExchanges",
+            reverse_field="inputExchangesReverse",
+        )
+        assert system_fnc_config.links[1] == converter_config.LinkConfig(
+            capella_attr="outputs.exchanges",
+            polarion_role="output_exchanges",
+            include={"Exchange Items": "exchange_items"},
+            link_field="output_exchanges",
+            reverse_field="output_exchanges_reverse",
+        )

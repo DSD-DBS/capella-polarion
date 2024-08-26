@@ -84,8 +84,8 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
-    force_update: bool,
     synchronize_config: typing.TextIO,
+    force_update: bool,
     type_prefix: str,
     role_prefix: str,
 ) -> None:
@@ -95,16 +95,14 @@ def synchronize(
         "Synchronising model elements to Polarion project with id %s...",
         capella_to_polarion_cli.polarion_params.project_id,
     )
-    capella_to_polarion_cli.load_synchronize_config(synchronize_config)
+    capella_to_polarion_cli.load_synchronize_config(
+        synchronize_config, type_prefix, role_prefix
+    )
     capella_to_polarion_cli.force_update = force_update
-    capella_to_polarion_cli.type_prefix = type_prefix
-    capella_to_polarion_cli.role_prefix = role_prefix
 
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
-        type_prefix=capella_to_polarion_cli.type_prefix,
-        role_prefix=capella_to_polarion_cli.role_prefix,
     )
 
     converter.read_model(capella_to_polarion_cli.config)

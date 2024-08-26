@@ -36,13 +36,11 @@ class LinkSerializer:
         converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
-        role_prefix: str = "",
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.project_id = project_id
         self.model = model
-        self.role_prefix = role_prefix
 
         self.serializers: dict[str, _Serializer] = {
             converter_config.DESCRIPTION_REFERENCE_SERIALIZER: self._handle_description_reference_links,  # pylint: disable=line-too-long
@@ -63,8 +61,6 @@ class LinkSerializer:
         for link_config in converter_data.type_config.links:
             serializer = self.serializers.get(link_config.capella_attr)
             role_id = link_config.polarion_role
-            if self.role_prefix:
-                role_id = f"{self.role_prefix}_{role_id}"
             try:
                 if serializer:
                     new_links.extend(
@@ -225,16 +221,11 @@ class LinkSerializer:
                     key = link.secondary_work_item_id
                     back_links.setdefault(key, []).append(link)
 
-            role_id = self._remove_prefix(role)
-            config: converter_config.LinkConfig | None = None
-            for link_config in data.type_config.links:
-                if link_config.polarion_role == role_id:
-                    config = link_config
-                    break
-
-            self._create_link_fields(
-                work_item, role_id, grouped_links, config=config
-            )
+            config = find_link_config(data, role)
+            if config is not None and config.link_field:
+                self._create_link_fields(
+                    work_item, config.link_field, grouped_links, config=config
+                )
 
     def _create_link_fields(
         self,
@@ -246,7 +237,6 @@ class LinkSerializer:
     ):
         link_map: dict[str, dict[str, list[str]]]
         if reverse:
-            role = f"{role}_reverse"
             link_map = {link.primary_work_item_id: {} for link in links}
         else:
             link_map = {link.secondary_work_item_id: {} for link in links}
@@ -303,26 +293,41 @@ class LinkSerializer:
 
     def create_grouped_back_link_fields(
         self,
-        work_item: data_models.CapellaWorkItem,
+        data: data_session.ConverterData,
         links: list[polarion_api.WorkItemLink],
     ):
         """Create fields for the given WorkItem using a list of backlinks.
 
         Parameters
         ----------
-        work_item
-            WorkItem to create the fields for
+        data
+            The ConverterData that stores the WorkItem to create the
+            fields for.
         links
-            List of links referencing work_item as secondary
+            List of links referencing work_item as secondary.
         """
+        work_item = data.work_item
+        assert work_item is not None
+        wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
+        logger.debug("Building grouped back links for work item %r...", wi)
         for role, grouped_links in _group_by("role", links).items():
-            role_id = self._remove_prefix(role)
-            self._create_link_fields(work_item, role_id, grouped_links, True)
+            config = find_link_config(data, role)
+            if config is not None and config.reverse_field:
+                self._create_link_fields(
+                    work_item, config.reverse_field, grouped_links, True
+                )
 
-    def _remove_prefix(self, role: str) -> str:
-        if self.role_prefix:
-            return role.removeprefix(f"{self.role_prefix}_")
-        return role
+
+def find_link_config(
+    data: data_session.ConverterData, role: str
+) -> converter_config.LinkConfig | None:
+    """Search for LinkConfig with matching polarion_role in ``data``."""
+    for link_config in data.type_config.links:
+        if link_config.polarion_role == role:
+            return link_config
+
+    logger.error("No LinkConfig found for %r", role)
+    return None
 
 
 def _group_by(
