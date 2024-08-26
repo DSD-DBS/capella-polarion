@@ -206,7 +206,10 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        old_checksums = {"__C2P__WORK_ITEM": old.get_current_checksum() or ""}
+        if not (old_checksum := old.get_current_checksum() or ""):
+            old_checksum = '{"__C2P__WORK_ITEM": ""}'
+        old_checksums = json.loads(old_checksum)
+
         new_checksum = new.get_current_checksum()
         assert new_checksum is not None
         new_checksums = json.loads(new_checksum)
