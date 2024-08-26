@@ -120,7 +120,7 @@ def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
     work_item = data_models.CapellaWorkItem(
-        id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
+        id="Obj-1", uuid_capella="uuid1", status="open"
     )
     c2p_cli = cli.Capella2PolarionCli(
         debug=True,
@@ -161,7 +161,6 @@ def base_object(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",
-                checksum="123",
                 type="fakeModelObject",
             ),
         ),

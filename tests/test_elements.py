@@ -743,7 +743,6 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
@@ -820,7 +819,6 @@ class TestModelElements:
                 type="type",
                 uuid_capella="uuid1",
                 status="deleted",
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
@@ -842,7 +840,6 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         )
 
