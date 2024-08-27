@@ -450,12 +450,10 @@ class CapellaPolarionWorker:
     ) -> dict[str, polarion_api.WorkItemLink]:
         """Return an ID-Link dict of links present in left and not in right."""
         left_id_map = {
-            CapellaPolarionWorker._get_link_id(link): link
-            for link in CapellaPolarionWorker._filter_all_link_ids(left)
+            CapellaPolarionWorker._get_link_id(link): link for link in left
         }
         right_id_map = {
-            CapellaPolarionWorker._get_link_id(link): link
-            for link in CapellaPolarionWorker._filter_all_link_ids(right)
+            CapellaPolarionWorker._get_link_id(link): link for link in right
         }
         return {
             lid: left_id_map[lid]
@@ -466,27 +464,9 @@ class CapellaPolarionWorker:
     def _get_link_id(link: polarion_api.WorkItemLink) -> str:
         secondary_id = link.secondary_work_item_id
         if link.secondary_work_item_project:
+            assert link.secondary_work_item_project is not None
             secondary_id = f"{link.secondary_work_item_project}/{secondary_id}"
         return "/".join((link.primary_work_item_id, link.role, secondary_id))
-
-    @staticmethod
-    def _filter_all_link_ids(
-        links: cabc.Iterable[polarion_api.WorkItemLink],
-    ) -> cabc.Iterator[polarion_api.WorkItemLink]:
-        for link in links:
-            if link.primary_work_item_id is None:
-                logger.error(  # type: ignore[unreachable]
-                    "Found Work Item Link without source ID: %r", link
-                )
-                continue
-
-            if link.secondary_work_item_id is None:
-                logger.error(  # type: ignore[unreachable]
-                    "Found Work Item Link without target ID: %r", link
-                )
-                continue
-
-            yield link
 
     def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
