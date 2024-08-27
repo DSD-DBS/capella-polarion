@@ -28,12 +28,13 @@ class PolarionDataRepository:
     ):
         if polarion_work_items is None:
             polarion_work_items = []
+
+        check_work_items(polarion_work_items)
         self._id_mapping = bidict.bidict(
             {
                 work_item.uuid_capella: work_item.id
                 for work_item in polarion_work_items
-                if work_item.id is not None
-            },
+            },  # type: ignore[arg-type]
         )
         self._id_mapping.on_dup = bidict.OnDup(
             key=bidict.DROP_OLD, val=bidict.DROP_OLD
@@ -92,12 +93,12 @@ class PolarionDataRepository:
                 del self._id_mapping[uuid_capella]
                 del self._work_items[uuid_capella]
 
+        check_work_items(work_items)
         self._id_mapping.update(
             {
                 work_item.uuid_capella: work_item.id
                 for work_item in work_items
-                if work_item.id is not None
-            }
+            }  # type: ignore[arg-type]
         )
         self._work_items.update(
             {work_item.uuid_capella: work_item for work_item in work_items}
@@ -120,3 +121,13 @@ It has (project, space, name) of the document as key and (document,
 workitems) as value. The project can be None and the None value means
 that the document is in the same project as the model sync work items.
 """
+
+
+def check_work_items(work_items: cabc.Iterable[data_models.CapellaWorkItem]):
+    """Raise a ``ValueError`` if any work item has no ID."""
+    if work_item_without_id := next(
+        (wi for wi in work_items if wi.id is None), None
+    ):
+        raise ValueError(
+            f"Found Work Item without ID: {work_item_without_id.title!r}"
+        )
