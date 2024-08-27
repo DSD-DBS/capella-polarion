@@ -327,7 +327,7 @@ def _filter_converter_config(
             logger.error("Unknown converter in config %r", name)
             continue
 
-        if name == "add_context_diagram":
+        if name in ("add_context_diagram", "add_tree_diagram"):
             params = _filter_context_diagram_config(params)
 
         filtered_config[name] = params
