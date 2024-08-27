@@ -195,7 +195,7 @@ class CapellaPolarionWorker:
             self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
         )
         assert old is not None
-        assert isinstance(old.id, str)
+        assert old.id is not None
 
         new.calculate_checksum()
         if not self.force_update and new == old:
@@ -206,9 +206,10 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        if not (old_checksum := old.get_current_checksum() or ""):
-            old_checksum = '{"__C2P__WORK_ITEM": ""}'
-        old_checksums = json.loads(old_checksum)
+        try:
+            old_checksums = json.loads(old.get_current_checksum() or "")
+        except json.JSONDecodeError:
+            old_checksums = {"__C2P__WORK_ITEM": ""}
 
         new_checksum = new.get_current_checksum()
         assert new_checksum is not None
