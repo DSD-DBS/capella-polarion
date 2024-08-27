@@ -8,9 +8,9 @@ import typing as t
 
 import capellambse
 import jinja2
+import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
-from polarion_rest_api_client import data_models
 
 from capella2polarion import data_models
 from capella2polarion.converters import polarion_html_helper
@@ -113,14 +113,14 @@ def read_config_file(
 
 def generate_work_item_layouts(
     configs: dict[str, WorkItemLayout]
-) -> list[data_models.RenderingLayout]:
+) -> list[polarion_api.RenderingLayout]:
     """Create polarion_api.RenderingLayouts for a given configuration."""
     results = []
     for _type, conf in configs.items():
         if conf.show_title and conf.show_description:
-            layouter = data_models.Layouter.SECTION
+            layouter = polarion_api.Layouter.SECTION
         elif conf.show_description:
-            layouter = data_models.Layouter.PARAGRAPH
+            layouter = polarion_api.Layouter.PARAGRAPH
         else:
             if not conf.show_title:
                 logger.warning(
@@ -128,13 +128,13 @@ def generate_work_item_layouts(
                     "For that reason, the title will be shown for %s.",
                     _type,
                 )
-            layouter = data_models.Layouter.TITLE
+            layouter = polarion_api.Layouter.TITLE
         results.append(
-            data_models.RenderingLayout(
+            polarion_api.RenderingLayout(
                 type=_type,
                 layouter=layouter,
                 label=polarion_html_helper.camel_case_to_words(_type),
-                properties=data_models.RenderingProperties(
+                properties=polarion_api.RenderingProperties(
                     fields_at_start=conf.fields_at_start,
                     fields_at_end=conf.fields_at_end,
                     fields_at_end_as_table=conf.show_fields_as_table,
