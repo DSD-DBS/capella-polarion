@@ -191,9 +191,7 @@ class CapellaPolarionWorker:
         new = converter_data.work_item
         assert new is not None
         uuid = new.uuid_capella
-        old: data_models.CapellaWorkItem | None = (
-            self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
-        )
+        old = self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
         assert old is not None
         assert old.id is not None
 
