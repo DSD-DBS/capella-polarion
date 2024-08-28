@@ -68,7 +68,7 @@ class ConverterConfig:
     def __init__(self):
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
-        self.polarion_types = set[str]()
+        self.polarion_types: set[str] = set()
         self.diagram_config: CapellaTypeConfig | None = None
         self.__global_config = CapellaTypeConfig()
 
@@ -90,11 +90,13 @@ class ConverterConfig:
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
-            self.set_diagram_config(diagram_config, type_prefix)
+            self.set_diagram_config(diagram_config, type_prefix, role_prefix)
 
         for c_type, type_config in global_config_dict.items():
             type_config = type_config or {}
-            self.set_global_config(c_type, type_config)
+            self.set_global_config(
+                c_type, type_config, type_prefix, role_prefix
+            )
 
         for layer, type_configs in config_dict.items():
             type_configs = type_configs or {}
@@ -108,7 +110,7 @@ class ConverterConfig:
         """Add a new layer without configuring any types."""
         self._layer_configs[layer] = {}
 
-    def _get_global_links(self, c_type: str):
+    def _get_global_links(self, c_type: str) -> list[LinkConfig]:
         return _filter_links(c_type, self.__global_config.links, True)
 
     def set_layer_config(
@@ -157,35 +159,50 @@ class ConverterConfig:
                 )
             )
 
-    def set_global_config(self, c_type: str, type_config: dict[str, t.Any]):
+    def set_global_config(
+        self,
+        c_type: str,
+        type_config: dict[str, t.Any],
+        type_prefix: str = "",
+        role_prefix: str = "",
+    ):
         """Set a global config for a specific type."""
-        p_type = type_config.get("polarion_type") or _default_type_conversion(
-            c_type
+        p_type = add_prefix(
+            type_config.get("polarion_type")
+            or _default_type_conversion(c_type),
+            type_prefix,
         )
         self.polarion_types.add(p_type)
+        link_config = self._force_link_config(
+            type_config.get("links", []), role_prefix
+        )
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
             type_config.get("serializer"),
-            _filter_links(
-                c_type, self._force_link_config(type_config.get("links", []))
-            )
+            _filter_links(c_type, link_config)
             + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
 
     def set_diagram_config(
-        self, diagram_config: dict[str, t.Any], type_prefix: str = ""
+        self,
+        diagram_config: dict[str, t.Any],
+        type_prefix: str = "",
+        role_prefix: str = "",
     ):
         """Set the diagram config."""
         c_type = "diagram"
-        p_type = diagram_config.get("polarion_type") or "diagram"
-        self.polarion_types.add(p_type)
-        links = _filter_links(
-            c_type, self._force_link_config(diagram_config.get("links", []))
+        p_type = add_prefix(
+            diagram_config.get("polarion_type") or "diagram", type_prefix
         )
+        self.polarion_types.add(p_type)
+        link_config = self._force_link_config(
+            diagram_config.get("links", []), role_prefix
+        )
+        links = _filter_links(c_type, link_config)
         self.diagram_config = CapellaTypeConfig(
-            add_prefix(p_type, type_prefix),
+            p_type,
             diagram_config.get("serializer") or "diagram",
             links + self._get_global_links(c_type),
         )
@@ -238,7 +255,7 @@ class ConverterConfig:
     def __contains__(
         self,
         item: tuple[str, str, dict[str, t.Any]],
-    ):
+    ) -> bool:
         """Check if there is a config for a given layer and Capella type."""
         layer, c_type, attributes = item
         return self.get_type_config(layer, c_type, **attributes) is not None
@@ -310,7 +327,7 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
 
 def _filter_links(
     c_type: str, links: list[LinkConfig], is_global: bool = False
-):
+) -> list[LinkConfig]:
     if c_type == "diagram":
         c_class = diagram.Diagram
     else:
@@ -319,7 +336,7 @@ def _filter_links(
             return links
         c_class = c_classes[0]
 
-    available_links = []
+    available_links: list[LinkConfig] = []
     for link in links:
         capella_attr = link.capella_attr.split(".")[0]
         is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
