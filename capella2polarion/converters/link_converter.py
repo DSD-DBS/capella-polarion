@@ -196,7 +196,9 @@ class LinkSerializer:
     def create_grouped_link_fields(
         self,
         data: data_session.ConverterData,
-        back_links: dict[str, list[polarion_api.WorkItemLink]] | None = None,
+        back_links: (
+            dict[str, dict[str, list[polarion_api.WorkItemLink]]] | None
+        ) = None,
     ):
         """Create the grouped link fields from the primary work item.
 
@@ -216,16 +218,20 @@ class LinkSerializer:
         for role, grouped_links in _group_by(
             "role", work_item.linked_work_items
         ).items():
-            if back_links is not None:
-                for link in grouped_links:
-                    key = link.secondary_work_item_id
-                    back_links.setdefault(key, []).append(link)
+            if (config := find_link_config(data, role)) is not None:
+                if back_links is not None and config.reverse_field:
+                    for link in grouped_links:
+                        back_links.setdefault(
+                            link.secondary_work_item_id, {}
+                        ).setdefault(config.reverse_field, []).append(link)
 
-            config = find_link_config(data, role)
-            if config is not None and config.link_field:
-                self._create_link_fields(
-                    work_item, config.link_field, grouped_links, config=config
-                )
+                if config.link_field:
+                    self._create_link_fields(
+                        work_item,
+                        config.link_field,
+                        grouped_links,
+                        config=config,
+                    )
 
     def _create_link_fields(
         self,
@@ -293,29 +299,25 @@ class LinkSerializer:
 
     def create_grouped_back_link_fields(
         self,
-        data: data_session.ConverterData,
-        links: list[polarion_api.WorkItemLink],
+        work_item: data_models.CapellaWorkItem,
+        links: dict[str, list[polarion_api.WorkItemLink]],
     ):
         """Create fields for the given WorkItem using a list of backlinks.
 
         Parameters
         ----------
-        data
+        work_item
             The ConverterData that stores the WorkItem to create the
             fields for.
         links
-            List of links referencing work_item as secondary.
+            Dict of field names and links referencing work_item as secondary.
         """
-        work_item = data.work_item
-        assert work_item is not None
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
         logger.debug("Building grouped back links for work item %r...", wi)
-        for role, grouped_links in _group_by("role", links).items():
-            config = find_link_config(data, role)
-            if config is not None and config.reverse_field:
-                self._create_link_fields(
-                    work_item, config.reverse_field, grouped_links, True
-                )
+        for reverse_field, grouped_links in links.items():
+            self._create_link_fields(
+                work_item, reverse_field, grouped_links, True
+            )
 
 
 def find_link_config(
