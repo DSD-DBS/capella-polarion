@@ -23,8 +23,10 @@ from .conftest import (  # type: ignore[import]
 
 
 def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     mock_get_polarion_wi_map = mock.MagicMock()
     monkeypatch.setattr(
         polarion_worker.CapellaPolarionWorker,
@@ -86,8 +88,10 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_render_documents(monkeypatch: pytest.MonkeyPatch):
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     mock_get_polarion_wi_map = mock.MagicMock()
     monkeypatch.setattr(
         polarion_worker.CapellaPolarionWorker,
@@ -95,7 +99,7 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         mock_get_polarion_wi_map,
     )
     mock_get_document = mock.MagicMock()
-    mock_get_document.side_effect = lambda folder, name: (
+    mock_get_document.side_effect = lambda folder, name, project_id: (
         polarion_api.Document(
             module_folder=folder,
             module_name=name,
@@ -125,11 +129,11 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         "update_documents",
         mock_update_documents,
     )
-    mock_update_work_items = mock.MagicMock()
+    mock_update_headings = mock.MagicMock()
     monkeypatch.setattr(
         polarion_worker.CapellaPolarionWorker,
-        "update_work_items",
-        mock_update_work_items,
+        "update_headings",
+        mock_update_headings,
     )
 
     command: list[str] = [
@@ -156,5 +160,5 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
     assert len(mock_post_documents.call_args.args[0]) == 1
     assert mock_update_documents.call_count == 1
     assert len(mock_update_documents.call_args.args[0]) == 1
-    assert mock_update_work_items.call_count == 1
-    assert len(mock_update_work_items.call_args.args[0]) == 1
+    assert mock_update_headings.call_count == 1
+    assert len(mock_update_headings.call_args.args[0]) == 1

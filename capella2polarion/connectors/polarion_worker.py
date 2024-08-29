@@ -68,19 +68,43 @@ class CapellaPolarionWorker:
                 "Polarion PAT (Personal Access Token) parameter "
                 "is not a set properly."
             )
-        self.client = polarion_api.OpenAPIPolarionProjectClient(
-            self.polarion_params.project_id,
-            self.polarion_params.delete_work_items,
+
+        self.polarion_client = polarion_api.PolarionClient(
             polarion_api_endpoint=f"{self.polarion_params.url}/rest/v1",
             polarion_access_token=self.polarion_params.private_access_token,
-            custom_work_item=data_models.CapellaWorkItem,
+        )
+        self.project_client = self.polarion_client.generate_project_client(
+            project_id=self.polarion_params.project_id,
+            delete_status=(
+                "deleted" if self.polarion_params.delete_work_items else None
+            ),
             add_work_item_checksum=True,
         )
+        self._additional_clients: dict[str, polarion_api.ProjectClient] = {}
         self.check_client()
+
+    def _get_client(
+        self, project_id: str | None
+    ) -> polarion_api.ProjectClient:
+        if project_id is None:
+            return self.project_client
+        if project_id in self._additional_clients:
+            return self._additional_clients[project_id]
+        client = self.polarion_client.generate_project_client(
+            project_id=project_id,
+            delete_status=(
+                "deleted" if self.polarion_params.delete_work_items else None
+            ),
+            add_work_item_checksum=True,
+        )
+        if not client.exists():
+            raise KeyError(f"Miss Polarion project with id {project_id}")
+        self._additional_clients[project_id] = client
+        return client
 
     def check_client(self) -> None:
         """Instantiate the polarion client as member."""
-        if not self.client.project_exists():
+        if not self.project_client.exists():
             raise KeyError(
                 "Miss Polarion project with id "
                 f"{self.polarion_params.project_id}"
@@ -88,7 +112,7 @@ class CapellaPolarionWorker:
 
     def load_polarion_work_item_map(self):
         """Return a map from Capella UUIDs to Polarion work items."""
-        work_items = self.client.get_all_work_items(
+        work_items = self.project_client.work_items.get_all(
             "HAS_VALUE:uuid_capella",
             {"workitems": "id,uuid_capella,checksum,status,type"},
         )
@@ -117,7 +141,7 @@ class CapellaPolarionWorker:
         work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
         if work_item_ids:
             try:
-                self.client.delete_work_items(work_item_ids)
+                self.project_client.work_items.delete(work_item_ids)
                 self.polarion_data_repo.remove_work_items_by_capella_uuid(
                     uuids
                 )
@@ -146,7 +170,7 @@ class CapellaPolarionWorker:
             logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
             try:
-                self.client.create_work_items(missing_work_items)
+                self.project_client.work_items.create(missing_work_items)
                 self.polarion_data_repo.update_work_items(missing_work_items)
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])
@@ -184,18 +208,20 @@ class CapellaPolarionWorker:
         work_item_changed = new_work_item_check_sum != old_work_item_check_sum
         try:
             if work_item_changed or self.force_update:
-                old = self.client.get_work_item(old.id)
+                old = self.project_client.work_items.get(old.id)
                 if old.attachments:
                     old_attachments = (
-                        self.client.get_all_work_item_attachments(
+                        self.project_client.work_items.attachments.get_all(
                             work_item_id=old.id
                         )
                     )
                 else:
                     old_attachments = []
             else:
-                old_attachments = self.client.get_all_work_item_attachments(
-                    work_item_id=old.id
+                old_attachments = (
+                    self.project_client.work_items.attachments.get_all(
+                        work_item_id=old.id
+                    )
                 )
             if old_attachments or new.attachments:
                 work_item_changed |= self.update_attachments(
@@ -221,8 +247,8 @@ class CapellaPolarionWorker:
             del old.additional_attributes["uuid_capella"]
 
             if old.linked_work_items_truncated:
-                old.linked_work_items = self.client.get_all_work_item_links(
-                    old.id
+                old.linked_work_items = (
+                    self.project_client.work_items.links.get_all(old.id)
                 )
 
             # Type will only be updated, if set and should be used carefully
@@ -256,7 +282,7 @@ class CapellaPolarionWorker:
             new.title = None
 
         try:
-            self.client.update_work_item(new)
+            self.project_client.work_items.update(new)
             if delete_links:
                 id_list_str = ", ".join(delete_links.keys())
                 logger.info(
@@ -265,7 +291,9 @@ class CapellaPolarionWorker:
                     new.type,
                     new.title,
                 )
-                self.client.delete_work_item_links(list(delete_links.values()))
+                self.project_client.work_items.links.delete(
+                    list(delete_links.values())
+                )
 
             if create_links:
                 id_list_str = ", ".join(create_links.keys())
@@ -275,7 +303,9 @@ class CapellaPolarionWorker:
                     new.type,
                     new.title,
                 )
-                self.client.create_work_item_links(list(create_links.values()))
+                self.project_client.work_items.links.create(
+                    list(create_links.values())
+                )
 
         except polarion_api.PolarionApiException as error:
             logger.error(
@@ -346,12 +376,12 @@ class CapellaPolarionWorker:
                     attachment.file_name,
                     attachment.id,
                 )
-                self.client.delete_work_item_attachment(attachment)
+                self.project_client.work_items.attachments.delete(attachment)
 
         old_attachment_file_names = set(old_attachment_dict)
         new_attachment_file_names = set(new_attachment_dict)
         for file_name in old_attachment_file_names - new_attachment_file_names:
-            self.client.delete_work_item_attachment(
+            self.project_client.work_items.attachments.delete(
                 old_attachment_dict[file_name]
             )
 
@@ -361,7 +391,7 @@ class CapellaPolarionWorker:
                 new_attachment_file_names - old_attachment_file_names,
             )
         ):
-            self.client.create_work_item_attachments(new_attachments)
+            self.project_client.work_items.attachments.create(new_attachments)
             created = True
 
         attachments_for_update = {}
@@ -386,7 +416,7 @@ class CapellaPolarionWorker:
             ):
                 continue
 
-            self.client.update_work_item_attachment(attachment)
+            self.project_client.work_items.attachments.update(attachment)
         return created
 
     @staticmethod
@@ -425,20 +455,31 @@ class CapellaPolarionWorker:
             if uuid in self.polarion_data_repo and data.work_item is not None:
                 self.compare_and_update_work_item(data)
 
-    def post_documents(self, documents: list[polarion_api.Document]):
+    def post_documents(
+        self,
+        documents: list[polarion_api.Document],
+        document_project: str | None = None,
+    ):
         """Create new documents."""
-        self.client.project_client.documents.create(documents)
+        client = self._get_client(document_project)
+        client.documents.create(documents)
 
-    def update_documents(self, documents: list[polarion_api.Document]):
+    def update_documents(
+        self,
+        documents: list[polarion_api.Document],
+        document_project: str | None = None,
+    ):
         """Update existing documents."""
-        self.client.project_client.documents.update(documents)
+        client = self._get_client(document_project)
+        client.documents.update(documents)
 
     def get_document(
-        self, space: str, name: str
+        self, space: str, name: str, document_project: str | None = None
     ) -> polarion_api.Document | None:
         """Get a document from polarion and return None if not found."""
+        client = self._get_client(document_project)
         try:
-            return self.client.project_client.documents.get(
+            return client.documents.get(
                 space, name, fields={"documents": "@all"}
             )
         except polarion_api.PolarionApiBaseException as e:
@@ -446,15 +487,22 @@ class CapellaPolarionWorker:
                 return None
             raise e
 
-    def update_work_items(self, work_items: list[polarion_api.WorkItem]):
+    def update_headings(
+        self,
+        work_items: list[polarion_api.WorkItem],
+        document_project: str | None = None,
+    ):
         """Update the given workitems without any additional checks."""
-        self.client.project_client.work_items.update(work_items)
+        client = self._get_client(document_project)
+        client.work_items.update(work_items)
 
     def load_polarion_documents(
-        self, document_paths: t.Iterable[tuple[str, str]]
+        self,
+        document_paths: t.Iterable[tuple[str, str]],
+        document_project: str | None = None,
     ) -> dict[tuple[str, str], polarion_api.Document | None]:
         """Load the given document references from Polarion."""
         return {
-            (space, name): self.get_document(space, name)
+            (space, name): self.get_document(space, name, document_project)
             for space, name in document_paths
         }

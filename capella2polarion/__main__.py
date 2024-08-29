@@ -173,7 +173,7 @@ def render_documents(
 
     polarion_worker.post_documents(new_documents)
     polarion_worker.update_documents(updated_documents)
-    polarion_worker.update_work_items(work_items)
+    polarion_worker.update_headings(work_items)
 
 
 if __name__ == "__main__":
