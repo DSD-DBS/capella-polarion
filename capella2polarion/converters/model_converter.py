@@ -155,5 +155,5 @@ class ModelConverter:
             assert converter_data.work_item.id is not None
             if local_back_links := back_links.get(converter_data.work_item.id):
                 link_serializer.create_grouped_back_link_fields(
-                    converter_data, local_back_links
+                    converter_data.work_item, local_back_links
                 )

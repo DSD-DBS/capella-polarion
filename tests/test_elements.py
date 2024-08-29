@@ -1329,9 +1329,8 @@ class TestModelElements:
                 converter_data, back_links
             )
         for work_item_id, links in back_links.items():
-            link_serializer.create_grouped_back_link_fields(
-                data[work_item_id], links
-            )
+            assert (wi := data[work_item_id].work_item) is not None
+            link_serializer.create_grouped_back_link_fields(wi, links)
 
         assert (
             dummy_work_items["uuid0"].additional_attributes.pop(
@@ -1350,6 +1349,45 @@ class TestModelElements:
                 "attribute_reverse"
             )["value"]
             == HTML_LINK_2["attribute_reverse"]
+        )
+
+    @staticmethod
+    def test_maintain_reverse_grouped_links_unidirectional_config(
+        grouped_links_base_object: GroupedLinksBaseObject,
+    ):
+        link_serializer = grouped_links_base_object["link_serializer"]
+        dummy_work_items = grouped_links_base_object["work_items"]
+        config = grouped_links_base_object["config"]
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
+        data = {}
+
+        for work_item in dummy_work_items.values():
+            data[work_item.id] = converter_data = data_session.ConverterData(
+                "test",
+                config,
+                FakeModelObject(work_item.uuid_capella),
+                work_item,
+            )
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+            # Only the first work item needs the link config
+            config.links = []
+        for work_item_id, links in back_links.items():
+            assert (wi := data[work_item_id].work_item) is not None
+            link_serializer.create_grouped_back_link_fields(wi, links)
+
+        assert (
+            "attribute_reverse"
+            not in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid1"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid2"].additional_attributes
         )
 
     @staticmethod
@@ -1376,9 +1414,8 @@ class TestModelElements:
                 converter_data, back_links
             )
         for work_item_id, links in back_links.items():
-            link_serializer.create_grouped_back_link_fields(
-                data[work_item_id], links
-            )
+            assert (wi := data[work_item_id].work_item) is not None
+            link_serializer.create_grouped_back_link_fields(wi, links)
 
         assert (
             "attribute_reverse"
@@ -1410,7 +1447,8 @@ def test_grouped_linked_work_items_order_consistency(
             polarion_api.WorkItemLink("prim2", "id", "role1"),
         ]
     }
-    link_serializer.create_grouped_back_link_fields(converter_data, links)
+    assert (wi := converter_data.work_item) is not None
+    link_serializer.create_grouped_back_link_fields(wi, links)
 
     check_sum = work_item.calculate_checksum()
 
@@ -1420,7 +1458,7 @@ def test_grouped_linked_work_items_order_consistency(
             polarion_api.WorkItemLink("prim1", "id", "role1"),
         ]
     }
-    link_serializer.create_grouped_back_link_fields(converter_data, links)
+    link_serializer.create_grouped_back_link_fields(work_item, links)
 
     assert check_sum == work_item.calculate_checksum()
 

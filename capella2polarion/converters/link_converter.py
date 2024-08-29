@@ -299,21 +299,19 @@ class LinkSerializer:
 
     def create_grouped_back_link_fields(
         self,
-        data: data_session.ConverterData,
+        work_item: data_models.CapellaWorkItem,
         links: dict[str, list[polarion_api.WorkItemLink]],
     ):
         """Create fields for the given WorkItem using a list of backlinks.
 
         Parameters
         ----------
-        data
+        work_item
             The ConverterData that stores the WorkItem to create the
             fields for.
         links
-            List of links referencing work_item as secondary.
+            Dict of field names and links referencing work_item as secondary.
         """
-        work_item = data.work_item
-        assert work_item is not None
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
         logger.debug("Building grouped back links for work item %r...", wi)
         for reverse_field, grouped_links in links.items():
