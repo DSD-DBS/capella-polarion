@@ -122,7 +122,7 @@ class ModelConverter:
         polarion_data_repo: polarion_repo.PolarionDataRepository,
     ):
         """Generate links for all work items and add custom fields for them."""
-        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         link_serializer = link_converter.LinkSerializer(
             polarion_data_repo,
             self.converter_session,

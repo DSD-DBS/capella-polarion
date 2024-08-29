@@ -1288,7 +1288,7 @@ class TestModelElements:
             base_object.pw.polarion_params.project_id,
             base_object.c2pcli.capella_model,
         )
-        backlinks: dict[str, list[polarion_api.WorkItemLink]] = {}
+        backlinks: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         work_item = (
             base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
                 fnc.uuid
@@ -1318,7 +1318,7 @@ class TestModelElements:
         link_serializer = grouped_links_base_object["link_serializer"]
         dummy_work_items = grouped_links_base_object["work_items"]
         config = grouped_links_base_object["config"]
-        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         data = {}
 
         for work_item in dummy_work_items.values():
@@ -1360,7 +1360,7 @@ class TestModelElements:
         dummy_work_items = grouped_links_base_object["work_items"]
         config = grouped_links_base_object["config"]
         config.links[0].polarion_role = f"_C2P_{config.links[0].polarion_role}"
-        back_links: dict[str, list[polarion_api.WorkItemLink]] = {}
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         data = {}
         for link in (
             dummy_work_items["uuid0"].linked_work_items
@@ -1401,29 +1401,25 @@ def test_grouped_linked_work_items_order_consistency(
     )
     config = converter_config.CapellaTypeConfig(
         "fakeModelObject",
-        links=[
-            converter_config.LinkConfig(
-                capella_attr="attribute",
-                polarion_role="role1",
-                link_field="attribute1",
-                reverse_field="attribute_reverse",
-            )
-        ],
     )
     work_item = data_models.CapellaWorkItem("id", "Dummy")
     converter_data = data_session.ConverterData("test", config, [], work_item)
-    links = [
-        polarion_api.WorkItemLink("prim1", "id", "role1"),
-        polarion_api.WorkItemLink("prim2", "id", "role1"),
-    ]
+    links = {
+        "attribute_reverse": [
+            polarion_api.WorkItemLink("prim1", "id", "role1"),
+            polarion_api.WorkItemLink("prim2", "id", "role1"),
+        ]
+    }
     link_serializer.create_grouped_back_link_fields(converter_data, links)
 
     check_sum = work_item.calculate_checksum()
 
-    links = [
-        polarion_api.WorkItemLink("prim2", "id", "role1"),
-        polarion_api.WorkItemLink("prim1", "id", "role1"),
-    ]
+    links = {
+        "attribute_reverse": [
+            polarion_api.WorkItemLink("prim2", "id", "role1"),
+            polarion_api.WorkItemLink("prim1", "id", "role1"),
+        ]
+    }
     link_serializer.create_grouped_back_link_fields(converter_data, links)
 
     assert check_sum == work_item.calculate_checksum()
