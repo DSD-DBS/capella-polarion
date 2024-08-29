@@ -37,6 +37,21 @@ class RenderingSession:
     )
 
 
+@dataclasses.dataclass
+class ProjectData:
+    """A class holding data of a project which documents are rendered for."""
+
+    new_docs: list[polarion_api.Document] = dataclasses.field(
+        default_factory=list
+    )
+    updated_docs: list[polarion_api.Document] = dataclasses.field(
+        default_factory=list
+    )
+    work_items: list[polarion_api.WorkItem] = dataclasses.field(
+        default_factory=list
+    )
+
+
 class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
     """A Renderer class for Polarion documents."""
 
@@ -52,6 +67,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self.jinja_envs: dict[str, jinja2.Environment] = {}
         self.overwrite_heading_numbering = overwrite_heading_numbering
         self.overwrite_layouts = overwrite_layouts
+        self.projects: dict[str | None, ProjectData] = {}
 
     def setup_env(self, env: jinja2.Environment):
         """Add globals and filters to the environment."""
@@ -318,36 +334,23 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         existing_documents: dict[
             tuple[str | None, str, str], polarion_api.Document | None
         ],
-    ) -> tuple[
-        list[polarion_api.Document],
-        list[polarion_api.Document],
-        list[polarion_api.WorkItem],
-    ]:
+    ) -> dict[str | None, ProjectData]:
         """Render all documents defined in the given config.
 
         Returns a list new documents followed by updated documents and
         work items, which need to be updated
         """
 
-        new_docs: list[polarion_api.Document] = []
-        updated_docs: list[polarion_api.Document] = []
-        work_items: list[polarion_api.WorkItem] = []
         self._render_full_authority_documents(
             configs.full_authority,
             existing_documents,
-            new_docs,
-            updated_docs,
-            work_items,
         )
 
         self._render_mixed_authority_documents(
-            configs.mixed_authority,
-            existing_documents,
-            updated_docs,
-            work_items,
+            configs.mixed_authority, existing_documents
         )
 
-        return new_docs, updated_docs, work_items
+        return self.projects
 
     def _check_document_status(
         self,
@@ -377,12 +380,13 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         existing_documents: dict[
             tuple[str | None, str, str], polarion_api.Document | None
         ],
-        updated_docs: list[polarion_api.Document],
-        work_items: list[polarion_api.WorkItem],
     ):
         for config in mixed_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
+            )
+            project_data = self.projects.setdefault(
+                config.project_id, ProjectData()
             )
             for instance in config.instances:
                 old_doc = self._get_and_customize_doc(
@@ -424,8 +428,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     )
                     continue
 
-                updated_docs.append(new_doc)
-                work_items.extend(wis)
+                project_data.updated_docs.append(new_doc)
+                project_data.work_items.extend(wis)
 
     def _render_full_authority_documents(
         self,
@@ -433,13 +437,13 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         existing_documents: dict[
             tuple[str | None, str, str], polarion_api.Document | None
         ],
-        new_docs: list[polarion_api.Document],
-        updated_docs: list[polarion_api.Document],
-        work_items: list[polarion_api.WorkItem],
     ):
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
+            )
+            project_data = self.projects.setdefault(
+                config.project_id, ProjectData()
             )
             for instance in config.instances:
                 if old_doc := self._get_and_customize_doc(
@@ -471,8 +475,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                         continue
 
-                    updated_docs.append(new_doc)
-                    work_items.extend(wis)
+                    project_data.updated_docs.append(new_doc)
+                    project_data.work_items.extend(wis)
                 else:
                     try:
                         new_doc, _ = self.render_document(
@@ -495,7 +499,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                         continue
 
-                    new_docs.append(new_doc)
+                    project_data.new_docs.append(new_doc)
 
     def _extract_section_areas(self, html_elements: list[etree._Element]):
         section_areas = {}

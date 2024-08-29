@@ -155,10 +155,32 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
 
     assert result.exit_code == 0
     assert mock_get_polarion_wi_map.call_count == 1
-    assert mock_get_document.call_count == 6
-    assert mock_post_documents.call_count == 1
-    assert len(mock_post_documents.call_args.args[0]) == 1
-    assert mock_update_documents.call_count == 1
-    assert len(mock_update_documents.call_args.args[0]) == 1
-    assert mock_update_headings.call_count == 1
-    assert len(mock_update_headings.call_args.args[0]) == 1
+    assert mock_get_document.call_count == 8
+    assert [call.args[2] for call in mock_get_document.call_args_list] == [
+        None,
+        None,
+        None,
+        "TestProject",
+        None,
+        None,
+        None,
+        "TestProject",
+    ]
+
+    assert mock_post_documents.call_count == 2
+    assert len(mock_post_documents.call_args_list[0].args[0]) == 1
+    assert len(mock_post_documents.call_args_list[1].args[0]) == 1
+    assert mock_post_documents.call_args_list[0].args[1] is None
+    assert mock_post_documents.call_args_list[1].args[1] == "TestProject"
+
+    assert mock_update_documents.call_count == 2
+    assert len(mock_update_documents.call_args_list[0].args[0]) == 1
+    assert len(mock_update_documents.call_args_list[1].args[0]) == 0
+    assert mock_update_documents.call_args_list[0].args[1] is None
+    assert mock_update_documents.call_args_list[1].args[1] == "TestProject"
+
+    assert mock_update_headings.call_count == 2
+    assert len(mock_update_headings.call_args_list[0].args[0]) == 1
+    assert len(mock_update_headings.call_args_list[1].args[0]) == 0
+    assert mock_update_headings.call_args_list[0].args[1] is None
+    assert mock_update_headings.call_args_list[1].args[1] == "TestProject"

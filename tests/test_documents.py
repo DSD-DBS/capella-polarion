@@ -26,6 +26,7 @@ def existing_documents() -> (
         (None, "_default", "id123"): polarion_api.Document(
             module_folder="_default",
             module_name="id123",
+            status="draft",
             home_page_content=polarion_api.TextContent(
                 type="text/html",
                 value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
@@ -39,6 +40,25 @@ def existing_documents() -> (
         (None, "_default", "id1237"): polarion_api.Document(
             module_folder="_default",
             module_name="id1237",
+            status="draft",
+            home_page_content=polarion_api.TextContent(
+                type="text/html",
+                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+            ),
+        ),
+        ("TestProject", "_default", "id1239"): polarion_api.Document(
+            module_folder="_default",
+            module_name="id1239",
+            status="in_review",
+            home_page_content=polarion_api.TextContent(
+                type="text/html",
+                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+            ),
+        ),
+        ("TestProject", "_default", "id1240"): polarion_api.Document(
+            module_folder="_default",
+            module_name="id1240",
+            status="draft",
             home_page_content=polarion_api.TextContent(
                 type="text/html",
                 value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
@@ -233,24 +253,27 @@ def test_render_all_documents_partially_successfully(
         empty_polarion_worker.polarion_data_repo, model
     )
 
-    new_docs, updated_docs, work_items = renderer.render_documents(
-        conf, existing_documents()
-    )
+    projects_data = renderer.render_documents(conf, existing_documents())
 
-    # There are 6 documents in the config, we expect 3 rendering to fail
-    assert len(caplog.records) == 3
+    # There are 8 documents in the config, we expect 4 rendering to fail
+    assert len(caplog.records) == 4
+    # The first tree documents weren't rendered due to an error, the fourth
+    # wasn't rendered because of status restrictions, which is a just warning
+    assert [lr.levelno for lr in caplog.records] == [40, 40, 40, 30]
     # For one valid config we did not pass a document, so we expect a new one
-    assert len(new_docs) == 1
-    # And two updated documents
-    assert len(updated_docs) == 2
-    # In both existing documents we had 2 headings. In full authority mode
+    assert len(projects_data[None].new_docs) == 1
+    # And three updated documents
+    assert len(projects_data[None].updated_docs) == 2
+    assert len(projects_data["TestProject"].updated_docs) == 1
+    # In all existing documents we had 2 headings. In full authority mode
     # both should be updated and in mixed authority mode only one of them as
     # the other is outside the rendering area
-    assert len(work_items) == 3
-    assert len(updated_docs[0].rendering_layouts) == 0
-    assert len(updated_docs[1].rendering_layouts) == 1
-    assert updated_docs[0].outline_numbering is None
-    assert updated_docs[1].outline_numbering is None
+    assert len(projects_data[None].work_items) == 3
+    assert len(projects_data["TestProject"].work_items) == 2
+    assert len(projects_data[None].updated_docs[0].rendering_layouts) == 0
+    assert len(projects_data[None].updated_docs[1].rendering_layouts) == 1
+    assert projects_data[None].updated_docs[0].outline_numbering is None
+    assert projects_data[None].updated_docs[1].outline_numbering is None
 
 
 def test_render_all_documents_overwrite_headings_layouts(
@@ -264,7 +287,8 @@ def test_render_all_documents_overwrite_headings_layouts(
         empty_polarion_worker.polarion_data_repo, model, True, True
     )
 
-    _, updated_docs, _ = renderer.render_documents(conf, existing_documents())
+    projects_data = renderer.render_documents(conf, existing_documents())
+    updated_docs = projects_data[None].updated_docs
 
     assert len(updated_docs[0].rendering_layouts) == 2
     assert len(updated_docs[1].rendering_layouts) == 2
@@ -331,8 +355,8 @@ def test_combined_config():
     with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
-    assert len(conf.full_authority) == 2
-    assert len(conf.mixed_authority) == 2
+    assert len(conf.full_authority) == 3
+    assert len(conf.mixed_authority) == 3
 
 
 def test_rendering_config():
