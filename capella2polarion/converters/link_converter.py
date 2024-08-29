@@ -71,6 +71,13 @@ class LinkSerializer:
                     new: cabc.Iterable[str]
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
+                    elif refs is None:
+                        warning = make_link_logging_message(
+                            "No model element behind that attribute",
+                            link_config.capella_attr,
+                        )
+                        link_errors.extend(warning)
+                        continue
                     else:
                         assert hasattr(refs, "uuid"), "No 'uuid' on value"
                         new = [refs.uuid]
@@ -82,14 +89,11 @@ class LinkSerializer:
                         self._create(work_item.id, role_id, new, {})
                     )
             except Exception as error:
-                error_text = f"{type(error).__name__} {str(error)}"
-                link_errors.extend(
-                    [
-                        f"Requested attribute: {link_config.capella_attr}",
-                        error_text,
-                        "--------",
-                    ]
+                error_message = make_link_logging_message(
+                    f"{type(error).__name__} {str(error)}",
+                    link_config.capella_attr,
                 )
+                link_errors.extend(error_message)
 
         if link_errors:
             for link_error in link_errors:
@@ -380,7 +384,7 @@ def _sorted_unordered_html_list(
 
 def _resolve_attribute(
     obj: common.GenericElement, attr_id: str
-) -> common.ElementList[common.GenericElement] | common.GenericElement:
+) -> common.ElementList[common.GenericElement] | common.GenericElement | None:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
     if map_id:
@@ -388,3 +392,12 @@ def _resolve_attribute(
             return _resolve_attribute(objs, map_id)
         objs = objs.map(map_id)
     return objs
+
+
+def make_link_logging_message(message: str, capella_attr: str) -> list[str]:
+    """Return a list of strings for a link logging message."""
+    return [
+        f"Requested attribute: {capella_attr!r}",
+        message,
+        "--------",
+    ]

@@ -459,17 +459,45 @@ class TestModelElements:
         assert links == [expected]
 
     @staticmethod
-    def test_create_links_missing_attribute(
+    def test_create_links_logs_error_when_no_uuid_is_found_on_value(
         base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
     ):
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
-            "\n\tRequested attribute: attribute"
+            "\n\tRequested attribute: 'attribute'"
             "\n\tAssertionError No 'uuid' on value"
             "\n\t--------"
         )
+        no_uuid = FakeModelObject("")
+        del no_uuid.uuid
+        base_object.mc.converter_session["uuid1"].capella_element.attribute = (
+            no_uuid
+        )
 
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.ERROR):
+            link_serializer = link_converter.LinkSerializer(
+                base_object.pw.polarion_data_repo,
+                base_object.mc.converter_session,
+                base_object.pw.polarion_params.project_id,
+                base_object.c2pcli.capella_model,
+            )
+            links = link_serializer.create_links_for_work_item("uuid1")
+
+        assert not links
+        assert caplog.messages[0] == expected
+
+    @staticmethod
+    def test_create_links_logs_warning_model_element_behind_attribute_is_none(
+        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
+    ):
+        expected = (
+            "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
+            "\n\tRequested attribute: 'attribute'"
+            "\n\tNo model element behind that attribute"
+            "\n\t--------"
+        )
+
+        with caplog.at_level(logging.WARNING):
             link_serializer = link_converter.LinkSerializer(
                 base_object.pw.polarion_data_repo,
                 base_object.mc.converter_session,
@@ -487,7 +515,7 @@ class TestModelElements:
     ):
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" failed:"
-            "\n\tRequested attribute: non_existent_attr"
+            "\n\tRequested attribute: 'non_existent_attr'"
             "\n\t"
         )
 
@@ -538,7 +566,7 @@ class TestModelElements:
         expected = (
             "Link creation for \"<FakeModelObject 'Fake 2' (uuid2)>\" "
             "partially successful. Some links were not created:"
-            "\n\tRequested attribute: non_existent_attr"
+            "\n\tRequested attribute: 'non_existent_attr'"
             "\n\t"
         )
 
