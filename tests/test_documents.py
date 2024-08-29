@@ -19,9 +19,11 @@ DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
 
 
-def existing_documents() -> dict[tuple[str, str], polarion_api.Document]:
+def existing_documents() -> (
+    dict[tuple[str | None, str, str], polarion_api.Document]
+):
     return {
-        ("_default", "id123"): polarion_api.Document(
+        (None, "_default", "id123"): polarion_api.Document(
             module_folder="_default",
             module_name="id123",
             home_page_content=polarion_api.TextContent(
@@ -34,7 +36,7 @@ def existing_documents() -> dict[tuple[str, str], polarion_api.Document]:
                 )
             ],
         ),
-        ("_default", "id1237"): polarion_api.Document(
+        (None, "_default", "id1237"): polarion_api.Document(
             module_folder="_default",
             module_name="id1237",
             home_page_content=polarion_api.TextContent(
@@ -289,6 +291,10 @@ def test_full_authority_document_config():
     assert conf.full_authority[0].instances[0].params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
+    assert conf.full_authority[0].project_id == "TestProject"
+    assert conf.full_authority[0].status_allow_list == ["draft", "open"]
+    assert conf.full_authority[1].project_id is None
+    assert conf.full_authority[1].status_allow_list is None
 
 
 def test_mixed_authority_document_config():
@@ -308,6 +314,8 @@ def test_mixed_authority_document_config():
     assert len(conf.mixed_authority[0].instances) == 2
     assert conf.mixed_authority[0].instances[0].polarion_space == "_default"
     assert conf.mixed_authority[0].instances[0].polarion_name == "id123"
+    assert conf.mixed_authority[0].project_id == "TestProject"
+    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
     assert conf.mixed_authority[0].instances[0].polarion_title == "Interface23"
     assert conf.mixed_authority[0].instances[0].params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
@@ -315,6 +323,8 @@ def test_mixed_authority_document_config():
     assert conf.mixed_authority[1].instances[0].section_params == {
         "section1": {"param_1": "Test"}
     }
+    assert conf.mixed_authority[1].project_id is None
+    assert conf.mixed_authority[1].status_allow_list is None
 
 
 def test_combined_config():

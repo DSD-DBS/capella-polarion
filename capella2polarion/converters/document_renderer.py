@@ -292,16 +292,17 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def _get_and_customize_doc(
         self,
+        project_id: str | None,
         space: str,
         name: str,
         title: str | None,
         rendering_layouts: list[polarion_api.RenderingLayout],
         heading_numbering: bool,
         existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
+            tuple[str | None, str, str], polarion_api.Document | None
         ],
     ) -> polarion_api.Document | None:
-        if old_doc := existing_documents.get((space, name)):
+        if old_doc := existing_documents.get((project_id, space, name)):
             if title:
                 old_doc.title = title
             if self.overwrite_layouts:
@@ -315,7 +316,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         configs: document_config.DocumentConfigs,
         existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
+            tuple[str | None, str, str], polarion_api.Document | None
         ],
     ) -> tuple[
         list[polarion_api.Document],
@@ -348,13 +349,33 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
         return new_docs, updated_docs, work_items
 
+    def _check_document_status(
+        self,
+        document: polarion_api.Document,
+        config: document_config.BaseDocumentRenderingConfig,
+    ):
+        if (
+            config.status_allow_list is not None
+            and document.status not in config.status_allow_list
+        ):
+            logger.warning(
+                "Won't update document %s/%s due to status "
+                "restrictions. Status is %s and should be in %r.",
+                document.module_folder,
+                document.module_name,
+                document.status,
+                config.status_allow_list,
+            )
+            return False
+        return True
+
     def _render_mixed_authority_documents(
         self,
         mixed_authority_configs: list[
             document_config.FullAuthorityDocumentRenderingConfig
         ],
         existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
+            tuple[str | None, str, str], polarion_api.Document | None
         ],
         updated_docs: list[polarion_api.Document],
         work_items: list[polarion_api.WorkItem],
@@ -365,6 +386,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             )
             for instance in config.instances:
                 old_doc = self._get_and_customize_doc(
+                    config.project_id,
                     instance.polarion_space,
                     instance.polarion_name,
                     instance.polarion_title,
@@ -380,6 +402,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         instance.polarion_name,
                     )
                     continue
+
+                if not self._check_document_status(old_doc, config):
+                    continue
+
                 try:
                     new_doc, wis = self.update_mixed_authority_document(
                         old_doc,
@@ -405,7 +431,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         full_authority_configs,
         existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
+            tuple[str | None, str, str], polarion_api.Document | None
         ],
         new_docs: list[polarion_api.Document],
         updated_docs: list[polarion_api.Document],
@@ -417,6 +443,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             )
             for instance in config.instances:
                 if old_doc := self._get_and_customize_doc(
+                    config.project_id,
                     instance.polarion_space,
                     instance.polarion_name,
                     instance.polarion_title,
@@ -424,6 +451,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     config.heading_numbering,
                     existing_documents,
                 ):
+                    if not self._check_document_status(old_doc, config):
+                        continue
+
                     try:
                         new_doc, wis = self.render_document(
                             config.template_directory,

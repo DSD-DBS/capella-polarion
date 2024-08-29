@@ -47,6 +47,8 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
     """A template config, which can result in multiple Polarion documents."""
 
     template_directory: str | pathlib.Path
+    project_id: str | None = None
+    status_allow_list: list[str] | None = None
     heading_numbering: bool = False
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
@@ -77,11 +79,11 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
-    def iterate_documents(self) -> t.Iterator[tuple[str, str]]:
+    def iterate_documents(self) -> t.Iterator[tuple[str | None, str, str]]:
         """Yield all document paths of the config as tuples."""
         for conf in self.full_authority + self.mixed_authority:
             for inst in conf.instances:
-                yield inst.polarion_space, inst.polarion_name
+                yield conf.project_id, inst.polarion_space, inst.polarion_name
 
 
 def read_config_file(

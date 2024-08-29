@@ -3,6 +3,10 @@
 
 mixed_authority:
   - template_directory: jupyter-notebooks/document_templates
+    project_id: TestProject
+    status_allow_list:
+      - draft
+      - open
     sections:
       section1: test-icd.html.j2
       section2: test-icd.html.j2

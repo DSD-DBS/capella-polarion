@@ -498,11 +498,12 @@ class CapellaPolarionWorker:
 
     def load_polarion_documents(
         self,
-        document_paths: t.Iterable[tuple[str, str]],
-        document_project: str | None = None,
-    ) -> dict[tuple[str, str], polarion_api.Document | None]:
+        document_paths: t.Iterable[tuple[str | None, str, str]],
+    ) -> dict[tuple[str | None, str, str], polarion_api.Document | None]:
         """Load the given document references from Polarion."""
         return {
-            (space, name): self.get_document(space, name, document_project)
-            for space, name in document_paths
+            (document_project, space, name): self.get_document(
+                space, name, document_project
+            )
+            for document_project, space, name in document_paths
         }
