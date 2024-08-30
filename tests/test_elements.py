@@ -263,9 +263,10 @@ class TestDiagramElements:
         pw.delete_orphaned_work_items(diagr_base_object.mc.converter_session)
         assert pw.project_client is not None
         assert pw.project_client.work_items.delete.call_count == 1
-        assert pw.project_client.work_items.delete.call_args[0][0] == [
-            "Diag-1"
-        ]
+        assert (
+            pw.project_client.work_items.delete.call_args[0][0][0].id
+            == "Diag-1"
+        )
         assert pw.project_client.work_items.create.call_count == 0
 
 

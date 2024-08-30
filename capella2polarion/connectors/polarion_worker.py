@@ -127,21 +127,19 @@ class CapellaPolarionWorker:
         are marked as ``to be deleted`` via the status attribute.
         """
 
-        def serialize_for_delete(uuid: str) -> str:
-            work_item_id, _ = self.polarion_data_repo[uuid]
-            logger.info("Delete work item %r...", work_item_id)
-            return work_item_id
-
         existing_work_items = {
             uuid
             for uuid, _, work_item in self.polarion_data_repo.items()
             if work_item.status != "deleted"
         }
         uuids: set[str] = existing_work_items - set(converter_session)
-        work_item_ids = [serialize_for_delete(uuid) for uuid in uuids]
-        if work_item_ids:
+        work_items = [
+            self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
+            for uuid in uuids
+        ]
+        if work_items:
             try:
-                self.project_client.work_items.delete(work_item_ids)
+                self.project_client.work_items.delete(work_items)
                 self.polarion_data_repo.remove_work_items_by_capella_uuid(
                     uuids
                 )
