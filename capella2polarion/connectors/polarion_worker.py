@@ -114,7 +114,7 @@ class CapellaPolarionWorker:
         """Return a map from Capella UUIDs to Polarion work items."""
         work_items = self.project_client.work_items.get_all(
             "HAS_VALUE:uuid_capella",
-            {"workitems": "id,uuid_capella,checksum,status,type"},
+            fields={"workitems": "id,uuid_capella,checksum,status,type"},
         )
         self.polarion_data_repo.update_work_items(work_items)
 

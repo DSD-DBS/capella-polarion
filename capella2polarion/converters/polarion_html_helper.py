@@ -124,7 +124,7 @@ def remove_table_ids(
 
     for element in html_fragments:
         if element.tag == "table":
-            element.remove("id")
+            element.attrib.pop("id", None)
 
     return html_fragments
 
