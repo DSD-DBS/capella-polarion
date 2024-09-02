@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import hashlib
 import json
 import typing as t
@@ -60,3 +61,16 @@ class CapellaWorkItem(polarion_api.WorkItem):
             | dict(sorted(attachment_checksums.items()))
         )
         return self._checksum
+
+
+@dataclasses.dataclass
+class DocumentData:
+    """A class to store data related to a rendered document."""
+
+    document: polarion_api.Document
+    headings: list[polarion_api.WorkItem] = dataclasses.field(
+        default_factory=list
+    )
+    text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
+        default_factory=dict
+    )

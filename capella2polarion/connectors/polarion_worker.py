@@ -15,7 +15,11 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session
+from capella2polarion.converters import (
+    data_session,
+    document_config,
+    polarion_html_helper,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,14 @@ DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
     int: 0,
     bool: False,
 }
+WORK_ITEMS_IN_PROJECT_QUERY = (
+    "SQL:(SELECT item.* FROM POLARION.WORKITEM item, POLARION.MODULE doc, "
+    "POLARION.PROJECT proj WHERE proj.C_ID = '{project}' AND "
+    "doc.FK_PROJECT = proj.C_PK AND doc.C_ID = '{doc_name}' AND "
+    "doc.C_MODULEFOLDER = '{doc_folder}' AND item.C_TYPE = '{wi_type}' AND "
+    "EXISTS (SELECT rel1.* FROM POLARION.REL_MODULE_WORKITEM rel1 WHERE "
+    "rel1.FK_URI_MODULE = doc.C_URI AND rel1.FK_URI_WORKITEM = item.C_URI))"
+)
 
 
 class PolarionWorkerParams:
@@ -455,21 +467,48 @@ class CapellaPolarionWorker:
 
     def post_documents(
         self,
-        documents: list[polarion_api.Document],
+        document_datas: list[data_models.DocumentData],
         document_project: str | None = None,
     ):
         """Create new documents."""
         client = self._get_client(document_project)
+        documents, _ = self._process_document_datas(client, document_datas)
+
         client.documents.create(documents)
 
     def update_documents(
         self,
-        documents: list[polarion_api.Document],
+        document_datas: list[data_models.DocumentData],
         document_project: str | None = None,
     ):
         """Update existing documents."""
         client = self._get_client(document_project)
+        documents, headings = self._process_document_datas(
+            client, document_datas
+        )
+
+        client.work_items.update(headings)
         client.documents.update(documents)
+
+    def _process_document_datas(self, client, document_datas):
+        documents = []
+        headings = []
+        for document_data in document_datas:
+            headings += document_data.headings
+            documents.append(document_data.document)
+            if document_data.text_work_items:
+                text_work_item_type = next(
+                    iter(document_data.text_work_items.values())
+                ).type
+                self._create_and_update_text_work_items(
+                    document_data.text_work_items, client
+                )
+                polarion_html_helper.insert_text_work_items(
+                    document_data.document,
+                    document_data.text_work_items,
+                    text_work_item_type,
+                )
+        return documents, headings
 
     def get_document(
         self, space: str, name: str, document_project: str | None = None
@@ -485,23 +524,45 @@ class CapellaPolarionWorker:
                 return None
             raise e
 
-    def update_headings(
-        self,
-        work_items: list[polarion_api.WorkItem],
-        document_project: str | None = None,
-    ):
-        """Update the given workitems without any additional checks."""
-        client = self._get_client(document_project)
-        client.work_items.update(work_items)
-
     def load_polarion_documents(
         self,
-        document_paths: t.Iterable[tuple[str | None, str, str]],
-    ) -> dict[tuple[str | None, str, str], polarion_api.Document | None]:
-        """Load the given document references from Polarion."""
+        document_infos: t.Iterable[document_config.DocumentInfo],
+    ) -> dict[
+        tuple[str | None, str, str],
+        tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
+    ]:
+        """Load the documents referenced and text work items from Polarion."""
         return {
-            (document_project, space, name): self.get_document(
-                space, name, document_project
+            (di.project_id, di.module_folder, di.module_name): (
+                self.get_document(
+                    di.module_folder, di.module_name, di.project_id
+                ),
+                self._get_client(di.project_id).work_items.get_all(
+                    WORK_ITEMS_IN_PROJECT_QUERY.format(
+                        project=di.project_id
+                        or self.polarion_params.project_id,
+                        doc_folder=di.module_folder,
+                        doc_name=di.module_name,
+                        wi_type=di.text_work_item_type,
+                    ),
+                    fields={"workitems": f"id,{di.text_work_item_id_field}"},
+                ),
             )
-            for document_project, space, name in document_paths
+            for di in document_infos
         }
+
+    def _create_and_update_text_work_items(
+        self,
+        work_items: dict[str, polarion_api.WorkItem],
+        client: polarion_api.ProjectClient,
+    ):
+        client.work_items.update(
+            [work_item for work_item in work_items.values() if work_item.id]
+        )
+        client.work_items.create(
+            [
+                work_item
+                for work_item in work_items.values()
+                if not work_item.id
+            ]
+        )

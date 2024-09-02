@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module with classes and a loader for document rendering configs."""
+import dataclasses
 import logging
 import pathlib
 import typing as t
@@ -14,6 +15,17 @@ import yaml
 from capella2polarion.converters import polarion_html_helper
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class DocumentInfo:
+    """Class for information regarding a document which should be created."""
+
+    project_id: str | None
+    module_folder: str
+    module_name: str
+    text_work_item_type: str
+    text_work_item_id_field: str
 
 
 class WorkItemLayout(pydantic.BaseModel):
@@ -48,6 +60,8 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
 
     template_directory: str | pathlib.Path
     project_id: str | None = None
+    text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE
+    text_work_item_id_field: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD
     status_allow_list: list[str] | None = None
     heading_numbering: bool = False
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
@@ -79,11 +93,17 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
-    def iterate_documents(self) -> t.Iterator[tuple[str | None, str, str]]:
+    def iterate_documents(self) -> t.Iterator[DocumentInfo]:
         """Yield all document paths of the config as tuples."""
         for conf in self.full_authority + self.mixed_authority:
             for inst in conf.instances:
-                yield conf.project_id, inst.polarion_space, inst.polarion_name
+                yield DocumentInfo(
+                    project_id=conf.project_id,
+                    module_folder=inst.polarion_space,
+                    module_name=inst.polarion_name,
+                    text_work_item_type=conf.text_work_item_type,
+                    text_work_item_id_field=conf.text_work_item_id_field,
+                )
 
 
 def read_config_file(

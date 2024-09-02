@@ -19,50 +19,63 @@ DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
 
 
-def existing_documents() -> (
-    dict[tuple[str | None, str, str], polarion_api.Document]
-):
+def existing_documents() -> dict[
+    tuple[str | None, str, str],
+    tuple[polarion_api.Document, list[polarion_api.WorkItem]],
+]:
     return {
-        (None, "_default", "id123"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id123",
-            status="draft",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        (None, "_default", "id123"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id123",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
+                rendering_layouts=[
+                    polarion_api.RenderingLayout(
+                        "Class", "paragraph", type="class"
+                    )
+                ],
             ),
-            rendering_layouts=[
-                polarion_api.RenderingLayout(
-                    "Class", "paragraph", type="class"
-                )
-            ],
+            [],
         ),
-        (None, "_default", "id1237"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id1237",
-            status="draft",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        (None, "_default", "id1237"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1237",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
             ),
+            [],
         ),
-        ("TestProject", "_default", "id1239"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id1239",
-            status="in_review",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        ("TestProject", "_default", "id1239"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1239",
+                status="in_review",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
             ),
+            [],
         ),
-        ("TestProject", "_default", "id1240"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id1240",
-            status="draft",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        ("TestProject", "_default", "id1240"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1240",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
             ),
+            [],
         ),
     }
 
@@ -89,7 +102,7 @@ def test_create_new_document(
         empty_polarion_worker.polarion_data_repo, model
     )
 
-    new_doc, wis = renderer.render_document(
+    document_data = renderer.render_document(
         JUPYTER_TEMPLATE_FOLDER,
         CLASSES_TEMPLATE,
         "_default",
@@ -98,10 +111,10 @@ def test_create_new_document(
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
-    assert len(wis) == 0
-    assert new_doc.rendering_layouts == [
+    assert len(document_data.headings) == 0
+    assert document_data.document.rendering_layouts == [
         polarion_api.RenderingLayout(
             label="Class", type="class", layouter="section"
         )
@@ -160,18 +173,19 @@ def test_update_document(
         ),
     )
 
-    new_doc, wis = renderer.render_document(
+    document_data = renderer.render_document(
         JUPYTER_TEMPLATE_FOLDER,
         CLASSES_TEMPLATE,
         document=old_doc,
+        text_work_items={},
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
-    assert len(new_doc.rendering_layouts) == 1
-    assert new_doc.rendering_layouts[
+    assert len(document_data.document.rendering_layouts) == 1
+    assert document_data.document.rendering_layouts[
         0
     ].properties == polarion_api.data_models.RenderingProperties(
         fields_at_start=["ID"]
@@ -182,9 +196,9 @@ def test_update_document(
     assert content[0].tag == "h1"
     assert content[1].text == "Data Classes"
     assert content[1].tag == "h2"
-    assert len(wis) == 1
-    assert wis[0].id == "ATSY-16062"
-    assert wis[0].title == "Class Document"
+    assert len(document_data.headings) == 1
+    assert document_data.headings[0].id == "ATSY-16062"
+    assert document_data.headings[0].title == "Class Document"
 
 
 def test_mixed_authority_document(
@@ -202,7 +216,7 @@ def test_mixed_authority_document(
         ),
     )
 
-    new_doc, wis = renderer.update_mixed_authority_document(
+    document_data = renderer.update_mixed_authority_document(
         old_doc,
         DOCUMENT_SECTIONS,
         {
@@ -217,10 +231,11 @@ def test_mixed_authority_document(
                 "global_param": "Overwrite global param",
             },
         },
+        {},
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
 
     assert len(content) == 15
@@ -236,9 +251,9 @@ def test_mixed_authority_document(
     assert content[11].text == "Overwritten: Overwrite global param"
     assert content[12].text == "Local Test section 2"
     assert content[14].text == "Some postfix stuff"
-    assert len(wis) == 1
-    assert wis[0].id == "ATSY-18305"
-    assert wis[0].title == "Keep Heading"
+    assert len(document_data.headings) == 1
+    assert document_data.headings[0].id == "ATSY-18305"
+    assert document_data.headings[0].title == "Keep Heading"
 
 
 def test_render_all_documents_partially_successfully(
@@ -268,12 +283,34 @@ def test_render_all_documents_partially_successfully(
     # In all existing documents we had 2 headings. In full authority mode
     # both should be updated and in mixed authority mode only one of them as
     # the other is outside the rendering area
-    assert len(projects_data[None].work_items) == 3
-    assert len(projects_data["TestProject"].work_items) == 2
-    assert len(projects_data[None].updated_docs[0].rendering_layouts) == 0
-    assert len(projects_data[None].updated_docs[1].rendering_layouts) == 1
-    assert projects_data[None].updated_docs[0].outline_numbering is None
-    assert projects_data[None].updated_docs[1].outline_numbering is None
+    assert (
+        sum(
+            len(document_data.headings)
+            for document_data in projects_data[None].updated_docs
+        )
+        == 3
+    )
+    assert (
+        sum(
+            len(document_data.headings)
+            for document_data in projects_data["TestProject"].updated_docs
+        )
+        == 2
+    )
+    assert (
+        len(projects_data[None].updated_docs[0].document.rendering_layouts)
+        == 0
+    )
+    assert (
+        len(projects_data[None].updated_docs[1].document.rendering_layouts)
+        == 1
+    )
+    assert (
+        projects_data[None].updated_docs[0].document.outline_numbering is None
+    )
+    assert (
+        projects_data[None].updated_docs[1].document.outline_numbering is None
+    )
 
 
 def test_render_all_documents_overwrite_headings_layouts(
@@ -290,10 +327,10 @@ def test_render_all_documents_overwrite_headings_layouts(
     projects_data = renderer.render_documents(conf, existing_documents())
     updated_docs = projects_data[None].updated_docs
 
-    assert len(updated_docs[0].rendering_layouts) == 2
-    assert len(updated_docs[1].rendering_layouts) == 2
-    assert updated_docs[0].outline_numbering is False
-    assert updated_docs[1].outline_numbering is False
+    assert len(updated_docs[0].document.rendering_layouts) == 2
+    assert len(updated_docs[1].document.rendering_layouts) == 2
+    assert updated_docs[0].document.outline_numbering is False
+    assert updated_docs[1].document.outline_numbering is False
 
 
 def test_full_authority_document_config():

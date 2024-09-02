@@ -129,12 +129,6 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         "update_documents",
         mock_update_documents,
     )
-    mock_update_headings = mock.MagicMock()
-    monkeypatch.setattr(
-        polarion_worker.CapellaPolarionWorker,
-        "update_headings",
-        mock_update_headings,
-    )
 
     command: list[str] = [
         "--polarion-project-id",
@@ -178,9 +172,3 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
     assert len(mock_update_documents.call_args_list[1].args[0]) == 0
     assert mock_update_documents.call_args_list[0].args[1] is None
     assert mock_update_documents.call_args_list[1].args[1] == "TestProject"
-
-    assert mock_update_headings.call_count == 2
-    assert len(mock_update_headings.call_args_list[0].args[0]) == 1
-    assert len(mock_update_headings.call_args_list[1].args[0]) == 0
-    assert mock_update_headings.call_args_list[0].args[1] is None
-    assert mock_update_headings.call_args_list[1].args[1] == "TestProject"

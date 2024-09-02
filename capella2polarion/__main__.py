@@ -171,7 +171,6 @@ def render_documents(
     for project, project_data in projects_document_data.items():
         polarion_worker.post_documents(project_data.new_docs, project)
         polarion_worker.update_documents(project_data.updated_docs, project)
-        polarion_worker.update_headings(project_data.work_items, project)
 
 
 if __name__ == "__main__":

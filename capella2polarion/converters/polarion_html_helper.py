@@ -8,14 +8,16 @@ import re
 
 import capellambse
 import jinja2
+import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from lxml import etree, html
 
-heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
+wi_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
 h_regex = re.compile("h[0-9]")
-wi_regex = re.compile(f"{heading_id_prefix}(.*)")
+wi_id_regex = re.compile(f"{wi_id_prefix}([A-Z|a-z|0-9]*-[0-9]+)")
 
-
+TEXT_WORK_ITEM_ID_FIELD = "__C2P__id"
+TEXT_WORK_ITEM_TYPE = "text"
 POLARION_WORK_ITEM_URL = (
     '<span class="polarion-rte-link" data-type="workItem" '
     'id="fake" data-item-id="{pid}" data-option-id="long">'
@@ -29,6 +31,7 @@ RE_DESCR_DELETED_PATTERN = re.compile(
     f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
 )
 RED_TEXT = '<p style="color:red">{text}</p>'
+WORK_ITEM_TAG = "workitem"
 
 
 def strike_through(string: str) -> str:
@@ -111,7 +114,7 @@ class JinjaRendererMixin:
 
 
 def remove_table_ids(
-    html_content: str | list[etree._Element],
+    html_content: str | list[html.HtmlComment],
 ) -> list[etree._Element]:
     """Remove the ID field from all tables.
 
@@ -130,24 +133,95 @@ def remove_table_ids(
 
 
 def _ensure_fragments(
-    html_content: str | list[etree._Element],
-) -> list[etree._Element]:
+    html_content: str | list[html.HtmlComment],
+) -> list[html.HtmlComment]:
     if isinstance(html_content, str):
         return html.fragments_fromstring(html_content)
     return html_content
 
 
-def extract_headings(html_content: str | list[etree._Element]) -> list[str]:
+def extract_headings(html_content: str | list[html.HtmlComment]) -> list[str]:
     """Return a list of work item IDs for all headings in the given content."""
-    heading_ids = []
-    html_fragments = _ensure_fragments(html_content)
+    return extract_work_items(html_content, h_regex)
 
+
+def extract_work_items(
+    html_content: str | list[html.HtmlComment],
+    tag_regex: re.Pattern | None = None,
+) -> list[str]:
+    """Return a list of work item IDs for work items in the given content."""
+    work_items = []
+    html_fragments = _ensure_fragments(html_content)
     for element in html_fragments:
         if isinstance(element, html.HtmlComment):
             continue
 
-        if h_regex.fullmatch(element.tag):
-            if matches := wi_regex.match(element.get("id")):
-                heading_ids.append(matches.group(1))
+        if (tag_regex is not None and tag_regex.fullmatch(element.tag)) or (
+            tag_regex is None and element.tag == "div"
+        ):
+            if matches := wi_id_regex.match(element.get("id")):
+                work_items.append(matches.group(1))
+    return work_items
 
-    return heading_ids
+
+def insert_text_work_items(
+    document: polarion_api.Document,
+    text_work_items: dict[str, polarion_api.WorkItem],
+    text_work_item_type: str,
+):
+    """Insert text work items into the given document."""
+    if not text_work_items:
+        return
+
+    assert document.home_page_content is not None
+    layout_index = get_layout_index(
+        "paragraph", document.rendering_layouts, text_work_item_type
+    )
+    html_fragments = _ensure_fragments(document.home_page_content.value)
+    new_content = []
+    last_match = -1
+    for index, element in enumerate(html_fragments):
+        if isinstance(element, html.HtmlComment):
+            continue
+
+        if element.tag == "workitem":
+            new_content += html_fragments[last_match + 1 : index]
+            last_match = index
+            if work_item := text_work_items.get(element.get("id")):
+                new_content.append(
+                    html.fromstring(
+                        POLARION_WORK_ITEM_DOCUMENT.format(
+                            pid=work_item.id, lid=layout_index, custom_info=""
+                        )
+                    )
+                )
+
+    new_content += html_fragments[last_match + 1 :]
+    document.home_page_content.value = "\n".join(
+        [html.tostring(element).decode("utf-8") for element in new_content]
+    )
+
+
+def get_layout_index(
+    default_layouter: str,
+    rendering_layouts: list[polarion_api.RenderingLayout],
+    work_item_type: str,
+) -> int:
+    """Return the index of the layout of the requested workitem.
+
+    If there is no rendering config yet, it will be created.
+    """
+    layout_index = 0
+    for layout in rendering_layouts:
+        if layout.type == work_item_type:
+            return layout_index
+        layout_index += 1
+    if layout_index >= len(rendering_layouts):
+        rendering_layouts.append(
+            polarion_api.RenderingLayout(
+                type=work_item_type,
+                layouter=default_layouter,
+                label=camel_case_to_words(work_item_type),
+            )
+        )
+    return layout_index
