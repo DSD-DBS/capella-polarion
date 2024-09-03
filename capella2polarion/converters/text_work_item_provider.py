@@ -48,11 +48,13 @@ class TextWorkItemProvider:
             if not (text_id := element.get("id")):
                 raise ValueError("All work items must have an ID in template")
 
-            if (
-                work_item_id_filter is None or text_id in work_item_id_filter
-            ) and text_id in self.old_text_work_items:
-                work_item = self.old_text_work_items[text_id]
-            else:
+            if not (
+                (work_item := self.old_text_work_items.get(text_id))
+                and (
+                    work_item_id_filter is None
+                    or work_item.id in work_item_id_filter
+                )
+            ):
                 work_item = polarion_api.WorkItem(
                     type=self.text_work_item_type,
                     title="",
