@@ -4,7 +4,7 @@
 import polarion_rest_api_client as polarion_api
 from lxml import html
 
-from capella2polarion.converters import polarion_html_helper
+from capella2polarion.converters import polarion_html_helper as html_helper
 
 
 class TextWorkItemProvider:
@@ -12,8 +12,8 @@ class TextWorkItemProvider:
 
     def __init__(
         self,
-        text_work_item_id_field: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD,
-        text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE,
+        text_work_item_id_field: str = html_helper.TEXT_WORK_ITEM_ID_FIELD,
+        text_work_item_type: str = html_helper.TEXT_WORK_ITEM_TYPE,
         existing_text_work_items: list[polarion_api.WorkItem] | None = None,
     ):
         self.old_text_work_items: dict[str, polarion_api.WorkItem] = {}
@@ -40,9 +40,9 @@ class TextWorkItemProvider:
         work_item_id_filter: list[str] | None = None,
     ):
         """Generate text work items from the provided html."""
-        content = polarion_html_helper.ensure_fragments(content)
+        content = html_helper.ensure_fragments(content)
         for element in content:
-            if element.tag != polarion_html_helper.WORK_ITEM_TAG:
+            if element.tag != html_helper.WORK_ITEM_TAG:
                 continue
 
             if not (text_id := element.get("id")):
@@ -88,10 +88,10 @@ class TextWorkItemProvider:
             return
 
         assert document.home_page_content is not None
-        layout_index = polarion_html_helper.get_layout_index(
+        layout_index = html_helper.get_layout_index(
             "paragraph", document.rendering_layouts, self.text_work_item_type
         )
-        html_fragments = polarion_html_helper.ensure_fragments(
+        html_fragments = html_helper.ensure_fragments(
             document.home_page_content.value
         )
         new_content = []
@@ -108,7 +108,7 @@ class TextWorkItemProvider:
                 ):
                     new_content.append(
                         html.fromstring(
-                            polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
+                            html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
                                 pid=work_item.id,
                                 lid=layout_index,
                                 custom_info="",

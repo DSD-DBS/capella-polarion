@@ -795,7 +795,7 @@ class TestModelElements:
         assert base_object.pw.project_client.work_items.update.call_count == 1
         assert base_object.pw.project_client.work_items.get.call_count == 1
         assert (
-            base_object.pw.project_client.work_items.attachments.get_all.call_count
+            base_object.pw.project_client.work_items.attachments.get_all.call_count  # pylint: disable=line-too-long
             == 0
         )
         work_item = base_object.pw.project_client.work_items.update.call_args[
@@ -1017,7 +1017,7 @@ class TestModelElements:
             base_object.mc.converter_session
         )
         links = (
-            base_object.pw.project_client.work_items.links.get_all.call_args_list
+            base_object.pw.project_client.work_items.links.get_all.call_args_list  # pylint: disable=line-too-long
         )
         assert (
             base_object.pw.project_client.work_items.links.get_all.call_count

@@ -114,7 +114,7 @@ class JinjaRendererMixin:
 
 
 def remove_table_ids(
-    html_content: str | list[html.HtmlComment],
+    html_content: str | list[html.HtmlElement],
 ) -> list[etree._Element]:
     """Remove the ID field from all tables.
 

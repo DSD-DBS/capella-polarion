@@ -15,7 +15,7 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session, polarion_html_helper
+from capella2polarion.converters import data_session
 
 logger = logging.getLogger(__name__)
 
@@ -486,7 +486,11 @@ class CapellaPolarionWorker:
         client.work_items.update(headings)
         client.documents.update(documents)
 
-    def _process_document_datas(self, client, document_datas):
+    def _process_document_datas(
+        self,
+        client: polarion_api.ProjectClient,
+        document_datas: list[data_models.DocumentData],
+    ):
         documents = []
         headings = []
         for document_data in document_datas:
