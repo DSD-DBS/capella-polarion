@@ -7,8 +7,17 @@ from lxml import etree, html
 
 from capella2polarion import data_models as dm
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import document_config, document_renderer
-from tests.conftest import TEST_COMBINED_DOCUMENT_CONFIG, TEST_DOCUMENT_ROOT
+from capella2polarion.converters import (
+    document_config,
+    document_renderer,
+    text_work_item_provider,
+)
+from tests.conftest import (
+    DOCUMENT_TEMPLATES,
+    DOCUMENT_TEXT_WORK_ITEMS,
+    TEST_COMBINED_DOCUMENT_CONFIG,
+    TEST_DOCUMENT_ROOT,
+)
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
 JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
@@ -231,28 +240,160 @@ def test_mixed_authority_document(
                 "global_param": "Overwrite global param",
             },
         },
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+            [
+                polarion_api.WorkItem(
+                    id="EXISTING", additional_attributes={"MyField": "id1"}
+                )
+            ],
+        ),
     )
 
     content: list[etree._Element] = html.fromstring(
         document_data.document.home_page_content.value
     )
 
-    assert len(content) == 15
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert len(content) == 17
     assert [c.tag for c in content[:3]] == ["h1", "p", "p"]
     assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading"
     assert content[5].text == "Global Test"
     assert content[6].text == "Local Test section 1"
-    assert content[8].text == "This will be kept."
-    assert content[10].get("id") == (
+    assert content[9].text == "This will be kept."
+    assert content[11].get("id") == (
         "polarion_wiki macro name=module-workitem;params=id=ATSY-18305"
     )
-    assert content[10].tag == "h3"
-    assert content[11].text == "Overwritten: Overwrite global param"
-    assert content[12].text == "Local Test section 2"
-    assert content[14].text == "Some postfix stuff"
+    assert content[11].tag == "h3"
+    assert content[12].text == "Overwritten: Overwrite global param"
+    assert content[13].text == "Local Test section 2"
+    assert content[16].text == "Some postfix stuff"
     assert len(document_data.headings) == 1
     assert document_data.headings[0].id == "ATSY-18305"
     assert document_data.headings[0].title == "Keep Heading"
+
+
+def test_create_full_authority_document_text_work_items(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model
+    )
+
+    document_data = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_TEXT_WORK_ITEMS,
+        "_default",
+        "TEST-DOC",
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+        ),
+    )
+
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id1"
+        ].additional_attributes["MyField"]
+        == "id1"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id2"
+        ].additional_attributes["MyField"]
+        == "id2"
+    )
+
+
+def test_update_full_authority_document_text_work_items(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model
+    )
+    old_doc = polarion_api.Document(
+        module_folder="_default",
+        module_name="TEST-DOC",
+        home_page_content=polarion_api.TextContent(
+            type="text/html",
+            value="",
+        ),
+    )
+
+    document_data = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_TEXT_WORK_ITEMS,
+        "_default",
+        "TEST-DOC",
+        document=old_doc,
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+            [
+                polarion_api.WorkItem(
+                    id="EXISTING", additional_attributes={"MyField": "id1"}
+                )
+            ],
+        ),
+    )
+
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        == "EXISTING"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].type
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id1"
+        ].additional_attributes["MyField"]
+        == "id1"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id2"
+        ].additional_attributes["MyField"]
+        == "id2"
+    )
 
 
 def test_render_all_documents_partially_successfully(

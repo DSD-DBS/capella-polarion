@@ -461,7 +461,7 @@ class CapellaPolarionWorker:
             if uuid in self.polarion_data_repo and data.work_item is not None:
                 self.compare_and_update_work_item(data)
 
-    def post_documents(
+    def create_documents(
         self,
         document_datas: list[data_models.DocumentData],
         document_project: str | None = None,

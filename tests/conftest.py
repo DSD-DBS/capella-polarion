@@ -186,3 +186,7 @@ def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
         delete_work_items=True,
     )
     yield polarion_worker.CapellaPolarionWorker(polarion_params)
+
+
+DOCUMENT_TEMPLATES = TEST_DOCUMENT_ROOT / "templates"
+DOCUMENT_TEXT_WORK_ITEMS = "document_work_items.html.j2"

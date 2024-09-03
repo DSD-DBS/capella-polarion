@@ -117,11 +117,11 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         "get_document",
         mock_get_document,
     )
-    mock_post_documents = mock.MagicMock()
+    mock_create_documents = mock.MagicMock()
     monkeypatch.setattr(
         polarion_worker.CapellaPolarionWorker,
-        "post_documents",
-        mock_post_documents,
+        "create_documents",
+        mock_create_documents,
     )
     mock_update_documents = mock.MagicMock()
     monkeypatch.setattr(
@@ -161,11 +161,11 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         "TestProject",
     ]
 
-    assert mock_post_documents.call_count == 2
-    assert len(mock_post_documents.call_args_list[0].args[0]) == 1
-    assert len(mock_post_documents.call_args_list[1].args[0]) == 1
-    assert mock_post_documents.call_args_list[0].args[1] is None
-    assert mock_post_documents.call_args_list[1].args[1] == "TestProject"
+    assert mock_create_documents.call_count == 2
+    assert len(mock_create_documents.call_args_list[0].args[0]) == 1
+    assert len(mock_create_documents.call_args_list[1].args[0]) == 1
+    assert mock_create_documents.call_args_list[0].args[1] is None
+    assert mock_create_documents.call_args_list[1].args[1] == "TestProject"
 
     assert mock_update_documents.call_count == 2
     assert len(mock_update_documents.call_args_list[0].args[0]) == 1

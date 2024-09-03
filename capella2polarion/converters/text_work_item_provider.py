@@ -90,6 +90,7 @@ class TextWorkItemProvider:
             return
 
         assert document.home_page_content is not None
+        assert document.rendering_layouts is not None
         layout_index = html_helper.get_layout_index(
             "paragraph", document.rendering_layouts, self.text_work_item_type
         )

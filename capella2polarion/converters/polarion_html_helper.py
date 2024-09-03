@@ -165,44 +165,6 @@ def extract_work_items(
     return work_items
 
 
-def insert_text_work_items(
-    document: polarion_api.Document,
-    text_work_items: dict[str, polarion_api.WorkItem],
-    text_work_item_type: str,
-):
-    """Insert text work items into the given document."""
-    if not text_work_items:
-        return
-
-    assert document.home_page_content is not None
-    layout_index = get_layout_index(
-        "paragraph", document.rendering_layouts, text_work_item_type
-    )
-    html_fragments = ensure_fragments(document.home_page_content.value)
-    new_content = []
-    last_match = -1
-    for index, element in enumerate(html_fragments):
-        if isinstance(element, html.HtmlComment):
-            continue
-
-        if element.tag == "workitem":
-            new_content += html_fragments[last_match + 1 : index]
-            last_match = index
-            if work_item := text_work_items.get(element.get("id")):
-                new_content.append(
-                    html.fromstring(
-                        POLARION_WORK_ITEM_DOCUMENT.format(
-                            pid=work_item.id, lid=layout_index, custom_info=""
-                        )
-                    )
-                )
-
-    new_content += html_fragments[last_match + 1 :]
-    document.home_page_content.value = "\n".join(
-        [html.tostring(element).decode("utf-8") for element in new_content]
-    )
-
-
 def get_layout_index(
     default_layouter: str,
     rendering_layouts: list[polarion_api.RenderingLayout],
