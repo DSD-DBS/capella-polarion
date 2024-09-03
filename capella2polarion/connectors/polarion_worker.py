@@ -15,11 +15,7 @@ from lxml import etree
 
 from capella2polarion import data_models
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import (
-    data_session,
-    document_config,
-    polarion_html_helper,
-)
+from capella2polarion.converters import data_session, polarion_html_helper
 
 logger = logging.getLogger(__name__)
 
@@ -496,17 +492,13 @@ class CapellaPolarionWorker:
         for document_data in document_datas:
             headings += document_data.headings
             documents.append(document_data.document)
-            if document_data.text_work_items:
-                text_work_item_type = next(
-                    iter(document_data.text_work_items.values())
-                ).type
+            if document_data.text_work_item_provider.new_text_work_items:
                 self._create_and_update_text_work_items(
-                    document_data.text_work_items, client
+                    document_data.text_work_item_provider.new_text_work_items,
+                    client,
                 )
-                polarion_html_helper.insert_text_work_items(
+                document_data.text_work_item_provider.insert_text_work_items(
                     document_data.document,
-                    document_data.text_work_items,
-                    text_work_item_type,
                 )
         return documents, headings
 
@@ -526,7 +518,7 @@ class CapellaPolarionWorker:
 
     def load_polarion_documents(
         self,
-        document_infos: t.Iterable[document_config.DocumentInfo],
+        document_infos: t.Iterable[data_models.DocumentInfo],
     ) -> dict[
         tuple[str | None, str, str],
         tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],

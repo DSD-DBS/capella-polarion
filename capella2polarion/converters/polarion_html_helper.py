@@ -123,7 +123,7 @@ def remove_table_ids(
     time the REST-API does not allow posting or patching a document with
     multiple tables having the same ID.
     """
-    html_fragments = _ensure_fragments(html_content)
+    html_fragments = ensure_fragments(html_content)
 
     for element in html_fragments:
         if element.tag == "table":
@@ -132,26 +132,27 @@ def remove_table_ids(
     return html_fragments
 
 
-def _ensure_fragments(
-    html_content: str | list[html.HtmlComment],
-) -> list[html.HtmlComment]:
+def ensure_fragments(
+    html_content: str | list[html.HtmlElement],
+) -> list[html.HtmlElement]:
+    """Convert string to html elements."""
     if isinstance(html_content, str):
         return html.fragments_fromstring(html_content)
     return html_content
 
 
-def extract_headings(html_content: str | list[html.HtmlComment]) -> list[str]:
+def extract_headings(html_content: str | list[html.HtmlElement]) -> list[str]:
     """Return a list of work item IDs for all headings in the given content."""
     return extract_work_items(html_content, h_regex)
 
 
 def extract_work_items(
-    html_content: str | list[html.HtmlComment],
+    html_content: str | list[html.HtmlElement],
     tag_regex: re.Pattern | None = None,
 ) -> list[str]:
     """Return a list of work item IDs for work items in the given content."""
     work_items = []
-    html_fragments = _ensure_fragments(html_content)
+    html_fragments = ensure_fragments(html_content)
     for element in html_fragments:
         if isinstance(element, html.HtmlComment):
             continue
@@ -177,7 +178,7 @@ def insert_text_work_items(
     layout_index = get_layout_index(
         "paragraph", document.rendering_layouts, text_work_item_type
     )
-    html_fragments = _ensure_fragments(document.home_page_content.value)
+    html_fragments = ensure_fragments(document.home_page_content.value)
     new_content = []
     last_match = -1
     for index, element in enumerate(html_fragments):

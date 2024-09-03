@@ -231,7 +231,6 @@ def test_mixed_authority_document(
                 "global_param": "Overwrite global param",
             },
         },
-        {},
     )
 
     content: list[etree._Element] = html.fromstring(

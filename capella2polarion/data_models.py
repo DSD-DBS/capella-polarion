@@ -11,6 +11,8 @@ import typing as t
 
 import polarion_rest_api_client as polarion_api
 
+from capella2polarion.converters import text_work_item_provider
+
 
 class CapellaWorkItem(polarion_api.WorkItem):
     """A WorkItem class with additional Capella related attributes."""
@@ -68,9 +70,16 @@ class DocumentData:
     """A class to store data related to a rendered document."""
 
     document: polarion_api.Document
-    headings: list[polarion_api.WorkItem] = dataclasses.field(
-        default_factory=list
-    )
-    text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
-        default_factory=dict
-    )
+    headings: list[polarion_api.WorkItem]
+    text_work_item_provider: text_work_item_provider.TextWorkItemProvider
+
+
+@dataclasses.dataclass
+class DocumentInfo:
+    """Class for information regarding a document which should be created."""
+
+    project_id: str | None
+    module_folder: str
+    module_name: str
+    text_work_item_type: str
+    text_work_item_id_field: str

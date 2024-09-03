@@ -18,6 +18,7 @@ from capella2polarion.connectors import polarion_repo
 
 from .. import data_models
 from . import document_config, polarion_html_helper
+from . import text_work_item_provider as twi
 
 logger = logging.getLogger(__name__)
 
@@ -169,10 +170,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         *,
-        text_work_item_identifier: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD,
-        text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Render a new Polarion document."""
 
     @t.overload
@@ -182,11 +182,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         *,
         document: polarion_api.Document,
-        text_work_items: dict[str, polarion_api.WorkItem],
-        text_work_item_identifier: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD,
-        text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Update an existing Polarion document."""
 
     def render_document(
@@ -199,13 +197,13 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         document: polarion_api.Document | None = None,
-        text_work_items: dict[str, polarion_api.WorkItem] | None = None,
-        text_work_item_identifier: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD,
-        text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Render a Polarion document."""
-        text_work_items = text_work_items or {}
+        text_work_item_provider = (
+            text_work_item_provider or twi.TextWorkItemProvider()
+        )
         if document is not None:
             polarion_folder = document.module_folder
             polarion_name = document.module_name
@@ -238,11 +236,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         rendering_result = template.render(
             model=self.model, session=session, **kwargs
         )
-        new_text_work_items = self._extract_text_work_items(
+        text_work_item_provider.generate_text_work_items(
             lxmlhtml.fragments_fromstring(rendering_result),
-            text_work_items,
-            text_work_item_type,
-            text_work_item_identifier,
         )
 
         document.home_page_content = polarion_api.TextContent(
@@ -252,7 +247,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document.rendering_layouts = session.rendering_layouts
 
         return data_models.DocumentData(
-            document, session.headings, new_text_work_items
+            document, session.headings, text_work_item_provider
         )
 
     def update_mixed_authority_document(
@@ -262,11 +257,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         sections: dict[str, str],
         global_parameters: dict[str, t.Any],
         section_parameters: dict[str, dict[str, t.Any]],
-        text_work_items: dict[str, polarion_api.WorkItem],
-        text_work_item_identifier: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD,
-        text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE,
-    ):
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
+    ) -> data_models.DocumentData:
         """Update a mixed authority document."""
+        text_work_item_provider = (
+            text_work_item_provider or twi.TextWorkItemProvider()
+        )
         assert (
             document.home_page_content and document.home_page_content.value
         ), "In mixed authority the document must have content"
@@ -281,7 +277,6 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env = self._get_jinja_env(template_folder)
 
         new_content = []
-        new_text_work_items = {}
         last_section_end = 0
 
         for section_name, area in section_areas.items():
@@ -310,19 +305,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             work_item_ids = polarion_html_helper.extract_work_items(
                 current_content
             )
-            section_text_work_items = {
-                text_id: work_item
-                for text_id, work_item in text_work_items.items()
-                if work_item.id in work_item_ids
-            }
             html_fragments = lxmlhtml.fragments_fromstring(content)
-            new_text_work_items.update(
-                self._extract_text_work_items(
-                    html_fragments,
-                    section_text_work_items,
-                    text_work_item_type,
-                    text_work_item_identifier,
-                )
+            text_work_item_provider.generate_text_work_items(
+                html_fragments, work_item_ids
             )
             new_content += html_fragments
 
@@ -341,7 +326,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document.rendering_layouts = session.rendering_layouts
 
         return data_models.DocumentData(
-            document, session.headings, new_text_work_items
+            document, session.headings, text_work_item_provider
         )
 
     def _get_and_customize_doc(
@@ -387,25 +372,6 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
         return self.projects
 
-    def _make_text_work_item_mapping(
-        self,
-        work_items: list[polarion_api.WorkItem],
-        text_work_item_field_id: str,
-    ) -> dict[str, polarion_api.WorkItem]:
-        result = {}
-        for work_item in work_items:
-            # We only use those work items which have an ID defined by us
-            if text_id := work_item.additional_attributes.get(
-                text_work_item_field_id
-            ):
-                if text_id in result:
-                    raise ValueError(
-                        f"There are multiple text work items with {text_work_item_field_id} == {text_id}"
-                    )
-
-                result[text_id] = work_item
-        return result
-
     def _check_document_status(
         self,
         document: polarion_api.Document,
@@ -448,6 +414,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     rendering_layouts,
                     config.heading_numbering,
                 )
+                text_work_item_provider = twi.TextWorkItemProvider(
+                    config.text_work_item_id_field,
+                    config.text_work_item_type,
+                    text_work_items,
+                )
                 if old_doc is None:
                     logger.error(
                         "For document %s/%s no document was found, but it's "
@@ -467,11 +438,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         config.sections,
                         instance.params,
                         instance.section_params,
-                        self._make_text_work_item_mapping(
-                            text_work_items, config.text_work_item_id_field
-                        ),
-                        config.text_work_item_id_field,
-                        config.text_work_item_type,
+                        text_work_item_provider,
                     )
                 except Exception as e:
                     logger.error(
@@ -505,6 +472,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     rendering_layouts,
                     config.heading_numbering,
                 )
+                text_work_item_provider = twi.TextWorkItemProvider(
+                    config.text_work_item_id_field,
+                    config.text_work_item_type,
+                    text_work_items,
+                )
                 if old_doc:
                     if not self._check_document_status(old_doc, config):
                         continue
@@ -514,11 +486,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             config.template_directory,
                             config.template,
                             document=old_doc,
-                            text_work_items=self._make_text_work_item_mapping(
-                                text_work_items, config.text_work_item_id_field
-                            ),
-                            text_work_item_identifier=config.text_work_item_id_field,
-                            text_work_item_type=config.text_work_item_type,
+                            text_work_item_provider=text_work_item_provider,
                             **instance.params,
                         )
                     except Exception as e:
@@ -542,8 +510,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             instance.polarion_title,
                             config.heading_numbering,
                             rendering_layouts,
-                            text_work_item_identifier=config.text_work_item_id_field,
-                            text_work_item_type=config.text_work_item_type,
+                            text_work_item_provider=text_work_item_provider,
                             **instance.params,
                         )
                     except Exception as e:
@@ -603,46 +570,3 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             current_area_id = None
                             current_area_start = None
         return section_areas
-
-    def _extract_text_work_items(
-        self,
-        content: list[lxmlhtml.HtmlElement],
-        text_work_items: dict[str, polarion_api.WorkItem],
-        text_work_item_type: str,
-        field_id: str,
-    ) -> dict[str, polarion_api.WorkItem]:
-        work_items: dict[str, polarion_api.WorkItem] = {}
-        for element in content:
-            if element.tag != polarion_html_helper.WORK_ITEM_TAG:
-                continue
-
-            if not (text_id := element.get("id")):
-                raise ValueError("All work items must have an ID in template")
-
-            work_item = text_work_items.pop(
-                text_id,
-                polarion_api.WorkItem(
-                    type=text_work_item_type,
-                    title="",
-                    status="open",
-                    additional_attributes={field_id: text_id},
-                ),
-            )
-            work_item.description_type = "text/html"
-            inner_content = "".join(
-                [
-                    (
-                        lxmlhtml.tostring(child, encoding="unicode")
-                        if isinstance(child, lxmlhtml.HtmlElement)
-                        else child
-                    )
-                    for child in element.iterchildren()
-                ]
-            )
-            if element.text:
-                inner_content = element.text + inner_content
-
-            work_item.description = inner_content
-            work_items[text_id] = work_item
-
-        return work_items
