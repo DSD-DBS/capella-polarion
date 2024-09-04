@@ -123,6 +123,7 @@ class CapellaPolarionWorker:
         work_items = self.project_client.work_items.get_all(
             "HAS_VALUE:uuid_capella",
             fields={"workitems": "id,uuid_capella,checksum,status,type"},
+            work_item_cls=data_models.CapellaWorkItem,
         )
         self.polarion_data_repo.update_work_items(work_items)
 
@@ -141,11 +142,13 @@ class CapellaPolarionWorker:
             if work_item.status != "deleted"
         }
         uuids: set[str] = existing_work_items - set(converter_session)
-        work_items = [
-            self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
-            for uuid in uuids
-        ]
-        if work_items:
+        work_items: list[data_models.CapellaWorkitem] = []
+        for uuid in uuids:
+            if wi := self.polarion_data_repo.get_work_item_by_capella_uuid(
+                uuid
+            ):
+                logger.info("Delete work item %r...", wi.id)
+                work_items.append(wi)
             try:
                 self.project_client.work_items.delete(work_items)
                 self.polarion_data_repo.remove_work_items_by_capella_uuid(
@@ -214,7 +217,9 @@ class CapellaPolarionWorker:
         work_item_changed = new_work_item_check_sum != old_work_item_check_sum
         try:
             if work_item_changed or self.force_update:
-                old = self.project_client.work_items.get(old.id)
+                old = self.project_client.work_items.get(
+                    old.id, work_item_cls=data_models.CapellaWorkItem
+                )
                 if old.attachments:
                     old_attachments = (
                         self.project_client.work_items.attachments.get_all(
@@ -466,7 +471,13 @@ class CapellaPolarionWorker:
         document_datas: list[data_models.DocumentData],
         document_project: str | None = None,
     ):
-        """Create new documents."""
+        """Create new documents.
+
+        Notes
+        -----
+        If the ``document_project`` is ``None`` the default client is
+        taken.
+        """
         client = self._get_client(document_project)
         documents, _ = self._process_document_datas(client, document_datas)
 
@@ -477,7 +488,13 @@ class CapellaPolarionWorker:
         document_datas: list[data_models.DocumentData],
         document_project: str | None = None,
     ):
-        """Update existing documents."""
+        """Update existing documents.
+
+        Notes
+        -----
+        If the ``document_project`` is ``None`` the default client is
+        taken.
+        """
         client = self._get_client(document_project)
         documents, headings = self._process_document_datas(
             client, document_datas
@@ -491,10 +508,10 @@ class CapellaPolarionWorker:
         client: polarion_api.ProjectClient,
         document_datas: list[data_models.DocumentData],
     ):
-        documents = []
-        headings = []
+        documents: list[polarion_api.Document] = []
+        headings: list[polarion_api.WorkItem] = []
         for document_data in document_datas:
-            headings += document_data.headings
+            headings.extend(document_data.headings)
             documents.append(document_data.document)
             if document_data.text_work_item_provider.new_text_work_items:
                 self._create_and_update_text_work_items(
@@ -509,7 +526,13 @@ class CapellaPolarionWorker:
     def get_document(
         self, space: str, name: str, document_project: str | None = None
     ) -> polarion_api.Document | None:
-        """Get a document from polarion and return None if not found."""
+        """Get a document from polarion and return None if not found.
+        
+        Notes
+        -----
+        If the ``document_project`` is ``None`` the default client is
+        taken.
+        """
         client = self._get_client(document_project)
         try:
             return client.documents.get(
