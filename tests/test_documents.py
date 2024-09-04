@@ -523,6 +523,10 @@ def test_mixed_authority_document_config():
     }
     assert conf.mixed_authority[1].project_id is None
     assert conf.mixed_authority[1].status_allow_list is None
+    assert conf.mixed_authority[0].text_work_item_type == "text"
+    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
+    assert conf.mixed_authority[1].text_work_item_type == "myType"
+    assert conf.mixed_authority[1].text_work_item_id_field == "myId"
 
 
 def test_combined_config():
