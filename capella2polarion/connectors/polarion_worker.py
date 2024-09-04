@@ -152,12 +152,11 @@ class CapellaPolarionWorker:
                 work_items.append(wi)
             try:
                 self.project_client.work_items.delete(work_items)
-                self.polarion_data_repo.remove_work_items_by_capella_uuid(
-                    uuids
-                )
             except polarion_api.PolarionApiException as error:
                 logger.error("Deleting work items failed. %s", error.args[0])
                 raise error
+
+        self.polarion_data_repo.remove_work_items_by_capella_uuid(uuids)
 
     def create_missing_work_items(
         self, converter_session: data_session.ConverterSession
