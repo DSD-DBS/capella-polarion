@@ -128,8 +128,10 @@ def base_object(
     )
 
     c2p_cli.setup_logger()
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
     fake = FakeModelObject("uuid1", name="Fake 1")
@@ -173,8 +175,10 @@ def base_object(
 
 @pytest.fixture
 def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     polarion_params = polarion_worker.PolarionWorkerParams(
         project_id="project_id",
         url=TEST_HOST,
@@ -182,3 +186,7 @@ def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
         delete_work_items=True,
     )
     yield polarion_worker.CapellaPolarionWorker(polarion_params)
+
+
+DOCUMENT_TEMPLATES = TEST_DOCUMENT_ROOT / "templates"
+DOCUMENT_TEXT_WORK_ITEMS = "document_work_items.html.j2"

@@ -57,8 +57,10 @@ DIAGRAM_CHECKSUM = json.dumps(
 
 @pytest.fixture
 def worker(monkeypatch: pytest.MonkeyPatch):
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     return polarion_worker.CapellaPolarionWorker(
         polarion_worker.PolarionWorkerParams(
             "TEST",
@@ -118,11 +120,13 @@ def test_diagram_attachments_new(
         [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
 
-    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
-        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID
+    worker.project_client.work_items.get.return_value = (
+        data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
     )
-    worker.client.create_work_item_attachments = mock.MagicMock()
-    worker.client.create_work_item_attachments.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments = mock.MagicMock()
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
@@ -136,15 +140,15 @@ def test_diagram_attachments_new(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 1
-    assert worker.client.get_all_work_item_attachments.call_count == 0
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 1
+    assert worker.project_client.work_items.attachments.get_all.call_count == 0
 
     created_attachments: list[polarion_api.WorkItemAttachment] = (
-        worker.client.create_work_item_attachments.call_args.args[0]
+        worker.project_client.work_items.attachments.create.call_args.args[0]
     )
     work_item: data_models.CapellaWorkItem = (
-        worker.client.update_work_item.call_args.args[0]
+        worker.project_client.work_items.update.call_args.args[0]
     )
 
     assert len(created_attachments) == 2
@@ -180,11 +184,15 @@ def test_new_diagram(
         ]
     )
 
-    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
-        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+    worker.project_client.work_items.get.return_value = (
+        data_models.CapellaWorkItem(
+            WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+        )
     )
-    worker.client.create_work_item_attachments = mock.MagicMock()
-    worker.client.create_work_item_attachments.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments.create = mock.MagicMock()
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
@@ -198,9 +206,9 @@ def test_new_diagram(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 1
-    assert worker.client.update_work_item.call_args.args[
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 1
+    assert worker.project_client.work_items.update.call_args.args[
         0
     ].description == TEST_DIAG_DESCR.format(
         title="Diagram",
@@ -233,14 +241,16 @@ def test_diagram_attachments_updated(
         ),
     ]
 
-    worker.client.get_work_item.return_value = data_models.CapellaWorkItem(
-        WORKITEM_ID,
-        uuid_capella=TEST_DIAG_UUID,
-        attachments=existing_attachments,
+    worker.project_client.work_items.get.return_value = (
+        data_models.CapellaWorkItem(
+            WORKITEM_ID,
+            uuid_capella=TEST_DIAG_UUID,
+            attachments=existing_attachments,
+        )
     )
 
-    worker.client.get_all_work_item_attachments = mock.MagicMock()
-    worker.client.get_all_work_item_attachments.return_value = (
+    worker.project_client.work_items.attachments.get_all = mock.MagicMock()
+    worker.project_client.work_items.attachments.get_all.return_value = (
         existing_attachments
     )
 
@@ -256,13 +266,13 @@ def test_diagram_attachments_updated(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 0
-    assert worker.client.update_work_item_attachment.call_count == 2
-    assert worker.client.get_all_work_item_attachments.call_count == 1
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 0
+    assert worker.project_client.work_items.attachments.update.call_count == 2
+    assert worker.project_client.work_items.attachments.get_all.call_count == 1
 
     work_item: data_models.CapellaWorkItem = (
-        worker.client.update_work_item.call_args.args[0]
+        worker.project_client.work_items.update.call_args.args[0]
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
@@ -292,8 +302,8 @@ def test_diagram_attachments_unchanged_work_item_changed(
             )
         ]
     )
-    worker.client.get_all_work_item_attachments = mock.MagicMock()
-    worker.client.get_all_work_item_attachments.return_value = [
+    worker.project_client.work_items.attachments.get_all = mock.MagicMock()
+    worker.project_client.work_items.attachments.get_all.return_value = [
         polarion_api.WorkItemAttachment(
             WORKITEM_ID,
             "SVG-ATTACHMENT",
@@ -320,12 +330,12 @@ def test_diagram_attachments_unchanged_work_item_changed(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 0
-    assert worker.client.update_work_item_attachment.call_count == 0
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 0
+    assert worker.project_client.work_items.attachments.update.call_count == 0
 
     work_item: data_models.CapellaWorkItem = (
-        worker.client.update_work_item.call_args.args[0]
+        worker.project_client.work_items.update.call_args.args[0]
     )
 
     assert work_item.description == TEST_DIAG_DESCR.format(
@@ -363,10 +373,10 @@ def test_diagram_attachments_fully_unchanged(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 0
-    assert worker.client.create_work_item_attachments.call_count == 0
-    assert worker.client.update_work_item_attachment.call_count == 0
-    assert worker.client.get_all_work_item_attachments.call_count == 0
+    assert worker.project_client.work_items.update.call_count == 0
+    assert worker.project_client.work_items.attachments.create.call_count == 0
+    assert worker.project_client.work_items.attachments.update.call_count == 0
+    assert worker.project_client.work_items.attachments.get_all.call_count == 0
 
 
 def test_add_context_diagram(
@@ -385,21 +395,23 @@ def test_add_context_diagram(
         model.by_uuid(uuid),
     )
 
-    worker.client.create_work_item_attachments = mock.MagicMock()
-    worker.client.create_work_item_attachments.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments.create = mock.MagicMock()
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
     worker.compare_and_update_work_item(converter.converter_session[uuid])
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 1
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 1
 
     created_attachments: list[polarion_api.WorkItemAttachment] = (
-        worker.client.create_work_item_attachments.call_args.args[0]
+        worker.project_client.work_items.attachments.create.call_args.args[0]
     )
     work_item: data_models.CapellaWorkItem = (
-        worker.client.update_work_item.call_args.args[0]
+        worker.project_client.work_items.update.call_args.args[0]
     )
 
     assert len(created_attachments) == 2
@@ -439,8 +451,8 @@ def test_diagram_delete_attachments(
             )
         ]
     )
-    worker.client.get_all_work_item_attachments = mock.MagicMock()
-    worker.client.get_all_work_item_attachments.return_value = [
+    worker.project_client.work_items.attachments.get_all = mock.MagicMock()
+    worker.project_client.work_items.attachments.get_all.return_value = [
         polarion_api.WorkItemAttachment(
             WORKITEM_ID,
             "SVG-ATTACHMENT",
@@ -473,13 +485,13 @@ def test_diagram_delete_attachments(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
-    assert worker.client.update_work_item.call_count == 1
-    assert worker.client.create_work_item_attachments.call_count == 0
-    assert worker.client.update_work_item_attachment.call_count == 0
-    assert worker.client.delete_work_item_attachment.call_count == 2
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 0
+    assert worker.project_client.work_items.attachments.update.call_count == 0
+    assert worker.project_client.work_items.attachments.delete.call_count == 2
 
     work_item: data_models.CapellaWorkItem = (
-        worker.client.update_work_item.call_args.args[0]
+        worker.project_client.work_items.update.call_args.args[0]
     )
 
     assert work_item.description is None

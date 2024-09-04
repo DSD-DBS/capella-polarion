@@ -167,13 +167,10 @@ def render_documents(
         overwrite_layouts,
     )
 
-    new_documents, updated_documents, work_items = renderer.render_documents(
-        configs, documents
-    )
-
-    polarion_worker.post_documents(new_documents)
-    polarion_worker.update_documents(updated_documents)
-    polarion_worker.update_work_items(work_items)
+    projects_document_data = renderer.render_documents(configs, documents)
+    for project, project_data in projects_document_data.items():
+        polarion_worker.create_documents(project_data.new_docs, project)
+        polarion_worker.update_documents(project_data.updated_docs, project)
 
 
 if __name__ == "__main__":

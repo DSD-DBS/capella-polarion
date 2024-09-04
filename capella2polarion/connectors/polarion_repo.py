@@ -6,6 +6,7 @@ from __future__ import annotations
 import collections.abc as cabc
 
 import bidict
+import polarion_rest_api_client as polarion_api
 
 from capella2polarion import data_models
 
@@ -114,3 +115,15 @@ class PolarionDataRepository:
         for uuid in uuids:
             del self._work_items[uuid]
             del self._id_mapping[uuid]
+
+
+DocumentRepository = dict[
+    tuple[str | None, str, str],
+    tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
+]
+"""A dict providing a mapping for documents and their text workitems.
+
+It has (project, space, name) of the document as key and (document,
+workitems) as value. The project can be None and the None value means
+that the document is in the same project as the model sync work items.
+"""

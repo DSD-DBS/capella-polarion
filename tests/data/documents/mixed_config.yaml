@@ -3,6 +3,10 @@
 
 mixed_authority:
   - template_directory: jupyter-notebooks/document_templates
+    project_id: TestProject
+    status_allow_list:
+      - draft
+      - open
     sections:
       section1: test-icd.html.j2
       section2: test-icd.html.j2
@@ -21,6 +25,8 @@ mixed_authority:
       section1: test-icd.html.j2
       section2: test-icd.html.j2
     heading_numbering: True
+    text_work_item_type: myType
+    text_work_item_id_field: myId
     work_item_layouts:
       componentExchange:
         fields_at_start:

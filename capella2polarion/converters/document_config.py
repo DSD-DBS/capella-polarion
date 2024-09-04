@@ -11,6 +11,7 @@ import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
 
+from capella2polarion import data_models
 from capella2polarion.converters import polarion_html_helper
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,10 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
     """A template config, which can result in multiple Polarion documents."""
 
     template_directory: str | pathlib.Path
+    project_id: str | None = None
+    text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE
+    text_work_item_id_field: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD
+    status_allow_list: list[str] | None = None
     heading_numbering: bool = False
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
@@ -77,11 +82,17 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
-    def iterate_documents(self) -> t.Iterator[tuple[str, str]]:
+    def iterate_documents(self) -> t.Iterator[data_models.DocumentInfo]:
         """Yield all document paths of the config as tuples."""
         for conf in self.full_authority + self.mixed_authority:
             for inst in conf.instances:
-                yield inst.polarion_space, inst.polarion_name
+                yield data_models.DocumentInfo(
+                    project_id=conf.project_id,
+                    module_folder=inst.polarion_space,
+                    module_name=inst.polarion_name,
+                    text_work_item_type=conf.text_work_item_type,
+                    text_work_item_id_field=conf.text_work_item_id_field,
+                )
 
 
 def read_config_file(

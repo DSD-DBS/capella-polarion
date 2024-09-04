@@ -16,7 +16,9 @@ from lxml import html as lxmlhtml
 
 from capella2polarion.connectors import polarion_repo
 
+from .. import data_models
 from . import document_config, polarion_html_helper
+from . import text_work_item_provider as twi
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,21 @@ class RenderingSession:
         default_factory=list
     )
     inserted_work_items: list[polarion_api.WorkItem] = dataclasses.field(
+        default_factory=list
+    )
+    text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
+        default_factory=dict
+    )
+
+
+@dataclasses.dataclass
+class ProjectData:
+    """A class holding data of a project which documents are rendered for."""
+
+    new_docs: list[data_models.DocumentData] = dataclasses.field(
+        default_factory=list
+    )
+    updated_docs: list[data_models.DocumentData] = dataclasses.field(
         default_factory=list
     )
 
@@ -52,6 +69,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self.jinja_envs: dict[str, jinja2.Environment] = {}
         self.overwrite_heading_numbering = overwrite_heading_numbering
         self.overwrite_layouts = overwrite_layouts
+        self.projects: dict[str | None, ProjectData] = {}
+        self.existing_documents: polarion_repo.DocumentRepository = {}
 
     def setup_env(self, env: jinja2.Environment):
         """Add globals and filters to the environment."""
@@ -79,22 +98,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 )
                 return f"<p>{self.__link_work_item(obj)}</p>"
 
-            layout_index = 0
-            for layout in session.rendering_layouts:
-                if layout.type == wi.type:
-                    break
-                layout_index += 1
-
-            if layout_index >= len(session.rendering_layouts):
-                session.rendering_layouts.append(
-                    polarion_api.RenderingLayout(
-                        type=wi.type,
-                        layouter="section",
-                        label=polarion_html_helper.camel_case_to_words(
-                            wi.type
-                        ),
-                    )
-                )
+            assert wi.type
+            layout_index = polarion_html_helper.get_layout_index(
+                "section", session.rendering_layouts, wi.type
+            )
 
             custom_info = ""
             if level is not None:
@@ -131,7 +138,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             session.headings.append(polarion_api.WorkItem(id=hid, title=text))
             return (
                 f"<h{level} "
-                f'id="{polarion_html_helper.heading_id_prefix}{hid}">'
+                f'id="{polarion_html_helper.wi_id_prefix}{hid}">'
                 f"</h{level}>"
             )
         return f"<h{level}>{text}</h{level}>"
@@ -159,8 +166,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document_title: str | None = None,
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
+        *,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Render a new Polarion document."""
 
     @t.overload
@@ -170,8 +179,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         *,
         document: polarion_api.Document,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Update an existing Polarion document."""
 
     def render_document(
@@ -184,9 +194,13 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         document: polarion_api.Document | None = None,
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
         **kwargs: t.Any,
-    ):
+    ) -> data_models.DocumentData:
         """Render a Polarion document."""
+        text_work_item_provider = (
+            text_work_item_provider or twi.TextWorkItemProvider()
+        )
         if document is not None:
             polarion_folder = document.module_folder
             polarion_name = document.module_name
@@ -216,13 +230,22 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             if rendering_layouts is not None:
                 session.rendering_layouts = rendering_layouts
 
+        rendering_result = template.render(
+            model=self.model, session=session, **kwargs
+        )
+        text_work_item_provider.generate_text_work_items(
+            lxmlhtml.fragments_fromstring(rendering_result),
+        )
+
         document.home_page_content = polarion_api.TextContent(
             "text/html",
-            template.render(model=self.model, session=session, **kwargs),
+            rendering_result,
         )
         document.rendering_layouts = session.rendering_layouts
 
-        return document, session.headings
+        return data_models.DocumentData(
+            document, session.headings, text_work_item_provider
+        )
 
     def update_mixed_authority_document(
         self,
@@ -231,8 +254,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         sections: dict[str, str],
         global_parameters: dict[str, t.Any],
         section_parameters: dict[str, dict[str, t.Any]],
-    ):
+        text_work_item_provider: twi.TextWorkItemProvider | None = None,
+    ) -> data_models.DocumentData:
         """Update a mixed authority document."""
+        text_work_item_provider = (
+            text_work_item_provider or twi.TextWorkItemProvider()
+        )
         assert (
             document.home_page_content and document.home_page_content.value
         ), "In mixed authority the document must have content"
@@ -272,7 +299,14 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     | section_parameters.get(section_name, {})
                 ),
             )
-            new_content += lxmlhtml.fragments_fromstring(content)
+            work_item_ids = polarion_html_helper.extract_work_items(
+                current_content
+            )
+            html_fragments = lxmlhtml.fragments_fromstring(content)
+            text_work_item_provider.generate_text_work_items(
+                html_fragments, work_item_ids
+            )
+            new_content += html_fragments
 
         new_content += html_elements[last_section_end:]
         new_content = polarion_html_helper.remove_table_ids(new_content)
@@ -288,20 +322,23 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         )
         document.rendering_layouts = session.rendering_layouts
 
-        return document, session.headings
+        return data_models.DocumentData(
+            document, session.headings, text_work_item_provider
+        )
 
     def _get_and_customize_doc(
         self,
+        project_id: str | None,
         space: str,
         name: str,
         title: str | None,
         rendering_layouts: list[polarion_api.RenderingLayout],
         heading_numbering: bool,
-        existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
-        ],
-    ) -> polarion_api.Document | None:
-        if old_doc := existing_documents.get((space, name)):
+    ) -> tuple[polarion_api.Document | None, list[polarion_api.WorkItem]]:
+        old_doc, text_work_items = self.existing_documents.get(
+            (project_id, space, name), (None, [])
+        )
+        if old_doc:
             if title:
                 old_doc.title = title
             if self.overwrite_layouts:
@@ -309,68 +346,72 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             if self.overwrite_heading_numbering:
                 old_doc.outline_numbering = heading_numbering
 
-        return old_doc
+        return old_doc, text_work_items
 
     def render_documents(
         self,
         configs: document_config.DocumentConfigs,
-        existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
-        ],
-    ) -> tuple[
-        list[polarion_api.Document],
-        list[polarion_api.Document],
-        list[polarion_api.WorkItem],
-    ]:
+        existing_documents: polarion_repo.DocumentRepository,
+    ) -> dict[str | None, ProjectData]:
         """Render all documents defined in the given config.
 
         Returns a list new documents followed by updated documents and
         work items, which need to be updated
         """
+        self.existing_documents = existing_documents
+        self.projects = {}
 
-        new_docs: list[polarion_api.Document] = []
-        updated_docs: list[polarion_api.Document] = []
-        work_items: list[polarion_api.WorkItem] = []
-        self._render_full_authority_documents(
-            configs.full_authority,
-            existing_documents,
-            new_docs,
-            updated_docs,
-            work_items,
-        )
+        self._render_full_authority_documents(configs.full_authority)
+        self._render_mixed_authority_documents(configs.mixed_authority)
 
-        self._render_mixed_authority_documents(
-            configs.mixed_authority,
-            existing_documents,
-            updated_docs,
-            work_items,
-        )
+        return self.projects
 
-        return new_docs, updated_docs, work_items
+    def _check_document_status(
+        self,
+        document: polarion_api.Document,
+        config: document_config.BaseDocumentRenderingConfig,
+    ):
+        if (
+            config.status_allow_list is not None
+            and document.status not in config.status_allow_list
+        ):
+            logger.warning(
+                "Won't update document %s/%s due to status "
+                "restrictions. Status is %s and should be in %r.",
+                document.module_folder,
+                document.module_name,
+                document.status,
+                config.status_allow_list,
+            )
+            return False
+        return True
 
     def _render_mixed_authority_documents(
         self,
         mixed_authority_configs: list[
-            document_config.FullAuthorityDocumentRenderingConfig
+            document_config.MixedAuthorityDocumentRenderingConfig
         ],
-        existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
-        ],
-        updated_docs: list[polarion_api.Document],
-        work_items: list[polarion_api.WorkItem],
     ):
         for config in mixed_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
             )
+            project_data = self.projects.setdefault(
+                config.project_id, ProjectData()
+            )
             for instance in config.instances:
-                old_doc = self._get_and_customize_doc(
+                old_doc, text_work_items = self._get_and_customize_doc(
+                    config.project_id,
                     instance.polarion_space,
                     instance.polarion_name,
                     instance.polarion_title,
                     rendering_layouts,
                     config.heading_numbering,
-                    existing_documents,
+                )
+                text_work_item_provider = twi.TextWorkItemProvider(
+                    config.text_work_item_id_field,
+                    config.text_work_item_type,
+                    text_work_items,
                 )
                 if old_doc is None:
                     logger.error(
@@ -380,13 +421,18 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         instance.polarion_name,
                     )
                     continue
+
+                if not self._check_document_status(old_doc, config):
+                    continue
+
                 try:
-                    new_doc, wis = self.update_mixed_authority_document(
+                    document_data = self.update_mixed_authority_document(
                         old_doc,
                         config.template_directory,
                         config.sections,
                         instance.params,
                         instance.section_params,
+                        text_work_item_provider,
                     )
                 except Exception as e:
                     logger.error(
@@ -398,37 +444,43 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     )
                     continue
 
-                updated_docs.append(new_doc)
-                work_items.extend(wis)
+                project_data.updated_docs.append(document_data)
 
     def _render_full_authority_documents(
         self,
         full_authority_configs,
-        existing_documents: dict[
-            tuple[str, str], polarion_api.Document | None
-        ],
-        new_docs: list[polarion_api.Document],
-        updated_docs: list[polarion_api.Document],
-        work_items: list[polarion_api.WorkItem],
     ):
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
             )
+            project_data = self.projects.setdefault(
+                config.project_id, ProjectData()
+            )
             for instance in config.instances:
-                if old_doc := self._get_and_customize_doc(
+                old_doc, text_work_items = self._get_and_customize_doc(
+                    config.project_id,
                     instance.polarion_space,
                     instance.polarion_name,
                     instance.polarion_title,
                     rendering_layouts,
                     config.heading_numbering,
-                    existing_documents,
-                ):
+                )
+                text_work_item_provider = twi.TextWorkItemProvider(
+                    config.text_work_item_id_field,
+                    config.text_work_item_type,
+                    text_work_items,
+                )
+                if old_doc:
+                    if not self._check_document_status(old_doc, config):
+                        continue
+
                     try:
-                        new_doc, wis = self.render_document(
+                        document_data = self.render_document(
                             config.template_directory,
                             config.template,
                             document=old_doc,
+                            text_work_item_provider=text_work_item_provider,
                             **instance.params,
                         )
                     except Exception as e:
@@ -441,11 +493,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                         continue
 
-                    updated_docs.append(new_doc)
-                    work_items.extend(wis)
+                    project_data.updated_docs.append(document_data)
                 else:
                     try:
-                        new_doc, _ = self.render_document(
+                        document_data = self.render_document(
                             config.template_directory,
                             config.template,
                             instance.polarion_space,
@@ -453,6 +504,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             instance.polarion_title,
                             config.heading_numbering,
                             rendering_layouts,
+                            text_work_item_provider=text_work_item_provider,
                             **instance.params,
                         )
                     except Exception as e:
@@ -465,7 +517,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         )
                         continue
 
-                    new_docs.append(new_doc)
+                    project_data.new_docs.append(document_data)
 
     def _extract_section_areas(self, html_elements: list[etree._Element]):
         section_areas = {}
