@@ -33,6 +33,7 @@ WORK_ITEMS_IN_PROJECT_QUERY = (
     "EXISTS (SELECT rel1.* FROM POLARION.REL_MODULE_WORKITEM rel1 WHERE "
     "rel1.FK_URI_MODULE = doc.C_URI AND rel1.FK_URI_WORKITEM = item.C_URI))"
 )
+"""An SQL query to get work items which are inserted in a given document."""
 
 
 class PolarionWorkerParams:
@@ -142,7 +143,7 @@ class CapellaPolarionWorker:
             if work_item.status != "deleted"
         }
         uuids: set[str] = existing_work_items - set(converter_session)
-        work_items: list[data_models.CapellaWorkitem] = []
+        work_items: list[data_models.CapellaWorkItem] = []
         for uuid in uuids:
             if wi := self.polarion_data_repo.get_work_item_by_capella_uuid(
                 uuid
@@ -527,7 +528,7 @@ class CapellaPolarionWorker:
         self, space: str, name: str, document_project: str | None = None
     ) -> polarion_api.Document | None:
         """Get a document from polarion and return None if not found.
-        
+
         Notes
         -----
         If the ``document_project`` is ``None`` the default client is
@@ -546,10 +547,7 @@ class CapellaPolarionWorker:
     def load_polarion_documents(
         self,
         document_infos: t.Iterable[data_models.DocumentInfo],
-    ) -> dict[
-        tuple[str | None, str, str],
-        tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
-    ]:
+    ) -> polarion_repo.DocumentRepository:
         """Load the documents referenced and text work items from Polarion."""
         return {
             (di.project_id, di.module_folder, di.module_name): (

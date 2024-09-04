@@ -100,7 +100,7 @@ class TextWorkItemProvider:
         new_content = []
         last_match = -1
         for index, element in enumerate(html_fragments):
-            if isinstance(element, html.HtmlComment):
+            if not isinstance(element, html.HtmlElement):
                 continue
 
             if element.tag == "workitem":

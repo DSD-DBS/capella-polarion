@@ -6,7 +6,7 @@ import pytest
 from lxml import etree, html
 
 from capella2polarion import data_models as dm
-from capella2polarion.connectors import polarion_worker
+from capella2polarion.connectors import polarion_repo, polarion_worker
 from capella2polarion.converters import (
     document_config,
     document_renderer,
@@ -28,10 +28,7 @@ DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
 
 
-def existing_documents() -> dict[
-    tuple[str | None, str, str],
-    tuple[polarion_api.Document, list[polarion_api.WorkItem]],
-]:
+def existing_documents() -> polarion_repo.DocumentRepository:
     return {
         (None, "_default", "id123"): (
             polarion_api.Document(

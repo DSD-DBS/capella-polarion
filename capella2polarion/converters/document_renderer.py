@@ -70,10 +70,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self.overwrite_heading_numbering = overwrite_heading_numbering
         self.overwrite_layouts = overwrite_layouts
         self.projects: dict[str | None, ProjectData] = {}
-        self.existing_documents: dict[
-            tuple[str | None, str, str],
-            tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
-        ] = {}
+        self.existing_documents: polarion_repo.DocumentRepository = {}
 
     def setup_env(self, env: jinja2.Environment):
         """Add globals and filters to the environment."""
@@ -354,10 +351,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
     def render_documents(
         self,
         configs: document_config.DocumentConfigs,
-        existing_documents: dict[
-            tuple[str | None, str, str],
-            tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
-        ],
+        existing_documents: polarion_repo.DocumentRepository,
     ) -> dict[str | None, ProjectData]:
         """Render all documents defined in the given config.
 

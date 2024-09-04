@@ -44,9 +44,8 @@ def test_update_document(
     document_data.text_work_item_provider.generate_text_work_items(
         document.home_page_content.value
     )
-    empty_polarion_worker.project_client.work_items.create.side_effect = (
-        _set_work_item_id
-    )
+    client = empty_polarion_worker.project_client
+    client.work_items.create.side_effect = _set_work_item_id
 
     empty_polarion_worker.update_documents([document_data])
 
@@ -56,47 +55,13 @@ def test_update_document(
         '<div id="polarion_wiki macro name=module-workitem;'
         'params=id=id0|layout=0|external=true"></div>'
     )
-    assert (
-        empty_polarion_worker.project_client.documents.update.call_count == 1
-    )
-    assert (
-        empty_polarion_worker.project_client.documents.update.call_args.args[0]
-        == [document]
-    )
-    assert (
-        empty_polarion_worker.project_client.work_items.create.call_count == 1
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.create.call_args.args[
-                0
-            ]
-        )
-        == 1
-    )
-    assert (
-        empty_polarion_worker.project_client.work_items.update.call_count == 2
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.update.call_args_list[
-                0
-            ].args[
-                0
-            ]
-        )
-        == 1
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.update.call_args_list[
-                1
-            ].args[
-                0
-            ]
-        )
-        == 0
-    )
+    assert client.documents.update.call_count == 1
+    assert client.documents.update.call_args.args[0] == [document]
+    assert client.work_items.create.call_count == 1
+    assert len(client.work_items.create.call_args.args[0]) == 1
+    assert client.work_items.update.call_count == 2
+    assert len(client.work_items.update.call_args_list[0].args[0]) == 1
+    assert len(client.work_items.update.call_args_list[1].args[0]) == 0
 
 
 def test_create_document(
@@ -123,9 +88,8 @@ def test_create_document(
     document_data.text_work_item_provider.generate_text_work_items(
         document.home_page_content.value
     )
-    empty_polarion_worker.project_client.work_items.create.side_effect = (
-        _set_work_item_id
-    )
+    client = empty_polarion_worker.project_client
+    client.work_items.create.side_effect = _set_work_item_id
 
     empty_polarion_worker.update_documents([document_data])
 
@@ -135,44 +99,10 @@ def test_create_document(
         '<div id="polarion_wiki macro name=module-workitem;'
         'params=id=id1|layout=0|external=true"></div>'
     )
-    assert (
-        empty_polarion_worker.project_client.documents.update.call_count == 1
-    )
-    assert (
-        empty_polarion_worker.project_client.documents.update.call_args.args[0]
-        == [document]
-    )
-    assert (
-        empty_polarion_worker.project_client.work_items.create.call_count == 1
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.create.call_args.args[
-                0
-            ]
-        )
-        == 2
-    )
-    assert (
-        empty_polarion_worker.project_client.work_items.update.call_count == 2
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.update.call_args_list[
-                0
-            ].args[
-                0
-            ]
-        )
-        == 0
-    )
-    assert (
-        len(
-            empty_polarion_worker.project_client.work_items.update.call_args_list[
-                1
-            ].args[
-                0
-            ]
-        )
-        == 0
-    )
+    assert client.documents.update.call_count == 1
+    assert client.documents.update.call_args.args[0] == [document]
+    assert client.work_items.create.call_count == 1
+    assert len(client.work_items.create.call_args.args[0]) == 2
+    assert client.work_items.update.call_count == 2
+    assert len(client.work_items.update.call_args_list[0].args[0]) == 0
+    assert len(client.work_items.update.call_args_list[1].args[0]) == 0

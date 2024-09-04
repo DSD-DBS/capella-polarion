@@ -10,7 +10,7 @@ import capellambse
 import jinja2
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
-from lxml import etree, html
+from lxml import html
 
 wi_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
 h_regex = re.compile("h[0-9]")
@@ -114,8 +114,8 @@ class JinjaRendererMixin:
 
 
 def remove_table_ids(
-    html_content: str | list[html.HtmlElement],
-) -> list[etree._Element]:
+    html_content: str | list[html.HtmlElement | str],
+) -> list[html.HtmlElement | str]:
     """Remove the ID field from all tables.
 
     This is necessary due to a bug in Polarion where Polarion does not
@@ -126,6 +126,9 @@ def remove_table_ids(
     html_fragments = ensure_fragments(html_content)
 
     for element in html_fragments:
+        if not isinstance(element, html.HtmlElement):
+            continue
+
         if element.tag == "table":
             element.attrib.pop("id", None)
 
@@ -133,36 +136,38 @@ def remove_table_ids(
 
 
 def ensure_fragments(
-    html_content: str | list[html.HtmlElement],
-) -> list[html.HtmlElement]:
+    html_content: str | list[html.HtmlElement | str],
+) -> list[html.HtmlElement | str]:
     """Convert string to html elements."""
     if isinstance(html_content, str):
         return html.fragments_fromstring(html_content)
     return html_content
 
 
-def extract_headings(html_content: str | list[html.HtmlElement]) -> list[str]:
+def extract_headings(
+    html_content: str | list[html.HtmlElement | str],
+) -> list[str]:
     """Return a list of work item IDs for all headings in the given content."""
     return extract_work_items(html_content, h_regex)
 
 
 def extract_work_items(
-    html_content: str | list[html.HtmlElement],
+    html_content: str | list[html.HtmlElement | str],
     tag_regex: re.Pattern | None = None,
 ) -> list[str]:
     """Return a list of work item IDs for work items in the given content."""
-    work_items = []
+    work_item_ids: list[str] = []
     html_fragments = ensure_fragments(html_content)
     for element in html_fragments:
-        if isinstance(element, html.HtmlComment):
+        if not isinstance(element, html.HtmlElement):
             continue
 
         if (tag_regex is not None and tag_regex.fullmatch(element.tag)) or (
             tag_regex is None and element.tag == "div"
         ):
             if matches := wi_id_regex.match(element.get("id")):
-                work_items.append(matches.group(1))
-    return work_items
+                work_item_ids.append(matches.group(1))
+    return work_item_ids
 
 
 def get_layout_index(
