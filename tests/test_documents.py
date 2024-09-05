@@ -47,8 +47,11 @@ def existing_documents() -> polarion_repo.DocumentRepository:
                 ),
                 rendering_layouts=[
                     polarion_api.RenderingLayout(
+                        "text", "paragraph", type="text"
+                    ),
+                    polarion_api.RenderingLayout(
                         "Class", "paragraph", type="class"
-                    )
+                    ),
                 ],
             ),
             [],
@@ -461,7 +464,7 @@ def test_render_all_documents_partially_successfully(
     )
     assert (
         len(projects_data[None].updated_docs[1].document.rendering_layouts)
-        == 1
+        == 2
     )
     assert (
         projects_data[None].updated_docs[0].document.outline_numbering is None
@@ -540,7 +543,15 @@ def test_render_all_documents_overwrite_headings_layouts(
     updated_docs = projects_data[None].updated_docs
 
     assert len(updated_docs[0].document.rendering_layouts) == 2
-    assert len(updated_docs[1].document.rendering_layouts) == 2
+    assert len(updated_docs[1].document.rendering_layouts) == 3
+    assert updated_docs[1].document.rendering_layouts[0].type == "text"
+    assert updated_docs[1].document.rendering_layouts[1].type == "class"
+    assert (
+        "tree_view_diagram"
+        in updated_docs[1]
+        .document.rendering_layouts[1]
+        .properties.fields_at_end
+    )
     assert updated_docs[0].document.outline_numbering is False
     assert updated_docs[1].document.outline_numbering is False
 

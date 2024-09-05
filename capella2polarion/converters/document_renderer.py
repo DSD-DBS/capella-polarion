@@ -347,6 +347,19 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             document, session.headings, text_work_item_provider
         )
 
+    def _update_rendering_layouts(
+        self,
+        document: polarion_api.Document,
+        rendering_layouts: list[polarion_api.RenderingLayout],
+    ):
+        """Keep existing work item layouts in their original order."""
+        document.rendering_layouts = document.rendering_layouts or []
+        for rendering_layout in rendering_layouts:
+            index = polarion_html_helper.get_layout_index(
+                "section", document.rendering_layouts, rendering_layout.type
+            )
+            document.rendering_layouts[index] = rendering_layout
+
     def _get_and_customize_doc(
         self,
         project_id: str | None,
@@ -359,11 +372,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         old_doc, text_work_items = self.existing_documents.get(
             (project_id, space, name), (None, [])
         )
-        if old_doc:
+        if old_doc is not None:
             if title:
                 old_doc.title = title
             if self.overwrite_layouts:
-                old_doc.rendering_layouts = rendering_layouts
+                self._update_rendering_layouts(old_doc, rendering_layouts)
             if self.overwrite_heading_numbering:
                 old_doc.outline_numbering = heading_numbering
 
