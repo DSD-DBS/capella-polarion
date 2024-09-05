@@ -40,6 +40,7 @@ class RenderingSession:
     text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
         default_factory=dict
     )
+    document_project_id: str | None = None
 
 
 @dataclasses.dataclass
@@ -61,6 +62,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         polarion_repository: polarion_repo.PolarionDataRepository,
         model: capellambse.MelodyModel,
+        model_work_item_project_id: str,
         overwrite_heading_numbering: bool = False,
         overwrite_layouts: bool = False,
     ):
@@ -71,6 +73,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self.overwrite_layouts = overwrite_layouts
         self.projects: dict[str | None, ProjectData] = {}
         self.existing_documents: polarion_repo.DocumentRepository = {}
+        self.model_work_item_project_id = model_work_item_project_id
 
     def setup_env(self, env: jinja2.Environment):
         """Add globals and filters to the environment."""
@@ -78,6 +81,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env.globals["heading"] = self.__heading
         env.globals["work_item_field"] = self.__work_item_field
         env.filters["link_work_item"] = self.__link_work_item
+
+    def _is_external_document(self, session: RenderingSession) -> bool:
+        """Check if the document is in a different project than the model."""
+        if session.document_project_id is None:
+            return False
+        return session.document_project_id != self.model_work_item_project_id
 
     def __insert_work_item(
         self, obj: object, session: RenderingSession, level: int | None = None
@@ -108,10 +117,17 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 custom_info = f"level={level}|"
 
             session.inserted_work_items.append(wi)
-
-            return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
-                pid=wi.id, lid=layout_index, custom_info=custom_info
-            )
+            if self._is_external_document(session):
+                return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT_PROJECT.format(
+                    pid=wi.id,
+                    lid=layout_index,
+                    custom_info=custom_info,
+                    project=self.model_work_item_project_id,
+                )
+            else:
+                return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
+                    pid=wi.id, lid=layout_index, custom_info=custom_info
+                )
 
         return polarion_html_helper.RED_TEXT.format(
             text=f"Missing WorkItem for UUID {obj.uuid}"
@@ -124,8 +140,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
         ):
-            return polarion_html_helper.POLARION_WORK_ITEM_URL.format(
-                pid=wi.id
+            return polarion_html_helper.POLARION_WORK_ITEM_URL_PROJECT.format(
+                pid=wi.id, project=self.model_work_item_project_id
             )
 
         return polarion_html_helper.RED_TEXT.format(
@@ -168,6 +184,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         *,
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
+        document_project_id: str | None = None,
         **kwargs: t.Any,
     ) -> data_models.DocumentData:
         """Render a new Polarion document."""
@@ -180,6 +197,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         *,
         document: polarion_api.Document,
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
+        document_project_id: str | None = None,
         **kwargs: t.Any,
     ) -> data_models.DocumentData:
         """Update an existing Polarion document."""
@@ -195,6 +213,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
         document: polarion_api.Document | None = None,
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
+        document_project_id: str | None = None,
         **kwargs: t.Any,
     ) -> data_models.DocumentData:
         """Render a Polarion document."""
@@ -213,7 +232,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env = self._get_jinja_env(template_folder)
         template = env.get_template(template_name)
 
-        session = RenderingSession()
+        session = RenderingSession(document_project_id=document_project_id)
         if document is not None:
             session.rendering_layouts = document.rendering_layouts or []
             if document.home_page_content and document.home_page_content.value:
@@ -255,6 +274,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         global_parameters: dict[str, t.Any],
         section_parameters: dict[str, dict[str, t.Any]],
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
+        document_project_id: str | None = None,
     ) -> data_models.DocumentData:
         """Update a mixed authority document."""
         text_work_item_provider = (
@@ -269,7 +289,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         section_areas = self._extract_section_areas(html_elements)
 
         session = RenderingSession(
-            rendering_layouts=document.rendering_layouts or []
+            rendering_layouts=document.rendering_layouts or [],
+            document_project_id=document_project_id,
         )
         env = self._get_jinja_env(template_folder)
 
@@ -433,6 +454,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         instance.params,
                         instance.section_params,
                         text_work_item_provider,
+                        config.project_id,
                     )
                 except Exception as e:
                     logger.error(
@@ -481,6 +503,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             config.template,
                             document=old_doc,
                             text_work_item_provider=text_work_item_provider,
+                            document_project_id=config.project_id,
                             **instance.params,
                         )
                     except Exception as e:
@@ -505,6 +528,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             config.heading_numbering,
                             rendering_layouts,
                             text_work_item_provider=text_work_item_provider,
+                            document_project_id=config.project_id,
                             **instance.params,
                         )
                     except Exception as e:

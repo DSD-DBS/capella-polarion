@@ -163,6 +163,7 @@ def render_documents(
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
+        capella_to_polarion_cli.polarion_params.project_id,
         overwrite_numbering,
         overwrite_layouts,
     )
