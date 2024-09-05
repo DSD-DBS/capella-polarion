@@ -23,9 +23,19 @@ POLARION_WORK_ITEM_URL = (
     'id="fake" data-item-id="{pid}" data-option-id="long">'
     "</span>"
 )
+POLARION_WORK_ITEM_URL_PROJECT = (
+    '<span class="polarion-rte-link" data-type="workItem" '
+    'id="fake" data-scope="{project}" data-item-id="{pid}" '
+    'data-option-id="long"></span>'
+)
 POLARION_WORK_ITEM_DOCUMENT = (
     '<div id="polarion_wiki macro name=module-workitem;'
     'params=id={pid}|layout={lid}|{custom_info}external=true"></div>'
+)
+POLARION_WORK_ITEM_DOCUMENT_PROJECT = (
+    '<div id="polarion_wiki macro name=module-workitem;'
+    "params=id={pid}|layout={lid}|{custom_info}external=true"
+    '|project={project}"></div>'
 )
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"

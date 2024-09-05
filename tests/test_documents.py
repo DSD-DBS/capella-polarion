@@ -15,8 +15,10 @@ from capella2polarion.converters import (
 from tests.conftest import (
     DOCUMENT_TEMPLATES,
     DOCUMENT_TEXT_WORK_ITEMS,
+    DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
     TEST_COMBINED_DOCUMENT_CONFIG,
     TEST_DOCUMENT_ROOT,
+    TEST_PROJECT_ID,
 )
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
@@ -26,6 +28,10 @@ MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
 DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
+PROJECT_EXTERNAL_WORKITEM_SRC = (
+    '<div id="polarion_wiki macro name=module-workitem;params=id=ATSY-1234'
+    f'|layout=0|external=true|project={TEST_PROJECT_ID}"></div>'
+)
 
 
 def existing_documents() -> polarion_repo.DocumentRepository:
@@ -105,7 +111,7 @@ def test_create_new_document(
         ]
     )
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
     document_data = renderer.render_document(
@@ -159,7 +165,7 @@ def test_update_document(
         ]
     )
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
     old_doc = polarion_api.Document(
         module_folder="_default",
@@ -212,7 +218,7 @@ def test_mixed_authority_document(
     model: capellambse.MelodyModel,
 ):
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
     old_doc = polarion_api.Document(
         module_folder="_default",
@@ -284,7 +290,7 @@ def test_create_full_authority_document_text_work_items(
     model: capellambse.MelodyModel,
 ):
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
     document_data = renderer.render_document(
@@ -334,7 +340,7 @@ def test_update_full_authority_document_text_work_items(
     model: capellambse.MelodyModel,
 ):
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
     old_doc = polarion_api.Document(
         module_folder="_default",
@@ -398,11 +404,20 @@ def test_render_all_documents_partially_successfully(
     model: capellambse.MelodyModel,
     caplog: pytest.LogCaptureFixture,
 ):
+    empty_polarion_worker.polarion_data_repo.update_work_items(
+        [
+            dm.CapellaWorkItem(
+                "ATSY-1234",
+                uuid_capella="d8655737-39ab-4482-a934-ee847c7ff6bd",
+                type="componentExchange",
+            ),
+        ]
+    )
     with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
     projects_data = renderer.render_documents(conf, existing_documents())
@@ -435,6 +450,12 @@ def test_render_all_documents_partially_successfully(
         == 2
     )
     assert (
+        PROJECT_EXTERNAL_WORKITEM_SRC
+        in projects_data["TestProject"]
+        .updated_docs[0]
+        .document.home_page_content.value
+    )
+    assert (
         len(projects_data[None].updated_docs[0].document.rendering_layouts)
         == 0
     )
@@ -450,6 +471,56 @@ def test_render_all_documents_partially_successfully(
     )
 
 
+def test_insert_work_item_cross_project(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    empty_polarion_worker.polarion_data_repo.update_work_items(
+        [
+            dm.CapellaWorkItem(
+                "ATSY-1234",
+                uuid_capella="d8655737-39ab-4482-a934-ee847c7ff6bd",
+                type="componentExchange",
+            )
+        ]
+    )
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+
+    document_data_1 = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
+        "test",
+        "name",
+        "title",
+        document_project_id="DIFFERENT",
+        element="d8655737-39ab-4482-a934-ee847c7ff6bd",
+    )
+
+    document_data_2 = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
+        "test",
+        "name",
+        "title",
+        element="d8655737-39ab-4482-a934-ee847c7ff6bd",
+    )
+
+    content_1: list[html.HtmlElement] = html.fragments_fromstring(
+        document_data_1.document.home_page_content.value
+    )
+    content_2: list[html.HtmlElement] = html.fragments_fromstring(
+        document_data_2.document.home_page_content.value
+    )
+
+    assert len(content_1) == 2
+    assert content_1[0].attrib["id"].endswith(f"|project={TEST_PROJECT_ID}")
+    assert content_1[1].attrib["data-scope"] == TEST_PROJECT_ID
+    assert len(content_2) == 2
+    assert content_2[0].attrib["id"].endswith("|external=true")
+
+
 def test_render_all_documents_overwrite_headings_layouts(
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
     model: capellambse.MelodyModel,
@@ -458,7 +529,11 @@ def test_render_all_documents_overwrite_headings_layouts(
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model, True, True
+        empty_polarion_worker.polarion_data_repo,
+        model,
+        TEST_PROJECT_ID,
+        True,
+        True,
     )
 
     projects_data = renderer.render_documents(conf, existing_documents())
