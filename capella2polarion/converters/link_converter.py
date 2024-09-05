@@ -72,11 +72,7 @@ class LinkSerializer:
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
                     elif refs is None:
-                        warning = make_link_logging_message(
-                            "No model element behind that attribute",
-                            link_config.capella_attr,
-                        )
-                        link_errors.extend(warning)
+                        logger.info("For model element %r attribute %s is not set", obj._short_repr_(), link_config.capella_attr)
                         continue
                     else:
                         assert hasattr(refs, "uuid"), "No 'uuid' on value"
@@ -387,7 +383,7 @@ def _resolve_attribute(
 ) -> common.ElementList[common.GenericElement] | common.GenericElement | None:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
-    if map_id:
+    if map_id and objs is not None:
         if isinstance(objs, common.GenericElement):
             return _resolve_attribute(objs, map_id)
         objs = objs.map(map_id)
