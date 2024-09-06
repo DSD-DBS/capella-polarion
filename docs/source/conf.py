@@ -74,7 +74,15 @@ copybutton_line_continuation_character = "\\"
 
 # -- Options for auto-doc ----------------------------------------------------
 autoclass_content = "class"
-
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    # "private-members": True,
+    # "special-members": True,
+    # "inherited-members": True,
+    # "show-inheritance": True,
+    "noindex": True,
+}
 
 # -- Options for napoleon ----------------------------------------------------
 napoleon_google_docstring = False
