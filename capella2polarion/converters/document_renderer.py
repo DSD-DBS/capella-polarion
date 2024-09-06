@@ -118,6 +118,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
             session.inserted_work_items.append(wi)
             if self._is_external_document(session):
+                # pylint: disable-next=line-too-long
                 return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT_PROJECT.format(
                     pid=wi.id,
                     lid=layout_index,

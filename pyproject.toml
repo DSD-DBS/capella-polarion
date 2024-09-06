@@ -169,6 +169,7 @@ disable = [
   "unbalanced-tuple-unpacking",
   "undefined-variable",
   "unexpected-keyword-arg",
+  "unsubscriptable-object",
 ]
 enable = [
   "c-extension-no-member",

@@ -95,19 +95,19 @@ class TextWorkItemProvider:
             "paragraph", document.rendering_layouts, self.text_work_item_type
         )
         html_fragments = html_helper.ensure_fragments(
-            document.home_page_content.value
+            document.home_page_content.value or ""
         )
-        new_content = []
+        new_content: list[html.HtmlElement | str] = []
         last_match = -1
         for index, element in enumerate(html_fragments):
             if not isinstance(element, html.HtmlElement):
                 continue
 
             if element.tag == "workitem":
-                new_content += html_fragments[last_match + 1 : index]
+                new_content.extend(html_fragments[last_match + 1 : index])
                 last_match = index
                 if work_item := self.new_text_work_items.get(
-                    element.get("id")
+                    element.get("id", "")
                 ):
                     new_content.append(
                         html.fromstring(

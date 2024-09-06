@@ -886,14 +886,6 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
-        )
 
         del base_object.mc.converter_session["uuid2"]
 
@@ -918,14 +910,6 @@ class TestModelElements:
                     type="fakeModelObject",
                 )
             ]
-        )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -971,14 +955,6 @@ class TestModelElements:
                     type="fakeModelObject",
                 )
             ]
-        )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
         )
         base_object.mc.converter_session["uuid2"].work_item = (
             data_models.CapellaWorkItem(
