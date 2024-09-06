@@ -743,7 +743,6 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
@@ -820,7 +819,6 @@ class TestModelElements:
                 type="type",
                 uuid_capella="uuid1",
                 status="deleted",
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
@@ -842,7 +840,6 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         )
 
@@ -889,14 +886,6 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
-        )
 
         del base_object.mc.converter_session["uuid2"]
 
@@ -921,14 +910,6 @@ class TestModelElements:
                     type="fakeModelObject",
                 )
             ]
-        )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -959,7 +940,11 @@ class TestModelElements:
         link = polarion_api.WorkItemLink(
             "Obj-1", "Obj-2", "attribute", True, "project_id"
         )
-        _, work_item = base_object.pw.polarion_data_repo["uuid1"]
+        work_item = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid1"
+            )
+        )
         work_item.linked_work_items = [link]
         base_object.pw.polarion_data_repo.update_work_items(
             [
@@ -970,14 +955,6 @@ class TestModelElements:
                     type="fakeModelObject",
                 )
             ]
-        )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
         )
         base_object.mc.converter_session["uuid2"].work_item = (
             data_models.CapellaWorkItem(
@@ -999,11 +976,15 @@ class TestModelElements:
             base_object.pw.polarion_data_repo
         )
 
-        work_item_1 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid1"][1].to_dict()
+        work_item_1 = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid1"
+            )
         )
-        work_item_2 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid2"][1].to_dict()
+        work_item_2 = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid2"
+            )
         )
         work_item_1.linked_work_items_truncated = True
         work_item_2.linked_work_items_truncated = True

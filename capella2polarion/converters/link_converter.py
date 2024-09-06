@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 _Serializer: t.TypeAlias = cabc.Callable[
-    [common.GenericElement, str, str, dict[str, t.Any]],
+    [diag.Diagram | common.GenericElement, str, str, dict[str, t.Any]],
     list[polarion_api.WorkItemLink],
 ]
 
@@ -65,6 +65,7 @@ class LinkSerializer:
             serializer = self.serializers.get(link_config.capella_attr)
             role_id = link_config.polarion_role
             try:
+                assert work_item.id is not None
                 if serializer:
                     new_links.extend(
                         serializer(obj, work_item.id, role_id, {})
@@ -135,7 +136,7 @@ class LinkSerializer:
 
     def _handle_description_reference_links(
         self,
-        obj: common.GenericElement,
+        obj: common.GenericElement | diag.Diagram,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
@@ -146,20 +147,21 @@ class LinkSerializer:
 
     def _handle_diagram_reference_links(
         self,
-        obj: diag.Diagram,
+        diagram: common.GenericElement | diag.Diagram,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
+        assert isinstance(diagram, diag.Diagram)
         try:
-            refs = set(self._collect_uuids(obj.nodes))
+            refs = set(self._collect_uuids(diagram.nodes))
             refs = set(self._get_work_item_ids(work_item_id, refs, role_id))
             ref_links = self._create(work_item_id, role_id, refs, links)
         except Exception as err:
             logger.exception(
                 "Could not create links for diagram %r, "
                 "because an error occured %s",
-                obj._short_repr_(),
+                diagram._short_repr_(),
                 err,
             )
             ref_links = []
@@ -282,18 +284,19 @@ class LinkSerializer:
                             obj._short_repr_(),
                         )
 
+                    uuids: cabc.Iterable[str]
                     if isinstance(attr, common.ElementList):
                         uuids = attr.by_uuid  # type: ignore[assignment]
                     else:
                         assert hasattr(attr, "uuid")
                         uuids = [attr.uuid]
 
+                    assert work_item.id is not None
                     work_item_ids = list(
                         self._get_work_item_ids(work_item.id, uuids, attr_name)
                     )
-                    include_map[f"{link_id}:{display_name}:{attr_name}"] = (
-                        work_item_ids
-                    )
+                    include_key = f"{link_id}:{display_name}:{attr_name}"
+                    include_map[include_key] = work_item_ids
 
         work_item.additional_attributes[role] = {
             "type": "text/html",
@@ -378,7 +381,7 @@ def _sorted_unordered_html_list(
 
 
 def _resolve_attribute(
-    obj: common.GenericElement, attr_id: str
+    obj: common.GenericElement | diag.Diagram, attr_id: str
 ) -> common.ElementList[common.GenericElement] | common.GenericElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)

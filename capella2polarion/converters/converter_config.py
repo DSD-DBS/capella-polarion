@@ -370,6 +370,7 @@ def _filter_context_diagram_config(
 def _filter_links(
     c_type: str, links: list[LinkConfig], is_global: bool = False
 ) -> list[LinkConfig]:
+    c_class: type[common.ModelObject | diagram.Diagram]
     if c_type == "diagram":
         c_class = diagram.Diagram
     else:

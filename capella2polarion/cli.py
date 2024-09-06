@@ -91,6 +91,8 @@ class Capella2PolarionCli:
         )
         logging.getLogger("httpx").setLevel("WARNING")
         logging.getLogger("httpcore").setLevel("WARNING")
+        logging.getLogger("capellambse").setLevel("WARNING")
+        logging.getLogger("capellambse_context_diagrams").setLevel("WARNING")
 
     def load_synchronize_config(
         self,

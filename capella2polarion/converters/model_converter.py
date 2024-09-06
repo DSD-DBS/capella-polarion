@@ -152,7 +152,14 @@ class ModelConverter:
                 )
                 continue
 
-            assert converter_data.work_item.id is not None
+            if converter_data.work_item.id is None:
+                logger.error(
+                    "Expected WorkItem to be created before creating "
+                    "links: %s.",
+                    uuid,
+                )
+                continue
+
             if local_back_links := back_links.get(converter_data.work_item.id):
                 link_serializer.create_grouped_back_link_fields(
                     converter_data.work_item, local_back_links

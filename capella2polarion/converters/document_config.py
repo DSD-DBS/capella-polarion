@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module with classes and a loader for document rendering configs."""
+import collections.abc as cabc
 import logging
 import pathlib
 import typing as t
@@ -56,7 +57,7 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
     )
-    instances: list[DocumentRenderingInstance]
+    instances: cabc.Sequence[DocumentRenderingInstance]
 
 
 class FullAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
@@ -69,7 +70,7 @@ class MixedAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
     """Mixed authority document with multiple auto generated sections."""
 
     sections: dict[str, str]
-    instances: list[SectionBasedDocumentRenderingInstance]
+    instances: cabc.Sequence[SectionBasedDocumentRenderingInstance]
 
 
 class DocumentConfigs(pydantic.BaseModel):
@@ -117,9 +118,9 @@ def generate_work_item_layouts(
     results = []
     for _type, conf in configs.items():
         if conf.show_title and conf.show_description:
-            layouter = polarion_api.data_models.Layouter.SECTION
+            layouter = polarion_api.Layouter.SECTION
         elif conf.show_description:
-            layouter = polarion_api.data_models.Layouter.PARAGRAPH
+            layouter = polarion_api.Layouter.PARAGRAPH
         else:
             if not conf.show_title:
                 logger.warning(
@@ -127,13 +128,13 @@ def generate_work_item_layouts(
                     "For that reason, the title will be shown for %s.",
                     _type,
                 )
-            layouter = polarion_api.data_models.Layouter.TITLE
+            layouter = polarion_api.Layouter.TITLE
         results.append(
             polarion_api.RenderingLayout(
                 type=_type,
                 layouter=layouter,
                 label=polarion_html_helper.camel_case_to_words(_type),
-                properties=polarion_api.data_models.RenderingProperties(
+                properties=polarion_api.RenderingProperties(
                     fields_at_start=conf.fields_at_start,
                     fields_at_end=conf.fields_at_end,
                     fields_at_end_as_table=conf.show_fields_as_table,

@@ -118,6 +118,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
             session.inserted_work_items.append(wi)
             if self._is_external_document(session):
+                # pylint: disable-next=line-too-long
                 return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT_PROJECT.format(
                     pid=wi.id,
                     lid=layout_index,
@@ -470,7 +471,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def _render_full_authority_documents(
         self,
-        full_authority_configs,
+        full_authority_configs: list[
+            document_config.FullAuthorityDocumentRenderingConfig
+        ],
     ):
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(

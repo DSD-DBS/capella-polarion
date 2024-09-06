@@ -64,7 +64,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "--polarion-url",
         "https://www.czy.de",
         "--polarion-pat",
-        "AlexandersPrivateAcessToken",
+        "PrivateAcessToken",
         "--polarion-delete-work-items",
         "--capella-model",
         json.dumps(TEST_MODEL),

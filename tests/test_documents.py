@@ -546,11 +546,7 @@ def test_render_all_documents_overwrite_headings_layouts(
 
 
 def test_full_authority_document_config():
-    with open(
-        FULL_AUTHORITY_CONFIG,
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with open(FULL_AUTHORITY_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 2
