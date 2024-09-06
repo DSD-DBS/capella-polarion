@@ -3,6 +3,10 @@
 
 - template_directory: jupyter-notebooks/document_templates
   template: test-icd.html.j2
+  project_id: TestProject
+  status_allow_list:
+    - draft
+    - open
   instances:
     - polarion_space: _default
       polarion_name: id123

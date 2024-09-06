@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import hashlib
 import json
 import typing as t
 
 import polarion_rest_api_client as polarion_api
+
+from capella2polarion.converters import text_work_item_provider
 
 
 class CapellaWorkItem(polarion_api.WorkItem):
@@ -60,3 +63,23 @@ class CapellaWorkItem(polarion_api.WorkItem):
             | dict(sorted(attachment_checksums.items()))
         )
         return self._checksum
+
+
+@dataclasses.dataclass
+class DocumentData:
+    """A class to store data related to a rendered document."""
+
+    document: polarion_api.Document
+    headings: list[polarion_api.WorkItem]
+    text_work_item_provider: text_work_item_provider.TextWorkItemProvider
+
+
+@dataclasses.dataclass
+class DocumentInfo:
+    """Class for information regarding a document which should be created."""
+
+    project_id: str | None
+    module_folder: str
+    module_name: str
+    text_work_item_type: str
+    text_work_item_id_field: str

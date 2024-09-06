@@ -6,6 +6,7 @@ from __future__ import annotations
 import collections.abc as cabc
 
 import bidict
+import polarion_rest_api_client as polarion_api
 
 from capella2polarion import data_models
 
@@ -27,11 +28,13 @@ class PolarionDataRepository:
     ):
         if polarion_work_items is None:
             polarion_work_items = []
+
+        check_work_items(polarion_work_items)
         self._id_mapping = bidict.bidict(
             {
                 work_item.uuid_capella: work_item.id
                 for work_item in polarion_work_items
-            },
+            },  # type: ignore[arg-type]
         )
         self._id_mapping.on_dup = bidict.OnDup(
             key=bidict.DROP_OLD, val=bidict.DROP_OLD
@@ -48,12 +51,6 @@ class PolarionDataRepository:
     def __sizeof__(self) -> int:
         """Return the amount of registered Capella UUIDs."""
         return len(self._id_mapping)
-
-    def __getitem__(
-        self, item: str
-    ) -> tuple[str, data_models.CapellaWorkItem]:
-        """Return the polarion ID and work_item for a given Capella UUID."""
-        return self._id_mapping[item], self._work_items[item]
 
     def __iter__(self) -> cabc.Iterator[str]:
         """Iterate all Capella UUIDs."""
@@ -88,22 +85,20 @@ class PolarionDataRepository:
             self.get_capella_uuid(work_item_id)  # type: ignore
         )
 
-    def update_work_items(
-        self,
-        work_items: list[data_models.CapellaWorkItem],
-    ):
+    def update_work_items(self, work_items: list[data_models.CapellaWorkItem]):
         """Update all mappings for the given Work Items."""
         for work_item in work_items:
+            assert work_item.id is not None
             if uuid_capella := self._id_mapping.inverse.get(work_item.id):
                 del self._id_mapping[uuid_capella]
                 del self._work_items[uuid_capella]
 
+        check_work_items(work_items)
         self._id_mapping.update(
             {
                 work_item.uuid_capella: work_item.id
                 for work_item in work_items
-                if work_item.id is not None
-            }
+            }  # type: ignore[arg-type]
         )
         self._work_items.update(
             {work_item.uuid_capella: work_item for work_item in work_items}
@@ -114,3 +109,25 @@ class PolarionDataRepository:
         for uuid in uuids:
             del self._work_items[uuid]
             del self._id_mapping[uuid]
+
+
+DocumentRepository = dict[
+    tuple[str | None, str, str],
+    tuple[polarion_api.Document | None, list[polarion_api.WorkItem]],
+]
+"""A dict providing a mapping for documents and their text workitems.
+
+It has (project, space, name) of the document as key and (document,
+workitems) as value. The project can be None and the None value means
+that the document is in the same project as the model sync work items.
+"""
+
+
+def check_work_items(work_items: cabc.Iterable[data_models.CapellaWorkItem]):
+    """Raise a ``ValueError`` if any work item has no ID."""
+    if work_item_without_id := next(
+        (wi for wi in work_items if wi.id is None), None
+    ):
+        raise ValueError(
+            f"Found Work Item without ID: {work_item_without_id.title!r}"
+        )

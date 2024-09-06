@@ -8,27 +8,40 @@ import re
 
 import capellambse
 import jinja2
+import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
-from lxml import etree, html
+from lxml import html
 
-heading_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
+wi_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
 h_regex = re.compile("h[0-9]")
-wi_regex = re.compile(f"{heading_id_prefix}(.*)")
+wi_id_regex = re.compile(f"{wi_id_prefix}([A-Z|a-z|0-9]*-[0-9]+)")
 
-
+TEXT_WORK_ITEM_ID_FIELD = "__C2P__id"
+TEXT_WORK_ITEM_TYPE = "text"
 POLARION_WORK_ITEM_URL = (
     '<span class="polarion-rte-link" data-type="workItem" '
     'id="fake" data-item-id="{pid}" data-option-id="long">'
     "</span>"
 )
+POLARION_WORK_ITEM_URL_PROJECT = (
+    '<span class="polarion-rte-link" data-type="workItem" '
+    'id="fake" data-scope="{project}" data-item-id="{pid}" '
+    'data-option-id="long"></span>'
+)
 POLARION_WORK_ITEM_DOCUMENT = (
     '<div id="polarion_wiki macro name=module-workitem;'
     'params=id={pid}|layout={lid}|{custom_info}external=true"></div>'
+)
+POLARION_WORK_ITEM_DOCUMENT_PROJECT = (
+    '<div id="polarion_wiki macro name=module-workitem;'
+    "params=id={pid}|layout={lid}|{custom_info}external=true"
+    '|project={project}"></div>'
 )
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
 )
 RED_TEXT = '<p style="color:red">{text}</p>'
+WORK_ITEM_TAG = "workitem"
 
 
 def strike_through(string: str) -> str:
@@ -111,8 +124,8 @@ class JinjaRendererMixin:
 
 
 def remove_table_ids(
-    html_content: str | list[etree._Element],
-) -> list[etree._Element]:
+    html_content: str | list[html.HtmlElement | str],
+) -> list[html.HtmlElement | str]:
     """Remove the ID field from all tables.
 
     This is necessary due to a bug in Polarion where Polarion does not
@@ -120,34 +133,73 @@ def remove_table_ids(
     time the REST-API does not allow posting or patching a document with
     multiple tables having the same ID.
     """
-    html_fragments = _ensure_fragments(html_content)
+    html_fragments = ensure_fragments(html_content)
 
     for element in html_fragments:
+        if not isinstance(element, html.HtmlElement):
+            continue
+
         if element.tag == "table":
-            element.remove("id")
+            element.attrib.pop("id", None)
 
     return html_fragments
 
 
-def _ensure_fragments(
-    html_content: str | list[etree._Element],
-) -> list[etree._Element]:
+def ensure_fragments(
+    html_content: str | list[html.HtmlElement | str],
+) -> list[html.HtmlElement | str]:
+    """Convert string to html elements."""
     if isinstance(html_content, str):
         return html.fragments_fromstring(html_content)
     return html_content
 
 
-def extract_headings(html_content: str | list[etree._Element]) -> list[str]:
+def extract_headings(
+    html_content: str | list[html.HtmlElement | str],
+) -> list[str]:
     """Return a list of work item IDs for all headings in the given content."""
-    heading_ids = []
-    html_fragments = _ensure_fragments(html_content)
+    return extract_work_items(html_content, h_regex)
 
+
+def extract_work_items(
+    html_content: str | list[html.HtmlElement | str],
+    tag_regex: re.Pattern | None = None,
+) -> list[str]:
+    """Return a list of work item IDs for work items in the given content."""
+    work_item_ids: list[str] = []
+    html_fragments = ensure_fragments(html_content)
     for element in html_fragments:
-        if isinstance(element, html.HtmlComment):
+        if not isinstance(element, html.HtmlElement):
             continue
 
-        if h_regex.fullmatch(element.tag):
-            if matches := wi_regex.match(element.get("id")):
-                heading_ids.append(matches.group(1))
+        if (tag_regex is not None and tag_regex.fullmatch(element.tag)) or (
+            tag_regex is None and element.tag == "div"
+        ):
+            if matches := wi_id_regex.match(element.get("id")):
+                work_item_ids.append(matches.group(1))
+    return work_item_ids
 
-    return heading_ids
+
+def get_layout_index(
+    default_layouter: str,
+    rendering_layouts: list[polarion_api.RenderingLayout],
+    work_item_type: str,
+) -> int:
+    """Return the index of the layout of the requested workitem.
+
+    If there is no rendering config yet, it will be created.
+    """
+    layout_index = 0
+    for layout in rendering_layouts:
+        if layout.type == work_item_type:
+            return layout_index
+        layout_index += 1
+    if layout_index >= len(rendering_layouts):
+        rendering_layouts.append(
+            polarion_api.RenderingLayout(
+                type=work_item_type,
+                layouter=default_layouter,
+                label=camel_case_to_words(work_item_type),
+            )
+        )
+    return layout_index

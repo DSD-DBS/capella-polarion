@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module with classes and a loader for document rendering configs."""
+import collections.abc as cabc
 import logging
 import pathlib
 import typing as t
@@ -11,6 +12,7 @@ import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
 
+from capella2polarion import data_models
 from capella2polarion.converters import polarion_html_helper
 
 logger = logging.getLogger(__name__)
@@ -47,11 +49,15 @@ class BaseDocumentRenderingConfig(pydantic.BaseModel):
     """A template config, which can result in multiple Polarion documents."""
 
     template_directory: str | pathlib.Path
+    project_id: str | None = None
+    text_work_item_type: str = polarion_html_helper.TEXT_WORK_ITEM_TYPE
+    text_work_item_id_field: str = polarion_html_helper.TEXT_WORK_ITEM_ID_FIELD
+    status_allow_list: list[str] | None = None
     heading_numbering: bool = False
     work_item_layouts: dict[str, WorkItemLayout] = pydantic.Field(
         default_factory=dict
     )
-    instances: list[DocumentRenderingInstance]
+    instances: cabc.Sequence[DocumentRenderingInstance]
 
 
 class FullAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
@@ -64,7 +70,7 @@ class MixedAuthorityDocumentRenderingConfig(BaseDocumentRenderingConfig):
     """Mixed authority document with multiple auto generated sections."""
 
     sections: dict[str, str]
-    instances: list[SectionBasedDocumentRenderingInstance]
+    instances: cabc.Sequence[SectionBasedDocumentRenderingInstance]
 
 
 class DocumentConfigs(pydantic.BaseModel):
@@ -77,11 +83,17 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
-    def iterate_documents(self) -> t.Iterator[tuple[str, str]]:
+    def iterate_documents(self) -> t.Iterator[data_models.DocumentInfo]:
         """Yield all document paths of the config as tuples."""
         for conf in self.full_authority + self.mixed_authority:
             for inst in conf.instances:
-                yield inst.polarion_space, inst.polarion_name
+                yield data_models.DocumentInfo(
+                    project_id=conf.project_id,
+                    module_folder=inst.polarion_space,
+                    module_name=inst.polarion_name,
+                    text_work_item_type=conf.text_work_item_type,
+                    text_work_item_id_field=conf.text_work_item_id_field,
+                )
 
 
 def read_config_file(
@@ -106,9 +118,9 @@ def generate_work_item_layouts(
     results = []
     for _type, conf in configs.items():
         if conf.show_title and conf.show_description:
-            layouter = polarion_api.data_models.Layouter.SECTION
+            layouter = polarion_api.Layouter.SECTION
         elif conf.show_description:
-            layouter = polarion_api.data_models.Layouter.PARAGRAPH
+            layouter = polarion_api.Layouter.PARAGRAPH
         else:
             if not conf.show_title:
                 logger.warning(
@@ -116,13 +128,13 @@ def generate_work_item_layouts(
                     "For that reason, the title will be shown for %s.",
                     _type,
                 )
-            layouter = polarion_api.data_models.Layouter.TITLE
+            layouter = polarion_api.Layouter.TITLE
         results.append(
             polarion_api.RenderingLayout(
                 type=_type,
                 layouter=layouter,
                 label=polarion_html_helper.camel_case_to_words(_type),
-                properties=polarion_api.data_models.RenderingProperties(
+                properties=polarion_api.RenderingProperties(
                     fields_at_start=conf.fields_at_start,
                     fields_at_end=conf.fields_at_end,
                     fields_at_end_as_table=conf.show_fields_as_table,

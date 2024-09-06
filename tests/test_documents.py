@@ -6,9 +6,20 @@ import pytest
 from lxml import etree, html
 
 from capella2polarion import data_models as dm
-from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import document_config, document_renderer
-from tests.conftest import TEST_COMBINED_DOCUMENT_CONFIG, TEST_DOCUMENT_ROOT
+from capella2polarion.connectors import polarion_repo, polarion_worker
+from capella2polarion.converters import (
+    document_config,
+    document_renderer,
+    text_work_item_provider,
+)
+from tests.conftest import (
+    DOCUMENT_TEMPLATES,
+    DOCUMENT_TEXT_WORK_ITEMS,
+    DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
+    TEST_COMBINED_DOCUMENT_CONFIG,
+    TEST_DOCUMENT_ROOT,
+    TEST_PROJECT_ID,
+)
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
 JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
@@ -17,30 +28,66 @@ MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
 DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
+PROJECT_EXTERNAL_WORKITEM_SRC = (
+    '<div id="polarion_wiki macro name=module-workitem;params=id=ATSY-1234'
+    f'|layout=0|external=true|project={TEST_PROJECT_ID}"></div>'
+)
 
 
-def existing_documents() -> dict[tuple[str, str], polarion_api.Document]:
+def existing_documents() -> polarion_repo.DocumentRepository:
     return {
-        ("_default", "id123"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id123",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        (None, "_default", "id123"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id123",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
+                rendering_layouts=[
+                    polarion_api.RenderingLayout(
+                        "Class", "paragraph", type="class"
+                    )
+                ],
             ),
-            rendering_layouts=[
-                polarion_api.RenderingLayout(
-                    "Class", "paragraph", type="class"
-                )
-            ],
+            [],
         ),
-        ("_default", "id1237"): polarion_api.Document(
-            module_folder="_default",
-            module_name="id1237",
-            home_page_content=polarion_api.TextContent(
-                type="text/html",
-                value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+        (None, "_default", "id1237"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1237",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
             ),
+            [],
+        ),
+        ("TestProject", "_default", "id1239"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1239",
+                status="in_review",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
+            ),
+            [],
+        ),
+        ("TestProject", "_default", "id1240"): (
+            polarion_api.Document(
+                module_folder="_default",
+                module_name="id1240",
+                status="draft",
+                home_page_content=polarion_api.TextContent(
+                    type="text/html",
+                    value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
+                ),
+            ),
+            [],
         ),
     }
 
@@ -64,10 +111,10 @@ def test_create_new_document(
         ]
     )
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
-    new_doc, wis = renderer.render_document(
+    document_data = renderer.render_document(
         JUPYTER_TEMPLATE_FOLDER,
         CLASSES_TEMPLATE,
         "_default",
@@ -76,10 +123,10 @@ def test_create_new_document(
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
-    assert len(wis) == 0
-    assert new_doc.rendering_layouts == [
+    assert len(document_data.headings) == 0
+    assert document_data.document.rendering_layouts == [
         polarion_api.RenderingLayout(
             label="Class", type="class", layouter="section"
         )
@@ -118,7 +165,7 @@ def test_update_document(
         ]
     )
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
     old_doc = polarion_api.Document(
         module_folder="_default",
@@ -138,18 +185,19 @@ def test_update_document(
         ),
     )
 
-    new_doc, wis = renderer.render_document(
+    document_data = renderer.render_document(
         JUPYTER_TEMPLATE_FOLDER,
         CLASSES_TEMPLATE,
         document=old_doc,
+        text_work_items={},
         cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
-    assert len(new_doc.rendering_layouts) == 1
-    assert new_doc.rendering_layouts[
+    assert len(document_data.document.rendering_layouts) == 1
+    assert document_data.document.rendering_layouts[
         0
     ].properties == polarion_api.data_models.RenderingProperties(
         fields_at_start=["ID"]
@@ -160,9 +208,9 @@ def test_update_document(
     assert content[0].tag == "h1"
     assert content[1].text == "Data Classes"
     assert content[1].tag == "h2"
-    assert len(wis) == 1
-    assert wis[0].id == "ATSY-16062"
-    assert wis[0].title == "Class Document"
+    assert len(document_data.headings) == 1
+    assert document_data.headings[0].id == "ATSY-16062"
+    assert document_data.headings[0].title == "Class Document"
 
 
 def test_mixed_authority_document(
@@ -170,7 +218,7 @@ def test_mixed_authority_document(
     model: capellambse.MelodyModel,
 ):
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
     old_doc = polarion_api.Document(
         module_folder="_default",
@@ -180,7 +228,7 @@ def test_mixed_authority_document(
         ),
     )
 
-    new_doc, wis = renderer.update_mixed_authority_document(
+    document_data = renderer.update_mixed_authority_document(
         old_doc,
         DOCUMENT_SECTIONS,
         {
@@ -195,28 +243,160 @@ def test_mixed_authority_document(
                 "global_param": "Overwrite global param",
             },
         },
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+            [
+                polarion_api.WorkItem(
+                    id="EXISTING", additional_attributes={"MyField": "id1"}
+                )
+            ],
+        ),
     )
 
     content: list[etree._Element] = html.fromstring(
-        new_doc.home_page_content.value
+        document_data.document.home_page_content.value
     )
 
-    assert len(content) == 15
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert len(content) == 17
     assert [c.tag for c in content[:3]] == ["h1", "p", "p"]
     assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading"
     assert content[5].text == "Global Test"
     assert content[6].text == "Local Test section 1"
-    assert content[8].text == "This will be kept."
-    assert content[10].get("id") == (
+    assert content[9].text == "This will be kept."
+    assert content[11].get("id") == (
         "polarion_wiki macro name=module-workitem;params=id=ATSY-18305"
     )
-    assert content[10].tag == "h3"
-    assert content[11].text == "Overwritten: Overwrite global param"
-    assert content[12].text == "Local Test section 2"
-    assert content[14].text == "Some postfix stuff"
-    assert len(wis) == 1
-    assert wis[0].id == "ATSY-18305"
-    assert wis[0].title == "Keep Heading"
+    assert content[11].tag == "h3"
+    assert content[12].text == "Overwritten: Overwrite global param"
+    assert content[13].text == "Local Test section 2"
+    assert content[16].text == "Some postfix stuff"
+    assert len(document_data.headings) == 1
+    assert document_data.headings[0].id == "ATSY-18305"
+    assert document_data.headings[0].title == "Keep Heading"
+
+
+def test_create_full_authority_document_text_work_items(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+
+    document_data = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_TEXT_WORK_ITEMS,
+        "_default",
+        "TEST-DOC",
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+        ),
+    )
+
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id1"
+        ].additional_attributes["MyField"]
+        == "id1"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id2"
+        ].additional_attributes["MyField"]
+        == "id2"
+    )
+
+
+def test_update_full_authority_document_text_work_items(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+    old_doc = polarion_api.Document(
+        module_folder="_default",
+        module_name="TEST-DOC",
+        home_page_content=polarion_api.TextContent(
+            type="text/html",
+            value="",
+        ),
+    )
+
+    document_data = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_TEXT_WORK_ITEMS,
+        "_default",
+        "TEST-DOC",
+        document=old_doc,
+        text_work_item_provider=text_work_item_provider.TextWorkItemProvider(
+            "MyField",
+            "MyType",
+            [
+                polarion_api.WorkItem(
+                    id="EXISTING", additional_attributes={"MyField": "id1"}
+                )
+            ],
+        ),
+    )
+
+    assert len(document_data.text_work_item_provider.new_text_work_items) == 2
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].id
+        == "EXISTING"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id1"].type
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id1"
+        ].additional_attributes["MyField"]
+        == "id1"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].id
+        is None
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items["id2"].type
+        == "MyType"
+    )
+    assert (
+        document_data.text_work_item_provider.new_text_work_items[
+            "id2"
+        ].additional_attributes["MyField"]
+        == "id2"
+    )
 
 
 def test_render_all_documents_partially_successfully(
@@ -224,31 +404,121 @@ def test_render_all_documents_partially_successfully(
     model: capellambse.MelodyModel,
     caplog: pytest.LogCaptureFixture,
 ):
+    empty_polarion_worker.polarion_data_repo.update_work_items(
+        [
+            dm.CapellaWorkItem(
+                "ATSY-1234",
+                uuid_capella="d8655737-39ab-4482-a934-ee847c7ff6bd",
+                type="componentExchange",
+            ),
+        ]
+    )
     with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
-    new_docs, updated_docs, work_items = renderer.render_documents(
-        conf, existing_documents()
-    )
+    projects_data = renderer.render_documents(conf, existing_documents())
 
-    # There are 6 documents in the config, we expect 3 rendering to fail
-    assert len(caplog.records) == 3
+    # There are 8 documents in the config, we expect 4 rendering to fail
+    assert len(caplog.records) == 4
+    # The first tree documents weren't rendered due to an error, the fourth
+    # wasn't rendered because of status restrictions, which is a just warning
+    assert [lr.levelno for lr in caplog.records] == [40, 40, 40, 30]
     # For one valid config we did not pass a document, so we expect a new one
-    assert len(new_docs) == 1
-    # And two updated documents
-    assert len(updated_docs) == 2
-    # In both existing documents we had 2 headings. In full authority mode
+    assert len(projects_data[None].new_docs) == 1
+    # And three updated documents
+    assert len(projects_data[None].updated_docs) == 2
+    assert len(projects_data["TestProject"].updated_docs) == 1
+    # In all existing documents we had 2 headings. In full authority mode
     # both should be updated and in mixed authority mode only one of them as
     # the other is outside the rendering area
-    assert len(work_items) == 3
-    assert len(updated_docs[0].rendering_layouts) == 0
-    assert len(updated_docs[1].rendering_layouts) == 1
-    assert updated_docs[0].outline_numbering is None
-    assert updated_docs[1].outline_numbering is None
+    assert (
+        sum(
+            len(document_data.headings)
+            for document_data in projects_data[None].updated_docs
+        )
+        == 3
+    )
+    assert (
+        sum(
+            len(document_data.headings)
+            for document_data in projects_data["TestProject"].updated_docs
+        )
+        == 2
+    )
+    assert (
+        PROJECT_EXTERNAL_WORKITEM_SRC
+        in projects_data["TestProject"]
+        .updated_docs[0]
+        .document.home_page_content.value
+    )
+    assert (
+        len(projects_data[None].updated_docs[0].document.rendering_layouts)
+        == 0
+    )
+    assert (
+        len(projects_data[None].updated_docs[1].document.rendering_layouts)
+        == 1
+    )
+    assert (
+        projects_data[None].updated_docs[0].document.outline_numbering is None
+    )
+    assert (
+        projects_data[None].updated_docs[1].document.outline_numbering is None
+    )
+
+
+def test_insert_work_item_cross_project(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    empty_polarion_worker.polarion_data_repo.update_work_items(
+        [
+            dm.CapellaWorkItem(
+                "ATSY-1234",
+                uuid_capella="d8655737-39ab-4482-a934-ee847c7ff6bd",
+                type="componentExchange",
+            )
+        ]
+    )
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+
+    document_data_1 = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
+        "test",
+        "name",
+        "title",
+        document_project_id="DIFFERENT",
+        element="d8655737-39ab-4482-a934-ee847c7ff6bd",
+    )
+
+    document_data_2 = renderer.render_document(
+        DOCUMENT_TEMPLATES,
+        DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
+        "test",
+        "name",
+        "title",
+        element="d8655737-39ab-4482-a934-ee847c7ff6bd",
+    )
+
+    content_1: list[html.HtmlElement] = html.fragments_fromstring(
+        document_data_1.document.home_page_content.value
+    )
+    content_2: list[html.HtmlElement] = html.fragments_fromstring(
+        document_data_2.document.home_page_content.value
+    )
+
+    assert len(content_1) == 2
+    assert content_1[0].attrib["id"].endswith(f"|project={TEST_PROJECT_ID}")
+    assert content_1[1].attrib["data-scope"] == TEST_PROJECT_ID
+    assert len(content_2) == 2
+    assert content_2[0].attrib["id"].endswith("|external=true")
 
 
 def test_render_all_documents_overwrite_headings_layouts(
@@ -259,23 +529,24 @@ def test_render_all_documents_overwrite_headings_layouts(
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
-        empty_polarion_worker.polarion_data_repo, model, True, True
+        empty_polarion_worker.polarion_data_repo,
+        model,
+        TEST_PROJECT_ID,
+        True,
+        True,
     )
 
-    _, updated_docs, _ = renderer.render_documents(conf, existing_documents())
+    projects_data = renderer.render_documents(conf, existing_documents())
+    updated_docs = projects_data[None].updated_docs
 
-    assert len(updated_docs[0].rendering_layouts) == 2
-    assert len(updated_docs[1].rendering_layouts) == 2
-    assert updated_docs[0].outline_numbering is False
-    assert updated_docs[1].outline_numbering is False
+    assert len(updated_docs[0].document.rendering_layouts) == 2
+    assert len(updated_docs[1].document.rendering_layouts) == 2
+    assert updated_docs[0].document.outline_numbering is False
+    assert updated_docs[1].document.outline_numbering is False
 
 
 def test_full_authority_document_config():
-    with open(
-        FULL_AUTHORITY_CONFIG,
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with open(FULL_AUTHORITY_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 2
@@ -289,6 +560,10 @@ def test_full_authority_document_config():
     assert conf.full_authority[0].instances[0].params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
+    assert conf.full_authority[0].project_id == "TestProject"
+    assert conf.full_authority[0].status_allow_list == ["draft", "open"]
+    assert conf.full_authority[1].project_id is None
+    assert conf.full_authority[1].status_allow_list is None
 
 
 def test_mixed_authority_document_config():
@@ -308,6 +583,8 @@ def test_mixed_authority_document_config():
     assert len(conf.mixed_authority[0].instances) == 2
     assert conf.mixed_authority[0].instances[0].polarion_space == "_default"
     assert conf.mixed_authority[0].instances[0].polarion_name == "id123"
+    assert conf.mixed_authority[0].project_id == "TestProject"
+    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
     assert conf.mixed_authority[0].instances[0].polarion_title == "Interface23"
     assert conf.mixed_authority[0].instances[0].params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
@@ -315,14 +592,20 @@ def test_mixed_authority_document_config():
     assert conf.mixed_authority[1].instances[0].section_params == {
         "section1": {"param_1": "Test"}
     }
+    assert conf.mixed_authority[1].project_id is None
+    assert conf.mixed_authority[1].status_allow_list is None
+    assert conf.mixed_authority[0].text_work_item_type == "text"
+    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
+    assert conf.mixed_authority[1].text_work_item_type == "myType"
+    assert conf.mixed_authority[1].text_work_item_id_field == "myId"
 
 
 def test_combined_config():
     with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
-    assert len(conf.full_authority) == 2
-    assert len(conf.mixed_authority) == 2
+    assert len(conf.full_authority) == 3
+    assert len(conf.mixed_authority) == 3
 
 
 def test_rendering_config():

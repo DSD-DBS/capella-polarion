@@ -11,7 +11,7 @@ capella2polarion_render_documents:
     - job: capella2polarion_synchronise_elements
 
   script:
-    - pip install capella2polarion
+    - pip install "capella2polarion${CAPELLA2POLARION_VERSION:+==$CAPELLA2POLARION_VERSION}"
     - >
       python \
         -m capella2polarion \

@@ -37,6 +37,21 @@ mixed_authority:
         section_params:
           section1:
             param_1: Test
+  - template_directory: jupyter-notebooks/document_templates
+    sections:
+      section1: test-icd.html.j2
+      section2: test-icd.html.j2
+    heading_numbering: True
+    project_id: TestProject
+    status_allow_list:
+      - draft
+      - open
+    instances:
+      - polarion_space: _default
+        polarion_name: id1239
+        section_params:
+          section1:
+            param_1: Test
 full_authority:
   - template_directory: jupyter-notebooks/document_templates
     template: test-icd.html.j2
@@ -66,3 +81,14 @@ full_authority:
     instances:
       - polarion_space: _default
         polarion_name: id1238
+  - template_directory: jupyter-notebooks/document_templates
+    template: test-icd.html.j2
+    project_id: TestProject
+    status_allow_list:
+      - draft
+      - open
+    instances:
+      - polarion_space: _default
+        polarion_name: id1240
+        params:
+          interface: d8655737-39ab-4482-a934-ee847c7ff6bd

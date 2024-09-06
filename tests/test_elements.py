@@ -255,25 +255,19 @@ class TestDiagramElements:
         )
 
     @staticmethod
-    def test_create_diagrams_filters_non_diagram_elements(
-        diagr_base_object: BaseObjectContainer,
-    ):
-        # This test does not make any sense, but it also didn't before
-        pw = diagr_base_object.pw
-        diagr_base_object.mc.generate_work_items(pw.polarion_data_repo)
-        assert pw.client.generate_work_items.call_count == 0
-
-    @staticmethod
     def test_delete_diagrams(diagr_base_object: BaseObjectContainer):
         pw = diagr_base_object.pw
         diagr_base_object.mc.converter_session = {}
         diagr_base_object.mc.generate_work_items(pw.polarion_data_repo)
         pw.create_missing_work_items(diagr_base_object.mc.converter_session)
         pw.delete_orphaned_work_items(diagr_base_object.mc.converter_session)
-        assert pw.client is not None
-        assert pw.client.delete_work_items.call_count == 1
-        assert pw.client.delete_work_items.call_args[0][0] == ["Diag-1"]
-        assert pw.client.generate_work_items.call_count == 0
+        assert pw.project_client is not None
+        assert pw.project_client.work_items.delete.call_count == 1
+        assert (
+            pw.project_client.work_items.delete.call_args[0][0][0].id
+            == "Diag-1"
+        )
+        assert pw.project_client.work_items.create.call_count == 0
 
 
 class TestModelElements:
@@ -777,14 +771,13 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
         polarion_api_get_all_work_items.return_value = polarion_work_item_list
         monkeypatch.setattr(
-            base_object.pw.client,
-            "get_all_work_items",
+            base_object.pw.project_client.work_items,
+            "get_all",
             polarion_api_get_all_work_items,
         )
 
@@ -806,24 +799,35 @@ class TestModelElements:
         get_work_item_mock = mock.MagicMock()
         get_work_item_mock.return_value = polarion_work_item_list[0]
         monkeypatch.setattr(
-            base_object.pw.client,
-            "get_work_item",
+            base_object.pw.project_client.work_items,
+            "get",
             get_work_item_mock,
         )
 
         base_object.pw.compare_and_update_work_items(
             base_object.mc.converter_session
         )
-        assert base_object.pw.client is not None
-        assert base_object.pw.client.get_all_work_item_links.call_count == 0
-        assert base_object.pw.client.delete_work_item_links.call_count == 0
-        assert base_object.pw.client.create_work_item_links.call_count == 0
-        assert base_object.pw.client.update_work_item.call_count == 1
-        assert base_object.pw.client.get_work_item.call_count == 1
         assert (
-            base_object.pw.client.get_all_work_item_attachments.call_count == 0
+            base_object.pw.project_client.work_items.links.get_all.call_count
+            == 0
         )
-        work_item = base_object.pw.client.update_work_item.call_args[0][0]
+        assert (
+            base_object.pw.project_client.work_items.links.delete.call_count
+            == 0
+        )
+        assert (
+            base_object.pw.project_client.work_items.links.create.call_count
+            == 0
+        )
+        assert base_object.pw.project_client.work_items.update.call_count == 1
+        assert base_object.pw.project_client.work_items.get.call_count == 1
+        assert (
+            base_object.pw.project_client.work_items.attachments.get_all.call_count  # pylint: disable=line-too-long
+            == 0
+        )
+        work_item = base_object.pw.project_client.work_items.update.call_args[
+            0
+        ][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
         assert work_item.title == "Fake 1"
@@ -843,14 +847,13 @@ class TestModelElements:
                 type="type",
                 uuid_capella="uuid1",
                 status="deleted",
-                checksum="123",
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
         polarion_api_get_all_work_items.return_value = polarion_work_item_list
         monkeypatch.setattr(
-            base_object.pw.client,
-            "get_all_work_items",
+            base_object.pw.project_client.work_items,
+            "get_all",
             polarion_api_get_all_work_items,
         )
 
@@ -865,7 +868,6 @@ class TestModelElements:
                 title="Something",
                 description_type="text/html",
                 description=markupsafe.Markup("Test"),
-                checksum="123",
             )
         )
 
@@ -874,24 +876,26 @@ class TestModelElements:
         get_work_item_mock = mock.MagicMock()
         get_work_item_mock.return_value = polarion_work_item_list[0]
         monkeypatch.setattr(
-            base_object.pw.client,
-            "get_work_item",
+            base_object.pw.project_client.work_items,
+            "get",
             get_work_item_mock,
         )
         base_object.pw.delete_orphaned_work_items(
             base_object.mc.converter_session
         )
-        assert base_object.pw.client.update_work_item.called is False
+        assert base_object.pw.project_client.work_items.update.called is False
 
         base_object.pw.create_missing_work_items(
             base_object.mc.converter_session
         )
-        assert base_object.pw.client.create_work_items.called is False
+        assert base_object.pw.project_client.work_items.create.called is False
 
         base_object.pw.compare_and_update_work_items(
             base_object.mc.converter_session
         )
-        work_item = base_object.pw.client.update_work_item.call_args[0][0]
+        work_item = base_object.pw.project_client.work_items.update.call_args[
+            0
+        ][0]
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.status == "open"
 
@@ -910,14 +914,6 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
-        )
 
         del base_object.mc.converter_session["uuid2"]
 
@@ -925,8 +921,7 @@ class TestModelElements:
             base_object.mc.converter_session
         )
 
-        assert base_object.pw.client is not None
-        assert base_object.pw.client.update_work_item.call_count == 0
+        assert base_object.pw.project_client.work_items.update.call_count == 0
 
     @staticmethod
     def test_update_work_items_same_checksum_force(
@@ -944,14 +939,6 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
-        )
 
         del base_object.mc.converter_session["uuid2"]
 
@@ -959,8 +946,7 @@ class TestModelElements:
             base_object.mc.converter_session
         )
 
-        assert base_object.pw.client is not None
-        assert base_object.pw.client.update_work_item.call_count == 1
+        assert base_object.pw.project_client.work_items.update.call_count == 1
 
     @staticmethod
     def test_update_links_with_no_elements(base_object: BaseObjectContainer):
@@ -972,14 +958,21 @@ class TestModelElements:
             base_object.mc.converter_session
         )
 
-        assert base_object.pw.client.get_all_work_item_links.call_count == 0
+        assert (
+            base_object.pw.project_client.work_items.links.get_all.call_count
+            == 0
+        )
 
     @staticmethod
     def test_update_links(base_object: BaseObjectContainer):
         link = polarion_api.WorkItemLink(
             "Obj-1", "Obj-2", "attribute", True, "project_id"
         )
-        _, work_item = base_object.pw.polarion_data_repo["uuid1"]
+        work_item = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid1"
+            )
+        )
         work_item.linked_work_items = [link]
         base_object.pw.polarion_data_repo.update_work_items(
             [
@@ -991,14 +984,6 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_models.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                status="open",
-                type="fakeModelObject",
-            )
-        )
         base_object.mc.converter_session["uuid2"].work_item = (
             data_models.CapellaWorkItem(
                 id="Obj-2",
@@ -1008,8 +993,7 @@ class TestModelElements:
             )
         )
 
-        assert base_object.pw.client is not None
-        base_object.pw.client.get_all_work_item_links.side_effect = (
+        base_object.pw.project_client.work_items.links.get_all.side_effect = (
             [link],
             [],
         )
@@ -1020,16 +1004,20 @@ class TestModelElements:
             base_object.pw.polarion_data_repo
         )
 
-        work_item_1 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid1"][1].to_dict()
+        work_item_1 = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid1"
+            )
         )
-        work_item_2 = data_models.CapellaWorkItem(
-            **base_object.pw.polarion_data_repo["uuid2"][1].to_dict()
+        work_item_2 = (
+            base_object.pw.polarion_data_repo.get_work_item_by_capella_uuid(
+                "uuid2"
+            )
         )
         work_item_1.linked_work_items_truncated = True
         work_item_2.linked_work_items_truncated = True
 
-        base_object.pw.client.get_work_item.side_effect = (
+        base_object.pw.project_client.work_items.get.side_effect = (
             work_item_1,
             work_item_2,
         )
@@ -1037,19 +1025,31 @@ class TestModelElements:
         base_object.pw.compare_and_update_work_items(
             base_object.mc.converter_session
         )
-        assert base_object.pw.client is not None
-        links = base_object.pw.client.get_all_work_item_links.call_args_list
-        assert base_object.pw.client.get_all_work_item_links.call_count == 2
+        links = (
+            base_object.pw.project_client.work_items.links.get_all.call_args_list  # pylint: disable=line-too-long
+        )
+        assert (
+            base_object.pw.project_client.work_items.links.get_all.call_count
+            == 2
+        )
         assert [links[0][0][0], links[1][0][0]] == ["Obj-1", "Obj-2"]
-        new_links = base_object.pw.client.create_work_item_links.call_args[0][
-            0
-        ]
-        assert base_object.pw.client.create_work_item_links.call_count == 1
+        new_links = (
+            base_object.pw.project_client.work_items.links.create.call_args[0][
+                0
+            ]
+        )
+        assert (
+            base_object.pw.project_client.work_items.links.create.call_count
+            == 1
+        )
         assert new_links == [expected_new_link]
-        assert base_object.pw.client.delete_work_item_links.call_count == 1
-        assert base_object.pw.client.delete_work_item_links.call_args[0][
+        assert (
+            base_object.pw.project_client.work_items.links.delete.call_count
+            == 1
+        )
+        assert base_object.pw.project_client.work_items.links.delete.call_args[
             0
-        ] == [link]
+        ][0] == [link]
 
     @staticmethod
     def test_patch_work_item_grouped_links(
@@ -1123,9 +1123,8 @@ class TestModelElements:
         base_object.pw.compare_and_update_work_items(
             base_object.mc.converter_session
         )
-        assert base_object.pw.client is not None
         update_work_item_calls = (
-            base_object.pw.client.update_work_item.call_args_list
+            base_object.pw.project_client.work_items.update.call_args_list
         )
         assert len(update_work_item_calls) == 3
         mock_grouped_links_calls = mock_grouped_links.call_args_list

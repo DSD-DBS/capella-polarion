@@ -32,6 +32,10 @@ TEST_MODEL = {
     "diagram_cache": str(TEST_DIAGRAM_CACHE),
 }
 TEST_HOST = "https://api.example.com"
+TEST_PROJECT_ID = "project_id"
+DOCUMENT_TEMPLATES = TEST_DOCUMENT_ROOT / "templates"
+DOCUMENT_TEXT_WORK_ITEMS = "document_work_items.html.j2"
+DOCUMENT_WORK_ITEMS_CROSS_PROJECT = "work_items_cross_project.html.j2"
 
 
 @pytest.fixture
@@ -59,7 +63,7 @@ def dummy_work_items() -> dict[str, data_models.CapellaWorkItem]:
             description=markupsafe.Markup(""),
             linked_work_items=[
                 polarion_api.WorkItemLink(
-                    f"Obj-{i}", f"Obj-{j}", "attribute", True, "project_id"
+                    f"Obj-{i}", f"Obj-{j}", "attribute", True, TEST_PROJECT_ID
                 )
                 for j in range(3)
                 if (i not in (j, 2))
@@ -116,11 +120,11 @@ def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
     work_item = data_models.CapellaWorkItem(
-        id="Obj-1", uuid_capella="uuid1", status="open", checksum="123"
+        id="Obj-1", uuid_capella="uuid1", status="open"
     )
     c2p_cli = cli.Capella2PolarionCli(
         debug=True,
-        polarion_project_id="project_id",
+        polarion_project_id=TEST_PROJECT_ID,
         polarion_url=TEST_HOST,
         polarion_pat="PrivateAccessToken",
         polarion_delete_work_items=True,
@@ -128,8 +132,10 @@ def base_object(
     )
 
     c2p_cli.setup_logger()
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
     fake = FakeModelObject("uuid1", name="Fake 1")
@@ -155,7 +161,6 @@ def base_object(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",
-                checksum="123",
                 type="fakeModelObject",
             ),
         ),
@@ -173,10 +178,12 @@ def base_object(
 
 @pytest.fixture
 def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
-    mock_api = mock.MagicMock(spec=polarion_api.OpenAPIPolarionProjectClient)
-    monkeypatch.setattr(polarion_api, "OpenAPIPolarionProjectClient", mock_api)
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     polarion_params = polarion_worker.PolarionWorkerParams(
-        project_id="project_id",
+        project_id=TEST_PROJECT_ID,
         url=TEST_HOST,
         pat="PrivateAccessToken",
         delete_work_items=True,
