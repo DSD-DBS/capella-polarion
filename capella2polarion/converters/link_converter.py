@@ -72,7 +72,11 @@ class LinkSerializer:
                     if isinstance(refs, common.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
                     elif refs is None:
-                        logger.info("For model element %r attribute %s is not set", obj._short_repr_(), link_config.capella_attr)
+                        logger.info(
+                            'For model element %r attribute "%s" is not set',
+                            obj._short_repr_(),
+                            link_config.capella_attr,
+                        )
                         continue
                     else:
                         assert hasattr(refs, "uuid"), "No 'uuid' on value"

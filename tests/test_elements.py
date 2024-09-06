@@ -491,13 +491,11 @@ class TestModelElements:
         base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
     ):
         expected = (
-            "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
-            "\n\tRequested attribute: 'attribute'"
-            "\n\tNo model element behind that attribute"
-            "\n\t--------"
+            "For model element \"<FakeModelObject 'Fake 1' (uuid1)>\" "
+            'attribute "attribute" is not set'
         )
 
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.INFO):
             link_serializer = link_converter.LinkSerializer(
                 base_object.pw.polarion_data_repo,
                 base_object.mc.converter_session,
@@ -507,7 +505,9 @@ class TestModelElements:
             links = link_serializer.create_links_for_work_item("uuid1")
 
         assert not links
-        assert caplog.messages[0] == expected
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelno == 20
+        assert caplog.records[0].message == expected
 
     @staticmethod
     def test_create_links_no_new_links_with_errors(
