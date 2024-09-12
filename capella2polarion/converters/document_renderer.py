@@ -99,8 +99,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self, obj: object, session: RenderingSession, level: int | None = None
     ) -> str:
         if (obj := self.check_model_element(obj)) is None:
+            logger.error(
+                "A non-model object was passed to insert a work item."
+            )
             return polarion_html_helper.RED_TEXT.format(
-                text="A none model object was passed to insert a work item."
+                text="A non-model object was passed to insert a work item."
             )
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
@@ -143,7 +146,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def __link_work_item(self, obj: object) -> str:
         if (obj := self.check_model_element(obj)) is None:
-            raise TypeError("object passed was no model element")
+            logger.error("A non-model object was passed to link a work item.")
+            return polarion_html_helper.RED_TEXT.format(
+                text="A non-model object was passed to link a work item."
+            )
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
@@ -169,7 +175,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def __work_item_field(self, obj: object, field: str) -> t.Any:
         if (obj := self.check_model_element(obj)) is None:
-            raise TypeError("object passed was no model element")
+            logger.error(
+                "A non-model object was passed to get a work item field."
+            )
+            return "A non-model object was passed to get a work item field."
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
