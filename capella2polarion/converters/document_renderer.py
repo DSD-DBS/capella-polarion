@@ -20,6 +20,13 @@ from .. import data_models
 from . import document_config, polarion_html_helper
 from . import text_work_item_provider as twi
 
+AREA_END_CLS = "c2pAreaEnd"
+"""This class is expected for a div in a wiki macro to start a rendering area
+in mixed authority documents."""
+AREA_START_CLS = "c2pAreaStart"
+"""This class is expected for a div in a wiki macro to end a rendering area in
+mixed authority documents."""
+
 logger = logging.getLogger(__name__)
 
 
@@ -580,7 +587,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         and content[0].tag == "div"
                     ):
                         element_id = content[0].get("id")
-                        if content[0].get("class") == "c2pAreaStart":
+                        if content[0].get("class") == AREA_START_CLS:
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"
@@ -590,7 +597,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             )
                             current_area_id = element_id
                             current_area_start = element_index
-                        elif content[0].get("class") == "c2pAreaEnd":
+                        elif content[0].get("class") == AREA_END_CLS:
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"
