@@ -356,6 +356,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         """Keep existing work item layouts in their original order."""
         document.rendering_layouts = document.rendering_layouts or []
         for rendering_layout in rendering_layouts:
+            assert rendering_layout.type is not None
             index = polarion_html_helper.get_layout_index(
                 "section", document.rendering_layouts, rendering_layout.type
             )
