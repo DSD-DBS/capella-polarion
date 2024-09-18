@@ -17,7 +17,7 @@ class ConverterData:
 
     layer: str
     type_config: converter_config.CapellaTypeConfig
-    capella_element: m.ModelElement
+    capella_element: m.ModelElement | m.Diagram
     work_item: dm.CapellaWorkItem | None = None
     description_references: list[str] = dataclasses.field(default_factory=list)
     errors: set[str] = dataclasses.field(default_factory=set)

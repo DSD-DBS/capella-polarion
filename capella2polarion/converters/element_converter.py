@@ -19,7 +19,6 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse import model as m
-from capellambse.model import diagram as diag
 from lxml import etree
 
 from capella2polarion import data_models
@@ -284,7 +283,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         }
 
     def _sanitize_linked_text(
-        self, obj: m.ModelObject
+        self, obj: m.ModelElement | m.Diagram
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -301,7 +300,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return self._sanitize_text(obj, linked_text)
 
     def _sanitize_text(
-        self, obj: m.ModelObject, text: markupsafe.Markup | str
+        self, obj: m.ModelElement | m.Diagram, text: markupsafe.Markup | str
     ) -> tuple[
         list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
     ]:
@@ -391,7 +390,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return match.group(default_group)
 
     def _get_requirement_types_text(
-        self, obj: m.ModelObject
+        self, obj: m.ModelElement | m.Diagram
     ) -> dict[str, dict[str, str]]:
         type_texts = collections.defaultdict(list)
         for req in getattr(obj, "requirements", []):
@@ -452,7 +451,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         """Serialize a diagram for Polarion."""
         diagram = converter_data.capella_element
         assert converter_data.work_item is not None
-        assert isinstance(diagram, diag.Diagram)
+        assert isinstance(diagram, m.Diagram)
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
@@ -480,7 +479,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         obj = converter_data.capella_element
         assert hasattr(obj, "precondition"), "Missing PreCondition Attribute"
         assert hasattr(obj, "postcondition"), "Missing PostCondition Attribute"
-        assert not isinstance(obj, diag.Diagram)
+        assert not isinstance(obj, m.Diagram)
 
         def get_condition(cap: m.ModelElement, name: str) -> str:
             if not (condition := getattr(cap, name)):

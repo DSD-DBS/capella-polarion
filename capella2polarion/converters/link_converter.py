@@ -75,7 +75,7 @@ class LinkSerializer:
                     if isinstance(refs, m.ElementList):
                         new = refs.by_uuid  # type: ignore[assignment]
                     elif refs is None:
-                        logger.info(
+                        logger.info(  # type: ignore[unreachable]
                             'For model element %r attribute "%s" is not set',
                             obj._short_repr_(),
                             link_config.capella_attr,
