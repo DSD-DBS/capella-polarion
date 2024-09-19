@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_RESOLVERS = {"Part": lambda obj: obj.type.uuid}
 _Serializer: t.TypeAlias = cabc.Callable[
-    [m.ModelObject, str, str, dict[str, t.Any]],
+    [m.ModelElement | m.Diagram, str, str, dict[str, t.Any]],
     list[polarion_api.WorkItemLink],
 ]
 
@@ -139,19 +139,18 @@ class LinkSerializer:
 
     def _handle_description_reference_links(
         self,
-        obj: m.ModelObject,
+        obj: m.ModelElement | m.Diagram,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        assert isinstance(obj, m.ModelElement)
         refs = self.converter_session[obj.uuid].description_references
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
 
     def _handle_diagram_reference_links(
         self,
-        diagram: m.ModelObject,
+        diagram: m.ModelElement | m.Diagram,
         work_item_id: str,
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
@@ -384,7 +383,7 @@ def _sorted_unordered_html_list(
 
 
 def _resolve_attribute(
-    obj: m.ModelObject, attr_id: str
+    obj: m.ModelElement | m.Diagram, attr_id: str
 ) -> m.ElementList[m.ModelElement] | m.ModelElement:
     attr_name, _, map_id = attr_id.partition(".")
     objs = getattr(obj, attr_name)
