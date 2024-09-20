@@ -103,7 +103,7 @@ class TextWorkItemProvider:
             if not isinstance(element, html.HtmlElement):
                 continue
 
-            if element.tag == "workitem":
+            if element.tag == html_helper.WORK_ITEM_TAG:
                 new_content.extend(html_fragments[last_match + 1 : index])
                 last_match = index
                 if work_item := self.new_text_work_items.get(

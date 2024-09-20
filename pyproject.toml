@@ -28,11 +28,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "capellambse>=0.5.69,<0.6",
-  "capellambse_context_diagrams>=0.3.1,<0.4",
+  "capellambse>=0.6.6,<0.7",
+  "capellambse_context_diagrams>=0.4.0",
   "click",
   "PyYAML",
-  "polarion-rest-api-client==1.1.2",
+  "polarion-rest-api-client==1.1.3",
   "bidict",
   "cairosvg",
   "jinja2",

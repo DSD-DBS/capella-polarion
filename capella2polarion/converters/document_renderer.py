@@ -20,6 +20,13 @@ from .. import data_models
 from . import document_config, polarion_html_helper
 from . import text_work_item_provider as twi
 
+AREA_END_CLS = "c2pAreaEnd"
+"""This class is expected for a div in a wiki macro to start a rendering area
+in mixed authority documents."""
+AREA_START_CLS = "c2pAreaStart"
+"""This class is expected for a div in a wiki macro to end a rendering area in
+mixed authority documents."""
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,8 +99,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self, obj: object, session: RenderingSession, level: int | None = None
     ) -> str:
         if (obj := self.check_model_element(obj)) is None:
+            logger.error(
+                "A non-model object was passed to insert a work item."
+            )
             return polarion_html_helper.RED_TEXT.format(
-                text="A none model object was passed to insert a work item."
+                text="A non-model object was passed to insert a work item."
             )
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
@@ -136,7 +146,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def __link_work_item(self, obj: object) -> str:
         if (obj := self.check_model_element(obj)) is None:
-            raise TypeError("object passed was no model element")
+            logger.error("A non-model object was passed to link a work item.")
+            return polarion_html_helper.RED_TEXT.format(
+                text="A non-model object was passed to link a work item."
+            )
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
@@ -162,7 +175,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def __work_item_field(self, obj: object, field: str) -> t.Any:
         if (obj := self.check_model_element(obj)) is None:
-            raise TypeError("object passed was no model element")
+            logger.error(
+                "A non-model object was passed to get a work item field."
+            )
+            return "A non-model object was passed to get a work item field."
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
@@ -356,6 +372,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         """Keep existing work item layouts in their original order."""
         document.rendering_layouts = document.rendering_layouts or []
         for rendering_layout in rendering_layouts:
+            assert rendering_layout.type is not None
             index = polarion_html_helper.get_layout_index(
                 "section", document.rendering_layouts, rendering_layout.type
             )
@@ -579,7 +596,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                         and content[0].tag == "div"
                     ):
                         element_id = content[0].get("id")
-                        if content[0].get("class") == "c2pAreaStart":
+                        if content[0].get("class") == AREA_START_CLS:
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"
@@ -589,7 +606,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             )
                             current_area_id = element_id
                             current_area_start = element_index
-                        elif content[0].get("class") == "c2pAreaEnd":
+                        elif content[0].get("class") == AREA_END_CLS:
                             assert (
                                 element_id is not None
                             ), "There was no id set to identify the area"

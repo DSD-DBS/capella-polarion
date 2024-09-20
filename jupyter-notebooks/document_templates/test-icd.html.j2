@@ -76,7 +76,7 @@ This interface control document defines functional interactions between the foll
 {{ heading(3, "Message Catalog", session)}}
 <p>This section identifies messages used within the interface.</p>
 {%- set classes = [] %}
-{% for ei in interface.exchange_items | unique %}
+{% for ei in interface.exchange_items | unique(attribute="uuid") %}
 {{ insert_work_item(ei, session) }}
 {% for el in ei.elements %}
 {{ add_class_dependencies(el.abstract_type, classes) }}
@@ -84,6 +84,6 @@ This interface control document defines functional interactions between the foll
 {% endfor %}
 {{ heading(3, "Message Description", session)}}
 <p>This section provides a detailed description of each message used within the interface.</p>
-{% for cl in classes | unique %}
+{% for cl in classes | unique(attribute="uuid") %}
 {{ insert_work_item(cl, session) }}
 {% endfor %}
