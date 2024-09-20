@@ -10,10 +10,10 @@ The high-level functionality and use cases are described in the
 :ref:`feature <render-documents>` documentation page. Here it is described how
 to set up the Live-Docs rendering.
 
-Example configuration
----------------------
-The `full_authority_config.yaml` file provides the configuration for rendering
-the document in Full authority mode.
+Full Authority Mode
+*******************
+The ``full_authority_config.yaml`` file provides an example configuration for
+rendering documents in full authority mode.
 
 .. literalinclude:: ../../../tests/data/documents/full_authority_config.yaml
    :language: yaml
@@ -33,7 +33,7 @@ the Live-Doc is managed.
 
 Mixed Authority Mode
 ********************
-In Mixed authority mode, users have more flexibility over the Live-Doc. In this
+In mixed authority mode, users have more flexibility over the Live-Doc. In this
 mode, users can mark specific sections of the Live-Doc where they would like
 content to be inserted or updated by the `capella2polarion` service. These
 sections are populated with content rendered from Jinja2 templates, while the
@@ -50,6 +50,8 @@ for automated rendering.
 .. literalinclude:: ../../../tests/data/documents/mixed_config.yaml
    :language: yaml
    :lines: 4-
+
+.. _mixed-sections-config:
 
 Under `sections` the individual templates are listed to populate the marked
 sections from the Live-Doc. The following macro is used as dividers:

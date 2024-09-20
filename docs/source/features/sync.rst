@@ -6,10 +6,6 @@
 
 Model synchronization
 =====================
-
-How it works
-------------
-
 The synchronization of Capella objects as Polarion work items is done by using
 the Polarion REST API. We developed a `Python client`_ where most of the
 endpoints are generated from the open API description. In general, we serialize
@@ -105,15 +101,32 @@ Links
 Attributes on Capella objects referencing other Capella objects are rendered
 as linked work items if (and only if) the link target exists as a work item in
 Polarion. This needs specific configuration in the work item link roles XML.
-If the configuration is done, any attribute can be rendered as a link.
+If the configuration is done, any Capella attribute can be rendered as a link.
+Per default any configured link will cause the rendering 2 custom fields:
 
-Have a look into
+1. Grouped linked work items
+2. Grouped backlink work items (on the link target work items)
 
 Grouped linked work items
 *************************
 
 In a Polarion live-doc, there is no way to filter the linked work items table
 which is automatically created from Polarion and can be included in the
-document. Therefore, Capella2Polarion creates two custom fields for each link
-group: A direct field with a list of the links and a field for the reverse
-links on each target.
+document:
+
+.. image:: ../_static/linked_work_items.jpeg
+  :width: 700
+  :align: center
+
+Therefore, Capella2Polarion creates two custom fields for each link configured.
+The linked work items are then grouped: A direct field with a list of the links
+and a field for the reverse links on each target:
+
+.. image:: ../_static/grouped_linked_work_items.png
+  :width: 700
+  :align: center
+
+For now this feature can not be disabled. Keep in mind that this requires
+configuration of 2 new custom fields on the work item type and the targeted
+work item type. See the :ref:`linked work items configuration documentation
+page <links-config>` for more details.

@@ -82,6 +82,8 @@ Polarion types are used. In capellambse however this is just a
 configure a generic config and for each specific config you can also add a
 ``links`` section. Both will be merged.
 
+.. _links-config:
+
 Links
 -----
 Links can be configured by just providing a list of strings:
@@ -107,5 +109,5 @@ polarion custom field ID for a grouped list of these links. The
 the links. The ``include`` is an optional feature that renders additional
 work item references into the grouped link custom field. In this example for
 each linked ``FunctionalExchange`` in the grouped list there will be
-``ExchangeItem``s included. The key "Exchange Items" is used for the indication
-in the list.
+``ExchangeItem`` s included. The key "Exchange Items" is used for the
+indication in the list.
