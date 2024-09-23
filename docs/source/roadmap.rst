@@ -1,4 +1,8 @@
 
+..
+   Copyright DB InfraGO AG and contributors
+   SPDX-License-Identifier: Apache-2.0
+
 Polarion config diff/mig tool
 =============================
 The model element synchronization is a service that requires configuration
