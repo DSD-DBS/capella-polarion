@@ -9,7 +9,7 @@ import typing as t
 from collections import abc as cabc
 
 import yaml
-from capellambse.model import common, diagram
+from capellambse import model as m
 from capellambse_context_diagrams import filters as context_filters
 
 logger = logging.getLogger(__name__)
@@ -370,11 +370,11 @@ def _filter_context_diagram_config(
 def _filter_links(
     c_type: str, links: list[LinkConfig], is_global: bool = False
 ) -> list[LinkConfig]:
-    c_class: type[common.ModelObject | diagram.Diagram]
+    c_class: type[m.ModelObject]
     if c_type == "diagram":
-        c_class = diagram.Diagram
+        c_class = m.Diagram
     else:
-        if not (c_classes := common.find_wrapper(c_type)):
+        if not (c_classes := m.find_wrapper(c_type)):
             logger.error("Did not find any matching Wrapper for %r", c_type)
             return links
         c_class = c_classes[0]
@@ -385,7 +385,7 @@ def _filter_links(
         is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
         if (
             capella_attr == DESCRIPTION_REFERENCE_SERIALIZER
-            or (is_diagram_elements and c_class == diagram.Diagram)
+            or (is_diagram_elements and c_class == m.Diagram)
             or hasattr(c_class, capella_attr)
         ):
             available_links.append(link)
