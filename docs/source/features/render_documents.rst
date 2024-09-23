@@ -38,7 +38,7 @@ rendering sessions.
 Mixed Authority Mode
 ********************
 In mixed authority mode, users have more flexibility over the Live-Doc. Users
-can mark (via macro) specific sections of the Live-Doc where they would like
+can mark specific sections of the Live-Doc via wiki-macro where they would like
 content to be inserted or updated by the `capella2polarion` service. If you
 want to see how this looks like, have a look in the :ref:`configuration
 documentation page <mixed-sections-config>`. These sections are populated with
@@ -48,3 +48,6 @@ manually managed and updated by users in Polarion.
 This allows users to maintain manual changes in non-synchronized sections of
 the document, while still benefiting from automated updates for key sections
 filled with model enhanced content.
+
+If you want to know how to setup the Live-Doc rendering, head to the
+:ref:`documentation page <render-docs-config>`.

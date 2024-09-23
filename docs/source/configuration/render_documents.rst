@@ -29,23 +29,12 @@ process, minimizing disruptions.
 
 Each instance is a Live-Doc, possibly targeting a specific model element.
 With `work_item_layouts` the representational configuration of work items in
-the Live-Doc is managed.
+the Live-Doc are managed.
 
 Mixed Authority Mode
 ********************
-In mixed authority mode, users have more flexibility over the Live-Doc. In this
-mode, users can mark specific sections of the Live-Doc where they would like
-content to be inserted or updated by the `capella2polarion` service. These
-sections are populated with content rendered from Jinja2 templates, while the
-rest of the document can be manually managed and updated by users in Polarion.
-
-This allows users to maintain manual changes in non-synchronized sections of
-the document, while still benefiting from automated updates for key sections.
-
-Example Configuration:
-
 The `mixed_config.yaml` file describes how to set up mixed authority mode
-for automated rendering.
+Live-Docs for automated rendering.
 
 .. literalinclude:: ../../../tests/data/documents/mixed_config.yaml
    :language: yaml
