@@ -10,7 +10,17 @@
 ![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/lint.yml/badge.svg)
 ![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/docs.yml/badge.svg)
 
-Synchronise Capella models with Polarion projects
+Synchronise Capella models with Polarion projects.
+
+![image](c2p-uc1.gif)
+
+Use cases covered:
+
+- *Make Capella Objects and attributes of interest available in a Polarion* project so that a Project User could referense those objects and attributes in LiveDocs and WorkItems such as requirements, to ensure consistency across the Project. Model has full authority over the work items that represent model elements. A change to a model element will result in a change to the corresponding WorkItem in Polarion.
+
+- *Create and maintain LiveDocs* based on a Capella model and a set of templates so that the Project Users could do less paperwork. A change to the model or template shall result in a change to a LiveDoc or related WorkItems. All changes to generated LiveDocs made in Polarion will be over-written by Capella2Polarion as it has "Full Authority" over those documents.
+
+- *Create and co-maintain LiveDocs* where model would have authority over some sections and people over other sections (mixed-authority) - this would enable Project User to create requirements or other objects in the context of model-derived structure or elements.
 
 # Documentation
 
