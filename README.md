@@ -12,7 +12,7 @@
 
 Synchronise Capella models with Polarion projects.
 
-![image](docs/source/_static/c2p-uc1.gif)
+![image](./docs/source/_static/c2p-uc1.gif)
 
 Use cases covered:
 
