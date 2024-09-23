@@ -12,15 +12,15 @@
 
 Synchronise Capella models with Polarion projects.
 
-![image](c2p-uc1.gif)
+![image](docs/source/_static/c2p-uc1.gif)
 
 Use cases covered:
 
-- *Make Capella Objects and attributes of interest available in a Polarion* project so that a Project User could referense those objects and attributes in LiveDocs and WorkItems such as requirements, to ensure consistency across the Project. Model has full authority over the work items that represent model elements. A change to a model element will result in a change to the corresponding WorkItem in Polarion.
+- _Make Capella Objects and attributes of interest available in a Polarion_ project so that a Project User could referense those objects and attributes in LiveDocs and WorkItems such as requirements, to ensure consistency across the Project. Model has full authority over the work items that represent model elements. A change to a model element will result in a change to the corresponding WorkItem in Polarion.
 
-- *Create and maintain LiveDocs* based on a Capella model and a set of templates so that the Project Users could do less paperwork. A change to the model or template shall result in a change to a LiveDoc or related WorkItems. All changes to generated LiveDocs made in Polarion will be over-written by Capella2Polarion as it has "Full Authority" over those documents.
+- _Create and maintain LiveDocs_ based on a Capella model and a set of templates so that the Project Users could do less paperwork. A change to the model or template shall result in a change to a LiveDoc or related WorkItems. All changes to generated LiveDocs made in Polarion will be over-written by Capella2Polarion as it has "Full Authority" over those documents.
 
-- *Create and co-maintain LiveDocs* where model would have authority over some sections and people over other sections (mixed-authority) - this would enable Project User to create requirements or other objects in the context of model-derived structure or elements.
+- _Create and co-maintain LiveDocs_ where model would have authority over some sections and people over other sections (mixed-authority) - this would enable Project User to create requirements or other objects in the context of model-derived structure or elements.
 
 # Documentation
 
@@ -28,6 +28,7 @@ Use cases covered:
 Read the [full documentation on GitHub](https://dsd-dbs.github.io/capella-polarion).
 
 # Installation
+
 We have a dependency on [cairosvg](https://cairosvg.org/). Please check their
 [documentation](https://cairosvg.org/documentation/) for OS specific dependencies.
 
