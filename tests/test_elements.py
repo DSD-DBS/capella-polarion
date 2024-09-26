@@ -27,6 +27,7 @@ from capella2polarion.converters import (
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
+    LINK_CONFIG,
     TEST_MODEL_ELEMENTS_CONFIG,
     BaseObjectContainer,
     FakeModelObject,
@@ -176,15 +177,7 @@ def grouped_links_base_object(
     dummy_work_items: dict[str, data_models.CapellaWorkItem],
 ) -> GroupedLinksBaseObject:
     config = converter_config.CapellaTypeConfig(
-        "fakeModelObject",
-        links=[
-            converter_config.LinkConfig(
-                capella_attr="attribute",
-                polarion_role="attribute",
-                link_field="attribute",
-                reverse_field="attribute_reverse",
-            )
-        ],
+        "fakeModelObject", links=[LINK_CONFIG]
     )
     mock_model = mock.MagicMock()
     fake_2 = FakeModelObject("uuid2", "Fake 2")
@@ -993,6 +986,8 @@ class TestModelElements:
                 type="fakeModelObject",
             )
         )
+        for data in base_object.mc.converter_session.values():
+            data.type_config.links[0].polarion_role = "attribute"
 
         base_object.pw.project_client.work_items.links.get_all.side_effect = (
             [link],
@@ -1266,7 +1261,7 @@ class TestModelElements:
 
     @staticmethod
     def test_grouped_links_attributes_different_link_field_in_config(
-        base_object: BaseObjectContainer, monkeypatch: pytest.MonkeyPatch
+        base_object: BaseObjectContainer,
     ):
         converter_data_1 = base_object.mc.converter_session["uuid1"]
         converter_data_2 = base_object.mc.converter_session["uuid2"]
