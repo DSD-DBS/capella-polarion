@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 variables:
-  CAPELLA2POLARION_DEBUG: "1"
+  CAPELLA2POLARION_DEBUG: 1
+  CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS: 1
 
 capella2polarion_synchronise_elements:
   needs:
