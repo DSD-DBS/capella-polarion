@@ -21,4 +21,4 @@ capella2polarion_render_documents:
 
   script:
     - pip install "capella2polarion${CAPELLA2POLARION_VERSION:+==$CAPELLA2POLARION_VERSION}"
-    - python -m capella2polarion render-documents
+    - capella2polarion render-documents

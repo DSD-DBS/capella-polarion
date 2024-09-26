@@ -58,10 +58,10 @@ def cli(
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
-    capella_model: capellambse.MelodyModel,
+    capella_model: capellambse.MelodyModel | None,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
-    if capella_model.diagram_cache is None:
+    if capella_model is not None and capella_model.diagram_cache is None:
         logger.warning("It's highly recommended to define a diagram cache!")
 
     capella2polarion_cli = Capella2PolarionCli(
@@ -128,6 +128,7 @@ def synchronize(
     )
     capella_to_polarion_cli.force_update = force_update
 
+    assert capella_to_polarion_cli.capella_model is not None
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
@@ -199,6 +200,7 @@ def render_documents(
         configs.iterate_documents()
     )
 
+    assert capella_to_polarion_cli.capella_model is not None
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
