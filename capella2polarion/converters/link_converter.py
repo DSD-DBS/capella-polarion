@@ -49,6 +49,10 @@ class LinkSerializer:
             converter_config.DIAGRAM_ELEMENTS_SERIALIZER: self._handle_diagram_reference_links,  # pylint: disable=line-too-long
         }
 
+        self._link_field_groups: dict[str, list[polarion_api.WorkItemLink]] = (
+            defaultdict(list)
+        )
+
     def create_links_for_work_item(
         self, uuid: str
     ) -> list[polarion_api.WorkItemLink]:
@@ -58,6 +62,7 @@ class LinkSerializer:
         work_item = converter_data.work_item
         assert work_item is not None
         assert work_item.id is not None
+        self._link_field_groups.clear()
         new_links: list[polarion_api.WorkItemLink] = []
         link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
@@ -66,9 +71,7 @@ class LinkSerializer:
             try:
                 assert work_item.id is not None
                 if serializer:
-                    new_links.extend(
-                        serializer(obj, work_item.id, role_id, {})
-                    )
+                    links = serializer(obj, work_item.id, role_id, {})
                 else:
                     refs = _resolve_attribute(obj, link_config.capella_attr)
                     new: cabc.Iterable[str]
@@ -88,9 +91,10 @@ class LinkSerializer:
                     new = set(
                         self._get_work_item_ids(work_item.id, new, role_id)
                     )
-                    new_links.extend(
-                        self._create(work_item.id, role_id, new, {})
-                    )
+                    links = self._create(work_item.id, role_id, new, {})
+
+                new_links.extend(links)
+                self._link_field_groups[link_config.link_field].extend(links)
             except Exception as error:
                 error_message = make_link_logging_message(
                     f"{type(error).__name__} {str(error)}",
@@ -223,23 +227,22 @@ class LinkSerializer:
         assert work_item is not None
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
         logger.debug("Building grouped links for work item %r...", wi)
-        for role, grouped_links in _group_by(
-            "role", work_item.linked_work_items
-        ).items():
-            if (config := find_link_config(data, role)) is not None:
-                if back_links is not None and config.reverse_field:
-                    for link in grouped_links:
-                        back_links.setdefault(
-                            link.secondary_work_item_id, {}
-                        ).setdefault(config.reverse_field, []).append(link)
+        for link_config in data.type_config.links:
+            grouped_links = self._link_field_groups[link_config.link_field]
 
-                if config.link_field:
-                    self._create_link_fields(
-                        work_item,
-                        config.link_field,
-                        grouped_links,
-                        config=config,
-                    )
+            if back_links is not None and link_config.reverse_field:
+                for link in grouped_links:
+                    back_links.setdefault(
+                        link.secondary_work_item_id, {}
+                    ).setdefault(link_config.reverse_field, []).append(link)
+
+            if grouped_links:
+                self._create_link_fields(
+                    work_item,
+                    link_config.link_field,
+                    grouped_links,
+                    config=link_config,
+                )
 
     def _create_link_fields(
         self,

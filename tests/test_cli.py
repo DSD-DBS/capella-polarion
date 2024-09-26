@@ -71,6 +71,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--grouped-links-custom-fields",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
@@ -81,6 +82,7 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     assert mock_generate_work_items.call_args_list[1][1] == {
         "generate_links": True,
         "generate_attachments": True,
+        "generate_grouped_links_custom_fields": True,
     }
     assert mock_delete_work_items.call_count == 1
     assert mock_patch_work_items.call_count == 1

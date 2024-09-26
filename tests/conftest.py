@@ -103,16 +103,10 @@ class UnsupportedFakeModelObject(FakeModelObject):
     """A ``FakeModelObject`` which shouldn't be migrated."""
 
 
-class BaseObjectContainer:
-    def __init__(
-        self,
-        c2p_cli: cli.Capella2PolarionCli,
-        pw: polarion_worker.CapellaPolarionWorker,
-        mc: model_converter.ModelConverter,
-    ) -> None:
-        self.c2pcli: cli.Capella2PolarionCli = c2p_cli
-        self.pw: polarion_worker.CapellaPolarionWorker = pw
-        self.mc = mc
+class BaseObjectContainer(t.NamedTuple):
+    c2pcli: cli.Capella2PolarionCli
+    pw: polarion_worker.CapellaPolarionWorker
+    mc: model_converter.ModelConverter
 
 
 # pylint: disable=redefined-outer-name
@@ -144,7 +138,10 @@ def base_object(
         "fakeModelObject",
         links=[
             converter_config.LinkConfig(
-                capella_attr="attribute", polarion_role="attribute"
+                capella_attr="attribute",
+                polarion_role="attribute",
+                link_field="attribute",
+                reverse_field="attribute_reverse",
             )
         ],
     )

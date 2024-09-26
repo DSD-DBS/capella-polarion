@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import typing as t
+from collections import defaultdict
 from unittest import mock
 
 import capellambse
@@ -1001,7 +1002,8 @@ class TestModelElements:
             "Obj-2", "Obj-1", "attribute", None, "project_id"
         )
         base_object.mc.generate_work_item_links(
-            base_object.pw.polarion_data_repo
+            base_object.pw.polarion_data_repo,
+            generate_grouped_links_custom_fields=True,
         )
 
         work_item_1 = (
@@ -1118,7 +1120,8 @@ class TestModelElements:
         ]
         base_object.mc.model = mock_model
         base_object.mc.generate_work_item_links(
-            base_object.pw.polarion_data_repo
+            base_object.pw.polarion_data_repo,
+            generate_grouped_links_custom_fields=True,
         )
         base_object.pw.compare_and_update_work_items(
             base_object.mc.converter_session
@@ -1185,10 +1188,14 @@ class TestModelElements:
             converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
+            link_serializer._link_field_groups["attribute"] = (
+                work_item.linked_work_items
+            )
             link_serializer.create_grouped_link_fields(converter_data)
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid1"].additional_attributes["uuid_capella"]
         del dummy_work_items["uuid2"].additional_attributes["uuid_capella"]
+
         assert (
             dummy_work_items["uuid0"].additional_attributes.pop("attribute")[
                 "value"
@@ -1244,12 +1251,62 @@ class TestModelElements:
             converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
+            if work_item.uuid_capella == "uuid0":
+                link_serializer._link_field_groups["attribute"] = (
+                    work_item.linked_work_items
+                )
+
             link_serializer.create_grouped_link_fields(converter_data)
+            link_serializer._link_field_groups = defaultdict(list)
 
         assert "attribute" in dummy_work_items["uuid0"].additional_attributes
         assert (  # Link Role on links were not prefixed
             "attribute" not in dummy_work_items["uuid1"].additional_attributes
         )
+
+    @staticmethod
+    def test_grouped_links_attributes_different_link_field_in_config(
+        base_object: BaseObjectContainer, monkeypatch: pytest.MonkeyPatch
+    ):
+        converter_data_1 = base_object.mc.converter_session["uuid1"]
+        converter_data_2 = base_object.mc.converter_session["uuid2"]
+        converter_data_2.work_item = data_models.CapellaWorkItem(
+            id="Obj-2", uuid_capella="uuid2", status="open"
+        )
+        base_object.pw.polarion_data_repo.update_work_items(
+            [converter_data_2.work_item]
+        )
+        converter_data_1.type_config.links.append(
+            converter_config.LinkConfig(
+                capella_attr="attribute1",
+                polarion_role="attribute",
+                link_field="attribute1",
+                reverse_field="attribute1_reverse",
+            )
+        )
+        converter_data_1.capella_element.attribute = (
+            converter_data_2.capella_element
+        )
+        converter_data_1.capella_element.attribute1 = (
+            converter_data_2.capella_element
+        )
+        expected_html = (
+            "<ul><li>"
+            '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+            'data-item-id="Obj-2" data-option-id="long"></span>'
+            "</li></ul>"
+        )
+
+        base_object.mc.generate_work_item_links(
+            base_object.pw.polarion_data_repo,
+            generate_grouped_links_custom_fields=True,
+        )
+
+        assert (link_group := getattr(converter_data_1.work_item, "attribute"))
+        assert (
+            link_group1 := getattr(converter_data_1.work_item, "attribute1")
+        )
+        assert link_group["value"] == link_group1["value"] == expected_html
 
     @staticmethod
     def test_grouped_links_attributes_with_includes(
@@ -1352,6 +1409,9 @@ class TestModelElements:
             data[work_item.id] = converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
+            link_serializer._link_field_groups["attribute"] = (
+                work_item.linked_work_items
+            )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
@@ -1395,6 +1455,9 @@ class TestModelElements:
                 FakeModelObject(work_item.uuid_capella),
                 work_item,
             )
+            link_serializer._link_field_groups["attribute"] = (
+                work_item.linked_work_items
+            )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
@@ -1427,19 +1490,18 @@ class TestModelElements:
         config.links[0].polarion_role = f"_C2P_{config.links[0].polarion_role}"
         back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         data = {}
-        for link in (
-            dummy_work_items["uuid0"].linked_work_items
-            + dummy_work_items["uuid1"].linked_work_items
-        ):
-            link.role = f"_C2P_{link.role}"
-
         for work_item in dummy_work_items.values():
+            for link in work_item.linked_work_items:
+                link_serializer._link_field_groups[link.role].append(link)
+                link.role = f"_C2P_{link.role}"
+
             data[work_item.id] = converter_data = data_session.ConverterData(
                 "test", config, [], work_item
             )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
+
         for work_item_id, links in back_links.items():
             assert (wi := data[work_item_id].work_item) is not None
             link_serializer.create_grouped_back_link_fields(wi, links)
