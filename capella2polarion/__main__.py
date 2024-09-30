@@ -23,42 +23,42 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 @click.option(
-    "--debug", is_flag=True, envvar="CAPELLA2POLARION_DEBUG", default=False
+    "--capella-model",
+    type=cli_helpers.ModelCLI(),
+    required=True,
+    envvar="CAPELLA2POLARION_CAPELLA_MODEL",
 )
 @click.option(
     "--polarion-project-id",
     type=str,
-    required=False,
-    default=None,
+    required=True,
     envvar="CAPELLA2POLARION_PROJECT_ID",
 )
 @click.option(
     "--polarion-url",
-    envvar="POLARION_HOST",
     type=str,
+    required=True,
+    envvar="POLARION_HOST",
 )
-@click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
+@click.option("--polarion-pat", type=str, required=True, envvar="POLARION_PAT")
 @click.option(
     "--polarion-delete-work-items",
     is_flag=True,
-    envvar="CAPELLA2POLARION_DELETE_WORK_ITEMS",
     default=False,
+    envvar="CAPELLA2POLARION_DELETE_WORK_ITEMS",
 )
 @click.option(
-    "--capella-model",
-    type=cli_helpers.ModelCLI(),
-    envvar="CAPELLA2POLARION_CAPELLA_MODEL",
-    default=None,
+    "--debug", is_flag=True, envvar="CAPELLA2POLARION_DEBUG", default=False
 )
 @click.pass_context
 def cli(
     ctx: click.core.Context,
-    debug: bool,
+    capella_model: capellambse.MelodyModel | None,
     polarion_project_id: str,
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
-    capella_model: capellambse.MelodyModel | None,
+    debug: bool,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
     if capella_model is not None and capella_model.diagram_cache is None:
@@ -88,8 +88,8 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.option(
     "--synchronize-config",
     type=click.File(mode="r", encoding="utf8"),
+    required=True,
     envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
-    default=None,
 )
 @click.option(
     "--force-update",
@@ -162,20 +162,20 @@ def synchronize(
 @click.option(
     "--document-rendering-config",
     type=click.File(mode="r", encoding="utf8"),
+    required=True,
     envvar="CAPELLA2POLARION_DOCUMENT_CONFIG",
-    default=None,
 )
 @click.option(
     "--overwrite-layouts",
     is_flag=True,
-    envvar="CAPELLA2POLARION_OVERWRITE_LAYOUTS",
     default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_LAYOUTS",
 )
 @click.option(
     "--overwrite-numbering",
     is_flag=True,
-    envvar="CAPELLA2POLARION_OVERWRITE_NUMBERING",
     default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_NUMBERING",
 )
 @click.pass_context
 def render_documents(
