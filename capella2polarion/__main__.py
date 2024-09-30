@@ -22,34 +22,46 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
-@click.option("--debug", is_flag=True, default=False)
+@click.option(
+    "--capella-model",
+    type=cli_helpers.ModelCLI(),
+    required=True,
+    envvar="CAPELLA2POLARION_CAPELLA_MODEL",
+)
 @click.option(
     "--polarion-project-id",
     type=str,
-    required=False,
-    default=None,
-    envvar="POLARION_PROJECT_ID",
+    required=True,
+    envvar="CAPELLA2POLARION_PROJECT_ID",
 )
 @click.option(
     "--polarion-url",
-    envvar="POLARION_HOST",
     type=str,
+    required=True,
+    envvar="POLARION_HOST",
 )
-@click.option("--polarion-pat", envvar="POLARION_PAT", type=str)
-@click.option("--polarion-delete-work-items", is_flag=True, default=False)
-@click.option("--capella-model", type=cli_helpers.ModelCLI(), default=None)
+@click.option("--polarion-pat", type=str, required=True, envvar="POLARION_PAT")
+@click.option(
+    "--polarion-delete-work-items",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_DELETE_WORK_ITEMS",
+)
+@click.option(
+    "--debug", is_flag=True, envvar="CAPELLA2POLARION_DEBUG", default=False
+)
 @click.pass_context
 def cli(
     ctx: click.core.Context,
-    debug: bool,
+    capella_model: capellambse.MelodyModel | None,
     polarion_project_id: str,
     polarion_url: str,
     polarion_pat: str,
     polarion_delete_work_items: bool,
-    capella_model: capellambse.MelodyModel,
+    debug: bool,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
-    if capella_model.diagram_cache is None:
+    if capella_model is not None and capella_model.diagram_cache is None:
         logger.warning("It's highly recommended to define a diagram cache!")
 
     capella2polarion_cli = Capella2PolarionCli(
@@ -76,11 +88,27 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.option(
     "--synchronize-config",
     type=click.File(mode="r", encoding="utf8"),
-    default=None,
+    required=True,
+    envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
 )
-@click.option("--force-update", is_flag=True, default=False)
-@click.option("--type-prefix", type=str, default="")
-@click.option("--role-prefix", type=str, default="")
+@click.option(
+    "--force-update",
+    is_flag=True,
+    envvar="CAPELLA2POLARION_FORCE_UPDATE",
+    default=False,
+)
+@click.option(
+    "--type-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_TYPE_PREFIX",
+    default="",
+)
+@click.option(
+    "--role-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_ROLE_PREFIX",
+    default="",
+)
 @click.option(
     "--grouped-links-custom-fields / --no-grouped-links-custom-fields",
     envvar="CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS",
@@ -107,6 +135,7 @@ def synchronize(
     )
     capella_to_polarion_cli.force_update = force_update
 
+    assert capella_to_polarion_cli.capella_model is not None
     converter = model_converter.ModelConverter(
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
@@ -141,10 +170,21 @@ def synchronize(
 @click.option(
     "--document-rendering-config",
     type=click.File(mode="r", encoding="utf8"),
-    default=None,
+    required=True,
+    envvar="CAPELLA2POLARION_DOCUMENT_CONFIG",
 )
-@click.option("--overwrite-layouts", is_flag=True, default=False)
-@click.option("--overwrite-numbering", is_flag=True, default=False)
+@click.option(
+    "--overwrite-layouts",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_LAYOUTS",
+)
+@click.option(
+    "--overwrite-numbering",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_NUMBERING",
+)
 @click.pass_context
 def render_documents(
     ctx: click.core.Context,
@@ -168,6 +208,7 @@ def render_documents(
         configs.iterate_documents()
     )
 
+    assert capella_to_polarion_cli.capella_model is not None
     renderer = document_renderer.DocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,

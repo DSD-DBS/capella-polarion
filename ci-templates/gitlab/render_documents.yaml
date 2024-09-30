@@ -3,6 +3,15 @@
 
 variables:
   CAPELLA2POLARION_DEBUG: "0"
+  # Remember to set the following environment variables:
+  # POLARION_HOST
+  # POLARION_PAT
+  # CAPELLA2POLARION_PROJECT_ID
+  # CAPELLA2POLARION_CAPELLA_MODEL
+  # CAPELLA2POLARION_DOCUMENT_CONFIG
+  # Optional flags:
+  # CAPELLA2POLARION_OVERWRITE_LAYOUTS - Overwrite default Live-Doc layouts
+  # CAPELLA2POLARION_OVERWRITE_NUMBERING - Overwrite default heading numbering
 
 capella2polarion_render_documents:
   needs:
@@ -12,13 +21,4 @@ capella2polarion_render_documents:
 
   script:
     - pip install "capella2polarion${CAPELLA2POLARION_VERSION:+==$CAPELLA2POLARION_VERSION}"
-    - >
-      python \
-        -m capella2polarion \
-        $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
-        --polarion-project-id=${CAPELLA2POLARION_PROJECT_ID:?} \
-        --capella-model="${CAPELLA2POLARION_MODEL_JSON:?}" \
-        render-documents \
-        $([[ $CAPELLA2POLARION_OVERWRITE_LAYOUTS -eq 1 ]] && echo '--overwrite-layouts') \
-        $([[ $CAPELLA2POLARION_OVERWRITE_NUMBERING -eq 1 ]] && echo '--overwrite-numbering') \
-        --document-rendering-config="${CAPELLA2POLARION_DOCUMENT_CONFIG:?}"
+    - capella2polarion render-documents
