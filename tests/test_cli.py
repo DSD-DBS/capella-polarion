@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import collections.abc as cabc
 import json
-import os
 import typing as t
 from unittest import mock
 
@@ -117,6 +115,7 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
     )
 
 
+# pylint: disable=redefined-outer-name
 def test_migrate_model_elements(cli_mocks: CLIMocks):
     command: list[str] = [
         "--polarion-project-id",
