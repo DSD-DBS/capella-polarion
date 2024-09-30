@@ -37,6 +37,12 @@ TEST_PROJECT_ID = "project_id"
 DOCUMENT_TEMPLATES = TEST_DOCUMENT_ROOT / "templates"
 DOCUMENT_TEXT_WORK_ITEMS = "document_work_items.html.j2"
 DOCUMENT_WORK_ITEMS_CROSS_PROJECT = "work_items_cross_project.html.j2"
+LINK_CONFIG = converter_config.LinkConfig(
+    capella_attr="attribute",
+    polarion_role="attribute",
+    link_field="attribute",
+    reverse_field="attribute_reverse",
+)
 
 
 @pytest.fixture
@@ -103,16 +109,10 @@ class UnsupportedFakeModelObject(FakeModelObject):
     """A ``FakeModelObject`` which shouldn't be migrated."""
 
 
-class BaseObjectContainer:
-    def __init__(
-        self,
-        c2p_cli: cli.Capella2PolarionCli,
-        pw: polarion_worker.CapellaPolarionWorker,
-        mc: model_converter.ModelConverter,
-    ) -> None:
-        self.c2pcli: cli.Capella2PolarionCli = c2p_cli
-        self.pw: polarion_worker.CapellaPolarionWorker = pw
-        self.mc = mc
+class BaseObjectContainer(t.NamedTuple):
+    c2pcli: cli.Capella2PolarionCli
+    pw: polarion_worker.CapellaPolarionWorker
+    mc: model_converter.ModelConverter
 
 
 # pylint: disable=redefined-outer-name
@@ -141,12 +141,7 @@ def base_object(
 
     fake = FakeModelObject("uuid1", name="Fake 1")
     fake_model_type_config = converter_config.CapellaTypeConfig(
-        "fakeModelObject",
-        links=[
-            converter_config.LinkConfig(
-                capella_attr="attribute", polarion_role="attribute"
-            )
-        ],
+        "fakeModelObject", links=[LINK_CONFIG]
     )
 
     mc = model_converter.ModelConverter(

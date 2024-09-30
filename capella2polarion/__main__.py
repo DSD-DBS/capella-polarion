@@ -109,6 +109,12 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     envvar="CAPELLA2POLARION_ROLE_PREFIX",
     default="",
 )
+@click.option(
+    "--grouped-links-custom-fields / --no-grouped-links-custom-fields",
+    envvar="CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS",
+    is_flag=True,
+    default=True,
+)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -116,6 +122,7 @@ def synchronize(
     force_update: bool,
     type_prefix: str,
     role_prefix: str,
+    grouped_links_custom_fields: bool,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -153,6 +160,7 @@ def synchronize(
         polarion_worker.polarion_data_repo,
         generate_links=True,
         generate_attachments=True,
+        generate_grouped_links_custom_fields=grouped_links_custom_fields,
     )
 
     polarion_worker.compare_and_update_work_items(converter.converter_session)

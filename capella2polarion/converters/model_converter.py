@@ -83,6 +83,7 @@ class ModelConverter:
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_links: bool = False,
         generate_attachments: bool = False,
+        generate_grouped_links_custom_fields: bool = False,
     ) -> dict[str, data_models.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
@@ -100,6 +101,9 @@ class ModelConverter:
         generate_attachments
             A boolean flag to control attachments generation. For SVG
             attachments, PNGs are generated and attached automatically.
+        generate_grouped_links_custom_fields
+            A boolean flag to control grouped links custom fields
+            generation.
         """
         serializer = element_converter.CapellaWorkItemSerializer(
             self.model,
@@ -113,13 +117,16 @@ class ModelConverter:
             assert work_item.type is not None
 
         if generate_links:
-            self.generate_work_item_links(polarion_data_repo)
+            self.generate_work_item_links(
+                polarion_data_repo, generate_grouped_links_custom_fields
+            )
 
         return {wi.uuid_capella: wi for wi in work_items}
 
     def generate_work_item_links(
         self,
         polarion_data_repo: polarion_repo.PolarionDataRepository,
+        generate_grouped_links_custom_fields: bool,
     ):
         """Generate links for all work items and add custom fields for them."""
         back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
@@ -140,9 +147,10 @@ class ModelConverter:
             links = link_serializer.create_links_for_work_item(uuid)
             converter_data.work_item.linked_work_items = links
 
-            link_serializer.create_grouped_link_fields(
-                converter_data, back_links
-            )
+            if generate_grouped_links_custom_fields:
+                link_serializer.create_grouped_link_fields(
+                    converter_data, back_links
+                )
 
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
