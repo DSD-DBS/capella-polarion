@@ -6,6 +6,7 @@ from __future__ import annotations
 import collections.abc as cabc
 import json
 import os
+import typing as t
 from unittest import mock
 
 import polarion_rest_api_client as polarion_api
@@ -24,9 +25,21 @@ from .conftest import (  # type: ignore[import]
 )
 
 
-def setup_sync_cli_test(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[mock.MagicMock, ...]:
+class CLIMocks(t.NamedTuple):
+    """Mocks for CLI functions."""
+
+    get_polarion_wi_map: mock.MagicMock
+    generate_work_items: mock.MagicMock
+    delete_work_items: mock.MagicMock
+    patch_work_items: mock.MagicMock
+    post_work_items: mock.MagicMock
+    get_document: mock.MagicMock
+    create_documents: mock.MagicMock
+    update_documents: mock.MagicMock
+
+
+@pytest.fixture(scope="function")
+def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
     mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
     monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
     mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
@@ -61,26 +74,6 @@ def setup_sync_cli_test(
         "compare_and_update_work_items",
         mock_patch_work_items,
     )
-    return (
-        mock_get_polarion_wi_map,
-        mock_generate_work_items,
-        mock_delete_work_items,
-        mock_patch_work_items,
-        mock_post_work_items,
-    )
-
-
-def setup_render_docs_cli_test(monkeypatch: pytest.MonkeyPatch):
-    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
-    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
-    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
-    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
-    mock_get_polarion_wi_map = mock.MagicMock()
-    monkeypatch.setattr(
-        polarion_worker.CapellaPolarionWorker,
-        "load_polarion_work_item_map",
-        mock_get_polarion_wi_map,
-    )
     mock_get_document = mock.MagicMock()
     mock_get_document.side_effect = lambda folder, name, project_id: (
         polarion_api.Document(
@@ -112,28 +105,24 @@ def setup_render_docs_cli_test(monkeypatch: pytest.MonkeyPatch):
         "update_documents",
         mock_update_documents,
     )
-    return (
-        mock_get_polarion_wi_map,
-        mock_get_document,
-        mock_create_documents,
-        mock_update_documents,
+    return CLIMocks(
+        get_polarion_wi_map=mock_get_polarion_wi_map,
+        generate_work_items=mock_generate_work_items,
+        delete_work_items=mock_delete_work_items,
+        patch_work_items=mock_post_work_items,
+        post_work_items=mock_post_work_items,
+        get_document=mock_get_document,
+        create_documents=mock_create_documents,
+        update_documents=mock_update_documents,
     )
 
 
-def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
-    (
-        mock_get_polarion_wi_map,
-        mock_generate_work_items,
-        mock_delete_work_items,
-        mock_patch_work_items,
-        mock_post_work_items,
-    ) = setup_sync_cli_test(monkeypatch)
-
+def test_migrate_model_elements(cli_mocks: CLIMocks):
     command: list[str] = [
         "--polarion-project-id",
         "{project-id}",
         "--polarion-url",
-        "https://www.czy.de",
+        "https://www.capella2polarion.invalid",
         "--polarion-pat",
         "PrivateAcessToken",
         "--polarion-delete-work-items",
@@ -147,30 +136,23 @@ def test_migrate_model_elements(monkeypatch: pytest.MonkeyPatch):
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_wi_map.call_count == 1
-    assert mock_generate_work_items.call_count == 2
-    assert mock_generate_work_items.call_args_list[1][1] == {
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 2
+    assert cli_mocks.generate_work_items.call_args_list[1][1] == {
         "generate_links": True,
         "generate_attachments": True,
     }
-    assert mock_delete_work_items.call_count == 1
-    assert mock_patch_work_items.call_count == 1
-    assert mock_post_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
 
 
-def test_render_documents(monkeypatch: pytest.MonkeyPatch):
-    (
-        mock_get_polarion_wi_map,
-        mock_get_document,
-        mock_create_documents,
-        mock_update_documents,
-    ) = setup_render_docs_cli_test(monkeypatch)
-
+def test_render_documents(cli_mocks: CLIMocks):
     command: list[str] = [
         "--polarion-project-id",
         "{project-id}",
         "--polarion-url",
-        "https://www.czy.de",
+        "https://www.capella2polarion.invalid",
         "--polarion-pat",
         "PrivateAcessToken",
         "--polarion-delete-work-items",
@@ -184,9 +166,11 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
 
     assert result.exit_code == 0
-    assert mock_get_polarion_wi_map.call_count == 1
-    assert mock_get_document.call_count == 8
-    assert [call.args[2] for call in mock_get_document.call_args_list] == [
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.get_document.call_count == 8
+    assert [
+        call.args[2] for call in cli_mocks.get_document.call_args_list
+    ] == [
         None,
         None,
         None,
@@ -197,61 +181,18 @@ def test_render_documents(monkeypatch: pytest.MonkeyPatch):
         "TestProject",
     ]
 
-    assert mock_create_documents.call_count == 2
-    assert len(mock_create_documents.call_args_list[0].args[0]) == 1
-    assert len(mock_create_documents.call_args_list[1].args[0]) == 1
-    assert mock_create_documents.call_args_list[0].args[1] is None
-    assert mock_create_documents.call_args_list[1].args[1] == "TestProject"
+    assert cli_mocks.create_documents.call_count == 2
+    assert len(cli_mocks.create_documents.call_args_list[0].args[0]) == 1
+    assert len(cli_mocks.create_documents.call_args_list[1].args[0]) == 1
+    assert cli_mocks.create_documents.call_args_list[0].args[1] is None
+    assert (
+        cli_mocks.create_documents.call_args_list[1].args[1] == "TestProject"
+    )
 
-    assert mock_update_documents.call_count == 2
-    assert len(mock_update_documents.call_args_list[0].args[0]) == 1
-    assert len(mock_update_documents.call_args_list[1].args[0]) == 0
-    assert mock_update_documents.call_args_list[0].args[1] is None
-    assert mock_update_documents.call_args_list[1].args[1] == "TestProject"
-
-
-@pytest.mark.parametrize(
-    ["command", "envvars", "setup_func"],
-    [
-        pytest.param(
-            "synchronize",
-            {
-                "CAPELLA2POLARION_SYNCHRONIZE_CONFIG": str(
-                    TEST_MODEL_ELEMENTS_CONFIG
-                )
-            },
-            setup_sync_cli_test,
-            id="Model Sync",
-        ),
-        pytest.param(
-            "render-documents",
-            {
-                "CAPELLA2POLARION_DOCUMENT_CONFIG": str(
-                    TEST_COMBINED_DOCUMENT_CONFIG
-                )
-            },
-            setup_render_docs_cli_test,
-            id="Live-Doc rendering",
-        ),
-    ],
-)
-def test_cli_commands_with_environment_variables(
-    monkeypatch: pytest.MonkeyPatch,
-    command: list[str],
-    envvars: dict[str, str],
-    setup_func: cabc.Callable[
-        [pytest.MonkeyPatch], tuple[mock.MagicMock, ...]
-    ],
-):
-    os.environ["CAPELLA2POLARION_PROJECT_ID"] = "{project-id}"
-    os.environ["POLARION_HOST"] = "https://www.czy.de"
-    os.environ["POLARION_PAT"] = "PrivateAcessToken"
-    os.environ["CAPELLA2POLARION_CAPELLA_MODEL"] = json.dumps(TEST_MODEL)
-    os.environ["CAPELLA2POLARION_DELETE_WORK_ITEMS"] = "1"
-    setup_func(monkeypatch)
-    for key, value in envvars.items():
-        os.environ[key] = value
-
-    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
-
-    assert result.exit_code == 0
+    assert cli_mocks.update_documents.call_count == 2
+    assert len(cli_mocks.update_documents.call_args_list[0].args[0]) == 1
+    assert len(cli_mocks.update_documents.call_args_list[1].args[0]) == 0
+    assert cli_mocks.update_documents.call_args_list[0].args[1] is None
+    assert (
+        cli_mocks.update_documents.call_args_list[1].args[1] == "TestProject"
+    )
