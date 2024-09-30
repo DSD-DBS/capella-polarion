@@ -82,10 +82,10 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.option("--type-prefix", type=str, default="")
 @click.option("--role-prefix", type=str, default="")
 @click.option(
-    "--grouped-links-custom-fields",
+    "--grouped-links-custom-fields / --no-grouped-links-custom-fields",
     envvar="CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS",
     is_flag=True,
-    default=False,
+    default=True,
 )
 @click.pass_context
 def synchronize(
