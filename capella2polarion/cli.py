@@ -26,7 +26,7 @@ class Capella2PolarionCli:
         polarion_url: str,
         polarion_pat: str,
         polarion_delete_work_items: bool,
-        capella_model: capellambse.MelodyModel,
+        capella_model: capellambse.MelodyModel | None,
         force_update: bool = False,
     ) -> None:
         self.debug = debug

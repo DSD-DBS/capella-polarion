@@ -60,6 +60,9 @@ test = [
   "pytest-cov",
 ]
 
+[project.scripts]
+capella2polarion = "capella2polarion.__main__:cli"
+
 [tool.black]
 line-length = 79
 target-version = ["py312"]

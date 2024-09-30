@@ -3,6 +3,16 @@
 
 variables:
   CAPELLA2POLARION_DEBUG: "1"
+  # Remember to set the following environment variables:
+  # POLARION_HOST
+  # POLARION_PAT
+  # CAPELLA2POLARION_PROJECT_ID
+  # CAPELLA2POLARION_CAPELLA_MODEL
+  # CAPELLA2POLARION_SYNCHRONIZE_CONFIG
+  # Optional flags:
+  # CAPELLA2POLARION_FORCE_UPDATE - Simulate initial run
+  # CAPELLA2POLARION_TYPE_PREFIX - Prefix for work item types
+  # CAPELLA2POLARION_ROLE_PREFIX - Prefix for work item link roles
 
 capella2polarion_synchronise_elements:
   needs:
@@ -11,14 +21,4 @@ capella2polarion_synchronise_elements:
 
   script:
     - pip install "capella2polarion${CAPELLA2POLARION_VERSION:+==$CAPELLA2POLARION_VERSION}"
-    - >
-      python \
-        -m capella2polarion \
-        $([[ $CAPELLA2POLARION_DEBUG -eq 1 ]] && echo '--debug') \
-        --polarion-project-id=${CAPELLA2POLARION_PROJECT_ID:?} \
-        --capella-model="${CAPELLA2POLARION_MODEL_JSON:?}" \
-        synchronize \
-        --synchronize-config=${CAPELLA2POLARION_CONFIG:?} \
-        $([[ $CAPELLA2POLARION_FORCE_UPDATE -eq 1 ]] && echo '--force-update') \
-        ${CAPELLA2POLARION_TYPE_PREFIX:+--type-prefix="$CAPELLA2POLARION_TYPE_PREFIX"} \
-        ${CAPELLA2POLARION_ROLE_PREFIX:+--role-prefix="$CAPELLA2POLARION_ROLE_PREFIX"}
+    - capella2polarion synchronize
