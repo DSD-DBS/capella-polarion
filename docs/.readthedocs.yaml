@@ -12,7 +12,7 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-      - sphinx-apidoc --output-dir docs/source/code --force .
+      - make -C docs html
 
 sphinx:
   configuration: docs/source/conf.py
