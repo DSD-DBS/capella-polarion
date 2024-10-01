@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: CC0-1.0
+
+furo==2024.1.29
+Sphinx==7.2.6
+sphinx-argparse-cli==1.13.1
+sphinx-basic-ng==1.0.0b2
+sphinx-copybutton==0.5.2
+sphinxcontrib-applehelp==1.0.8
+sphinxcontrib-devhelp==1.0.6
+sphinxcontrib-htmlhelp==2.0.5
+sphinxcontrib-jsmath==1.0.1
+sphinxcontrib-qthelp==1.0.7
+sphinxcontrib-serializinghtml==1.1.10
+tomli==2.0.1
