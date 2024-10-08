@@ -14,7 +14,7 @@ following template can be used inside the `.gitlab-ci.yml` file:
 
 We highly recommend using the diagram cache as a separate job and defined it as a dependency in our template for that
 reason. The diagram cache artifacts have to be included in the capella2polarion job and its path must be defined in the
-`CAPELLA2POLARION_MODEL_JSON` variable. A `.gitlab-ci.yml` with a capella2polarion synchronization job could look like
+`CAPELLA2POLARION_CAPELLA_MODEL` variable. A `.gitlab-ci.yml` with a capella2polarion synchronization job could look like
 this:
 
 .. code:: yaml
@@ -35,6 +35,6 @@ this:
         CAPELLA_VERSION: 6.1.0
         ENTRYPOINT: model.aird
         CAPELLA2POLARION_PROJECT_ID: syncproj
-        CAPELLA2POLARION_MODEL_JSON: '{"path": "PATH_TO_CAPELLA", "diagram_cache": "./diagram_cache"}'
-        CAPELLA2POLARION_CONFIG: capella2polarion_config.yaml
+        CAPELLA2POLARION_CAPELLA_MODEL: '{"path": "PATH_TO_CAPELLA", "diagram_cache": "./diagram_cache"}'
+        CAPELLA2POLARION_SYNCHRONIZE_CONFIG: capella2polarion_config.yaml
         CAPELLA2POLARION_DEBUG: 1
