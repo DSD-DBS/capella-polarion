@@ -21,25 +21,19 @@ DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 
 @dataclasses.dataclass
 class LinkConfig:
-    """A single Capella Link configuration.
-
-    Attributes
-    ----------
-    capella_attr
-        The Attribute name on the capellambse model object.
-    polarion_role
-        The identifier used in the Polarion configuration for this work
-        item link (role).
-    include
-        A list of identifiers that are attribute names on the Capella
-        objects link targets. The requested objects are then included in
-        the list display in the grouped link custom field as nested
-        lists. They also need be migrated for working references.
-    """
+    """A single Capella Link configuration."""
 
     capella_attr: str
+    """The Attribute name on the capellambse model object."""
     polarion_role: str
+    """The identifier used in the Polarion configuration for this work
+    item link (role)."""
     include: dict[str, str] = dataclasses.field(default_factory=dict)
+    """A list of identifiers that are attribute names on the Capella
+    objects link targets. The requested objects are then included in
+    the list display in the grouped link custom field as nested
+    lists. They also need be migrated for working references.
+    """
     link_field: str = ""
     reverse_field: str = ""
 
