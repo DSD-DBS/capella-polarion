@@ -26,13 +26,15 @@ class LinkConfig:
     capella_attr: str
     """The Attribute name on the capellambse model object."""
     polarion_role: str
-    """The identifier used in the Polarion configuration for this work
-    item link (role)."""
+    """The identifier used in the Polarion configuration for this work item
+    link (role)."""
     include: dict[str, str] = dataclasses.field(default_factory=dict)
-    """A list of identifiers that are attribute names on the Capella
-    objects link targets. The requested objects are then included in
-    the list display in the grouped link custom field as nested
-    lists. They also need be migrated for working references.
+    """A list of identifiers that are attribute names on the Capella objects
+    link targets.
+
+    The requested objects are then included in the list display in the
+    grouped link custom field as nested lists. They also need be
+    migrated for working references.
     """
     link_field: str = ""
     reverse_field: str = ""
