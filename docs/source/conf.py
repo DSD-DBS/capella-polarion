@@ -66,7 +66,6 @@ rst_epilog = """
     project=project, version=version
 )
 
-
 # -- Options for copy-button -------------------------------------------------
 copybutton_here_doc_delimiter = "EOT"
 copybutton_line_continuation_character = "\\"
@@ -81,7 +80,6 @@ autodoc_default_options = {
     # "special-members": True,
     # "inherited-members": True,
     # "show-inheritance": True,
-    "noindex": True,
 }
 
 # -- Options for napoleon ----------------------------------------------------
