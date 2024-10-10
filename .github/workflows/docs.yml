@@ -29,6 +29,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install '.[docs]'
+      - name: Auto-generate APIDOC sources
+        run: make -C docs apidoc
       - name: Create docs
         env:
           SPHINXOPTS: ${{ github.ref != 'refs/heads/master' && '-W' || '' }}
