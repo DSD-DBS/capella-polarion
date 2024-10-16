@@ -64,7 +64,6 @@ class TextWorkItemProvider:
                     },
                 )
 
-            work_item.description_type = "text/html"
             inner_content = "".join(
                 [
                     (
@@ -78,7 +77,7 @@ class TextWorkItemProvider:
             if element.text:
                 inner_content = element.text + inner_content
 
-            work_item.description = inner_content
+            work_item.description = polarion_api.HtmlContent(inner_content)
             self.new_text_work_items[text_id] = work_item
 
     def insert_text_work_items(

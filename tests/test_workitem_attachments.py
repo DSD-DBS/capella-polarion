@@ -23,7 +23,7 @@ from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR
 
 DIAGRAM_WI_CHECKSUM = (
-    "2c3aadc9b145917810e1988ed463a4b45f6d3c6506c24378b006ba922c4141b8"
+    "76fc1f7e4b73891488de7e47de8ef75fc24e85fc3cdde80661503201e70b1733"
 )
 
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
@@ -158,13 +158,13 @@ def test_diagram_attachments_new(
         == created_attachments[0].file_name[:3]
     )
 
-    assert work_item.description == TEST_DIAG_DESCR.format(
+    assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="1-__C2P__diagram.svg",
         width=750,
         cls="diagram",
     )
-    assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
+    assert work_item.checksum == DIAGRAM_CHECKSUM
 
 
 # pylint: disable=redefined-outer-name
@@ -210,7 +210,7 @@ def test_new_diagram(
     assert worker.project_client.work_items.attachments.create.call_count == 1
     assert worker.project_client.work_items.update.call_args.args[
         0
-    ].description == TEST_DIAG_DESCR.format(
+    ].description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="1-__C2P__diagram.svg",
         width=750,
@@ -275,7 +275,7 @@ def test_diagram_attachments_updated(
         worker.project_client.work_items.update.call_args.args[0]
     )
 
-    assert work_item.description == TEST_DIAG_DESCR.format(
+    assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="SVG-ATTACHMENT",
         width=750,
@@ -338,7 +338,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
         worker.project_client.work_items.update.call_args.args[0]
     )
 
-    assert work_item.description == TEST_DIAG_DESCR.format(
+    assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="SVG-ATTACHMENT",
         width=750,
@@ -495,6 +495,6 @@ def test_diagram_delete_attachments(
     )
 
     assert work_item.description is None
-    assert work_item.additional_attributes == {}
+    assert len(work_item.additional_attributes) == 1
     assert work_item.title is None
-    assert work_item.get_current_checksum() == DIAGRAM_CHECKSUM
+    assert work_item.checksum == DIAGRAM_CHECKSUM
