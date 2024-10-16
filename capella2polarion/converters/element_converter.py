@@ -57,16 +57,6 @@ def _format_texts(
     return requirement_types
 
 
-def _condition(
-    html: bool, value: str
-) -> data_models.CapellaWorkItem.Condition:
-    _type = "text/html" if html else "text/plain"
-    return {
-        "type": _type,
-        "value": f'<div style="text-align: center;">{value}</div>',
-    }
-
-
 class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     """The general serializer class for CapellaWorkItems."""
 
@@ -432,8 +422,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             type=converter_data.type_config.p_type,
             title=obj.name,
             uuid_capella=obj.uuid,
-            description_type="text/html",
-            description=value,
+            description=polarion_api.HtmlContent(value),
             status="open",
             **requirement_types,  # type:ignore[arg-type]
         )
@@ -463,8 +452,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             type=converter_data.type_config.p_type,
             title=diagram.name,
             uuid_capella=diagram.uuid,
-            description_type="text/html",
-            description=diagram_html,
+            description=polarion_api.HtmlContent(diagram_html),
             status="open",
         )
         if attachment:
@@ -491,9 +479,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         post_condition = get_condition(obj, "postcondition")
 
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.preCondition = _condition(True, pre_condition)
-        converter_data.work_item.postCondition = _condition(
-            True, post_condition
+        converter_data.work_item.preCondition = polarion_api.HtmlContent(
+            pre_condition
+        )
+        converter_data.work_item.postCondition = polarion_api.HtmlContent(
+            post_condition
         )
         return converter_data.work_item
 
@@ -502,9 +492,12 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     ) -> data_models.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         assert converter_data.work_item, "No work item set yet"
+        assert (
+            converter_data.work_item.description
+        ), "Description should already be defined"
         (
             uuids,
-            converter_data.work_item.description,
+            converter_data.work_item.description.value,
             attachments,
         ) = self._sanitize_linked_text(converter_data.capella_element)
         if uuids:
@@ -584,7 +577,12 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     ) -> data_models.CapellaWorkItem:
         """Use a Jinja template to render the description content."""
         assert converter_data.work_item, "No work item set yet"
-        converter_data.work_item.description = self._render_jinja_template(
-            template_folder, template_path, converter_data
+        assert (
+            converter_data.work_item.description
+        ), "Description should already be defined"
+        converter_data.work_item.description.value = (
+            self._render_jinja_template(
+                template_folder, template_path, converter_data
+            )
         )
         return converter_data.work_item

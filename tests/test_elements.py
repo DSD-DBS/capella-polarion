@@ -63,7 +63,6 @@ TEST_DIAG_DESCR = (
 TEST_SER_DIAGRAM: dict[str, t.Any] = {
     "id": "Diag-1",
     "title": "[CC] Capability",
-    "description_type": "text/html",
     "type": "diagram",
     "status": "open",
     "additional_attributes": {
@@ -72,7 +71,7 @@ TEST_SER_DIAGRAM: dict[str, t.Any] = {
 }
 TEST_WI_CHECKSUM = (
     '{"__C2P__WORK_ITEM": '
-    '"be783ea9b9144856394222dde865ebc925f31e497e8aabb93aa53b97adf22035"}'
+    '"4f88839ef6260c861f9dac33a5d093ee125dd46b91829d00baa7fd3737f8dee5"}'
 )
 TEST_REQ_TEXT = (
     "<p>Test requirement 1 really l o n g text that is&nbsp;way too long to "
@@ -84,8 +83,7 @@ POLARION_ID_MAP = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
 TEST_LOGICAL_COMPONENT = {
     "type": "logicalComponent",
     "title": "Hogwarts",
-    "description_type": "text/html",
-    "description": markupsafe.Markup(TEST_DESCR),
+    "description": polarion_api.HtmlContent(markupsafe.Markup(TEST_DESCR)),
 }
 TEST_CONDITION = {
     "type": "text/html",
@@ -94,8 +92,7 @@ TEST_CONDITION = {
 TEST_OPERATIONAL_CAPABILITY = {
     "type": "operationalCapability",
     "title": "Stay alive",
-    "description_type": "text/html",
-    "description": markupsafe.Markup(""),
+    "description": polarion_api.HtmlContent(markupsafe.Markup("")),
 }
 
 HTML_LINK_0 = {
@@ -240,8 +237,8 @@ class TestDiagramElements:
         work_item.description = None
         work_item.attachments = []
         assert work_item == data_models.CapellaWorkItem(**TEST_SER_DIAGRAM)
-        assert isinstance(description, str)
-        assert description == TEST_DIAG_DESCR.format(
+        assert description is not None
+        assert description.value == TEST_DIAG_DESCR.format(
             title="Diagram",
             attachment_id="__C2P__diagram.svg",
             width=750,
@@ -280,15 +277,13 @@ class TestModelElements:
                 uuid_capella="uuid1",
                 title="Fake 1",
                 type="fakeModelObject",
-                description_type="text/html",
-                description=markupsafe.Markup(""),
+                description=polarion_api.HtmlContent(markupsafe.Markup("")),
             ),
             expected1 := data_models.CapellaWorkItem(
                 uuid_capella="uuid2",
                 title="Fake 2",
                 type="fakeModelObject",
-                description_type="text/html",
-                description=markupsafe.Markup(""),
+                description=polarion_api.HtmlContent(markupsafe.Markup("")),
             ),
         ]
         work_items = base_object.mc.generate_work_items(
@@ -329,8 +324,7 @@ class TestModelElements:
         expected = data_models.CapellaWorkItem(
             uuid_capella=uuid,
             type=_type[0].lower() + _type[1:],
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
             **attrs,
         )
@@ -348,8 +342,7 @@ class TestModelElements:
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
         base_object.pw.polarion_data_repo.update_work_items([work_item_obj_2])
@@ -394,16 +387,14 @@ class TestModelElements:
             id="Obj-1",
             uuid_capella=function_uuid,
             type=type(funtion_obj).__name__,
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
         work_item_obj_2 = data_models.CapellaWorkItem(
             id="Obj-2",
             uuid_capella=uuid,
             type="functionalExchange",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
 
@@ -511,8 +502,7 @@ class TestModelElements:
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
         base_object.pw.polarion_data_repo.update_work_items([work_item_obj_2])
@@ -562,16 +552,14 @@ class TestModelElements:
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
         work_item_obj_1 = data_models.CapellaWorkItem(
             id="Obj-1",
             uuid_capella="uuid1",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
         base_object.pw.polarion_data_repo.update_work_items(
@@ -642,8 +630,7 @@ class TestModelElements:
                 id=f"Obj-{i}",
                 uuid_capella=f"uuid{i}",
                 type="fakeModelObject",
-                description_type="text/html",
-                description=markupsafe.Markup(""),
+                description=polarion_api.HtmlContent(markupsafe.Markup("")),
                 status="open",
             )
             for i in range(4, 7)
@@ -692,8 +679,7 @@ class TestModelElements:
             id="Obj-2",
             uuid_capella="uuid2",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
         )
 
@@ -724,8 +710,7 @@ class TestModelElements:
         work_item_2 = data_models.CapellaWorkItem(
             id="Obj-2",
             type="_C2P_fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
             uuid_capella="uuid2",
         )
@@ -763,8 +748,9 @@ class TestModelElements:
                 uuid_capella="uuid1",
                 status="open",
                 title="Something",
-                description_type="text/html",
-                description=markupsafe.Markup("Test"),
+                description=polarion_api.HtmlContent(
+                    markupsafe.Markup("Test")
+                ),
             )
         ]
         polarion_api_get_all_work_items = mock.MagicMock()
@@ -783,8 +769,7 @@ class TestModelElements:
                 uuid_capella="uuid1",
                 title="Fake 1",
                 type="type",
-                description_type="text/html",
-                description=markupsafe.Markup(""),
+                description=polarion_api.HtmlContent(markupsafe.Markup("")),
             )
         )
 
@@ -825,8 +810,9 @@ class TestModelElements:
         assert isinstance(work_item, data_models.CapellaWorkItem)
         assert work_item.id == "Obj-1"
         assert work_item.title == "Fake 1"
-        assert work_item.description_type == "text/html"
-        assert work_item.description == markupsafe.Markup("")
+        assert work_item.description
+        assert work_item.description.type == "text/html"
+        assert work_item.description.value == markupsafe.Markup("")
         assert work_item.type is None
         assert work_item.status == "open"
         assert work_item.uuid_capella is None
@@ -860,8 +846,9 @@ class TestModelElements:
                 uuid_capella="uuid1",
                 status="open",
                 title="Something",
-                description_type="text/html",
-                description=markupsafe.Markup("Test"),
+                description=polarion_api.HtmlContent(
+                    markupsafe.Markup("Test")
+                ),
             )
         )
 
@@ -1141,8 +1128,11 @@ class TestModelElements:
             == dummy_work_items["uuid2"]
         )
         work_item_0 = update_work_item_calls[0][0][0]
+        del work_item_0.additional_attributes["checksum"]
         work_item_1 = update_work_item_calls[1][0][0]
+        del work_item_1.additional_attributes["checksum"]
         work_item_2 = update_work_item_calls[2][0][0]
+        del work_item_2.additional_attributes["checksum"]
         assert work_item_0.additional_attributes == {}
         assert work_item_1.additional_attributes == {}
         assert work_item_2.additional_attributes == {}
@@ -1523,8 +1513,10 @@ def test_grouped_linked_work_items_order_consistency(
     config = converter_config.CapellaTypeConfig(
         "fakeModelObject",
     )
-    work_item = data_models.CapellaWorkItem("id", "Dummy")
-    converter_data = data_session.ConverterData("test", config, [], work_item)
+    work_item = data_models.CapellaWorkItem("id", title="Dummy")
+    converter_data = data_session.ConverterData(
+        "test", config, FakeModelObject(""), work_item
+    )
     links = {
         "attribute_reverse": [
             polarion_api.WorkItemLink("prim1", "id", "role1"),
@@ -1590,12 +1582,15 @@ class TestSerializers:
             type="diagram",
             uuid_capella=TEST_DIAG_UUID,
             title="[CC] Capability",
-            description_type="text/html",
-            description=TEST_DIAG_DESCR.format(
-                title="Diagram",
-                attachment_id="__C2P__diagram.svg",
-                width=750,
-                cls="diagram",
+            description=polarion_api.HtmlContent(
+                markupsafe.Markup(
+                    TEST_DIAG_DESCR.format(
+                        title="Diagram",
+                        attachment_id="__C2P__diagram.svg",
+                        width=750,
+                        cls="diagram",
+                    )
+                )
             ),
             status="open",
             linked_work_items=[],
@@ -1638,8 +1633,9 @@ class TestSerializers:
                     "type": "entity",
                     "title": "Environment",
                     "uuid_capella": TEST_WE_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(TEST_WE_DESCR),
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup(TEST_WE_DESCR)
+                    ),
                 },
                 id="entity",
             ),
@@ -1650,10 +1646,11 @@ class TestSerializers:
                     "type": "logicalActor",
                     "title": "Prof. A. P. W. B. Dumbledore",
                     "uuid_capella": TEST_ACTOR_UUID,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(
-                        "<p>Principal of Hogwarts, wearer of the elder wand "
-                        "and greatest mage of all time.</p>\n"
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup(
+                            "<p>Principal of Hogwarts, wearer of the elder wand "
+                            "and greatest mage of all time.</p>\n"
+                        )
                     ),
                 },
                 id="logicalActor",
@@ -1665,8 +1662,9 @@ class TestSerializers:
                     "type": "physicalComponent",
                     "title": "Physical System",
                     "uuid_capella": TEST_PHYS_COMP,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup("")
+                    ),
                 },
                 id="physicalComponent",
             ),
@@ -1677,8 +1675,9 @@ class TestSerializers:
                     "type": "physicalComponentNode",
                     "title": "PC 1",
                     "uuid_capella": TEST_PHYS_NODE,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup("")
+                    ),
                 },
                 id="physicalComponentNode",
             ),
@@ -1689,8 +1688,9 @@ class TestSerializers:
                     "type": "scenario",
                     "title": "Scenario",
                     "uuid_capella": TEST_SCENARIO,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup("")
+                    ),
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
@@ -1714,8 +1714,9 @@ class TestSerializers:
                     "type": "capabilityRealization",
                     "title": "Capability Realization",
                     "uuid_capella": TEST_CAP_REAL,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(""),
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup("")
+                    ),
                     "additional_attributes": {
                         "preCondition": {
                             "type": "text/html",
@@ -1736,9 +1737,8 @@ class TestSerializers:
                     "type": "constraint",
                     "title": "",
                     "uuid_capella": TEST_CONSTRAINT,
-                    "description_type": "text/html",
-                    "description": markupsafe.Markup(
-                        "This is a test context.Make Food"
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup("This is a test context.Make Food")
                     ),
                 },
                 id="constraint",

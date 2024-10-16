@@ -174,6 +174,7 @@ class CapellaPolarionWorker:
             if work_item.uuid_capella in self.polarion_data_repo:
                 continue
 
+            work_item.calculate_checksum()
             missing_work_items.append(work_item)
             logger.info("Create work item for %r...", work_item.title)
         if missing_work_items:
@@ -196,7 +197,7 @@ class CapellaPolarionWorker:
         assert old.id is not None
 
         new.calculate_checksum()
-        if not self.force_update and new == old:
+        if not self.force_update and new.checksum == old.checksum:
             return
 
         log_args = (old.id, new.type, new.title)
@@ -205,13 +206,12 @@ class CapellaPolarionWorker:
         )
 
         try:
-            old_checksums = json.loads(old.get_current_checksum() or "")
+            old_checksums = json.loads(old.checksum or "")
         except json.JSONDecodeError:
             old_checksums = {"__C2P__WORK_ITEM": ""}
 
-        new_checksum = new.get_current_checksum()
-        assert new_checksum is not None
-        new_checksums = json.loads(new_checksum)
+        assert new.checksum is not None
+        new_checksums = json.loads(new.checksum)
 
         new_work_item_check_sum = new_checksums.pop("__C2P__WORK_ITEM")
         old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
@@ -289,11 +289,10 @@ class CapellaPolarionWorker:
                 new.linked_work_items, old.linked_work_items
             )
         else:
-            new.additional_attributes = {}
+            new.clear_attributes()
             new.type = None
             new.status = None
             new.description = None
-            new.description_type = None
             new.title = None
 
         try:
@@ -348,8 +347,8 @@ class CapellaPolarionWorker:
                     )
 
         if new.description:
-            new.description = chelpers.process_html_fragments(
-                new.description, set_attachment_id
+            new.description.value = chelpers.process_html_fragments(
+                new.description.value, set_attachment_id
             )
         for _, attributes in new.additional_attributes.items():
             if (

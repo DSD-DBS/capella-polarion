@@ -66,8 +66,7 @@ def dummy_work_items() -> dict[str, data_models.CapellaWorkItem]:
             uuid_capella=f"uuid{i}",
             title=f"Fake {i}",
             type="fakeModelObject",
-            description_type="text/html",
-            description=markupsafe.Markup(""),
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
             linked_work_items=[
                 polarion_api.WorkItemLink(
                     f"Obj-{i}", f"Obj-{j}", "attribute", True, TEST_PROJECT_ID
