@@ -12,10 +12,11 @@ following template can be used inside the `.gitlab-ci.yml` file:
    :language: yaml
    :lines: 4-
 
-We highly recommend using the diagram cache as a separate job and defined it as a dependency in our template for that
-reason. The diagram cache artifacts have to be included in the capella2polarion job and its path must be defined in the
-`CAPELLA2POLARION_CAPELLA_MODEL` variable. A `.gitlab-ci.yml` with a capella2polarion synchronization job could look like
-this:
+We highly recommend using the diagram cache as a separate job and define it as
+a dependency in our template for that reason. The diagram cache artifacts have
+to be included in the capella2polarion job and its path must be defined in the
+`CAPELLA2POLARION_CAPELLA_MODEL` variable. A `.gitlab-ci.yml` with a
+capella2polarion synchronization job could look like this:
 
 .. code:: yaml
 
