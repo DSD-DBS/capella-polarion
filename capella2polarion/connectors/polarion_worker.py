@@ -87,7 +87,6 @@ class CapellaPolarionWorker:
             delete_status=(
                 "deleted" if self.polarion_params.delete_work_items else None
             ),
-            add_work_item_checksum=True,
         )
         self._additional_clients: dict[str, polarion_api.ProjectClient] = {}
         self.check_client()
@@ -104,7 +103,6 @@ class CapellaPolarionWorker:
             delete_status=(
                 "deleted" if self.polarion_params.delete_work_items else None
             ),
-            add_work_item_checksum=True,
         )
         if not client.exists():
             raise KeyError(f"Miss Polarion project with id {project_id}")

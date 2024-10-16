@@ -1648,8 +1648,8 @@ class TestSerializers:
                     "uuid_capella": TEST_ACTOR_UUID,
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup(
-                            "<p>Principal of Hogwarts, wearer of the elder wand "
-                            "and greatest mage of all time.</p>\n"
+                            "<p>Principal of Hogwarts, wearer of the elder"
+                            " wand and greatest mage of all time.</p>\n"
                         )
                     ),
                 },

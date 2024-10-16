@@ -7,7 +7,6 @@ import base64
 import dataclasses
 import hashlib
 import json
-import typing as t
 
 import polarion_rest_api_client as polarion_api
 
@@ -24,7 +23,9 @@ class CapellaWorkItem(polarion_api.WorkItem):
 
     def clear_attributes(self):
         """Clear all additional attributes except the checksum."""
+        # pylint: disable=attribute-defined-outside-init
         self.additional_attributes = {"checksum": self.checksum}
+        # pylint: enable=attribute-defined-outside-init
 
     def calculate_checksum(self) -> str:
         """Calculate and return a checksum for this WorkItem.
@@ -57,7 +58,6 @@ class CapellaWorkItem(polarion_api.WorkItem):
         data = dict(sorted(data.items()))
 
         converted = json.dumps(data).encode("utf8")
-        # pylint: disable=attribute-defined-outside-init
         self.checksum = json.dumps(
             {"__C2P__WORK_ITEM": hashlib.sha256(converted).hexdigest()}
             | dict(sorted(attachment_checksums.items()))
