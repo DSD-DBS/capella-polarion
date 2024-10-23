@@ -323,9 +323,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             try:
                 with filehandler.open(file_path, "r") as img:
                     content = img.read()
-                    file_name = hashlib.md5(
-                        str(file_path).encode("utf8")
-                    ).hexdigest()
+                    file_name = (
+                        hashlib.md5(str(file_path).encode("utf8")).hexdigest()
+                        + file_path.suffix
+                    )
                     attachments.append(
                         polarion_api.WorkItemAttachment(
                             "",
@@ -333,7 +334,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                             file_path.name,
                             content,
                             mime_type,
-                            f"{file_name}.{file_path.suffix}",
+                            file_name,
                         )
                     )
                     node.attrib["src"] = f"workitemimg:{file_name}"
