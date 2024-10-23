@@ -155,23 +155,8 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
         if self.generate_attachments:
-            try:
-                render_params = render_params or {}
-                diagram_svg = diagram.render("svg", **render_params)
-            except Exception:
-                logger.exception("Failed to render diagram %s", diagram.name)
-                diagram_svg = diagram.as_svg
-
-            if isinstance(diagram_svg, str):
-                diagram_svg = diagram_svg.encode("utf8")
-
-            attachment = polarion_api.WorkItemAttachment(
-                "",
-                "",
-                title,
-                diagram_svg,
-                "image/svg+xml",
-                file_name,
+            attachment = data_models.CapellaDiagramAttachment(
+                diagram, file_name, render_params, title
             )
         else:
             attachment = None

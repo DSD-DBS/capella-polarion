@@ -1613,11 +1613,12 @@ class TestSerializers:
         assert serialized_diagram is not None
 
         attachment = serialized_diagram.attachments[0]
-        attachment.content_bytes = None
 
-        assert attachment == polarion_api.WorkItemAttachment(
-            "", "", "Diagram", None, "image/svg+xml", "__C2P__diagram.svg"
-        )
+        assert attachment.work_item_id == ""
+        assert attachment.id == ""
+        assert attachment.title == "Diagram"
+        assert attachment.mime_type == "image/svg+xml"
+        assert attachment.file_name == "__C2P__diagram.svg"
 
         serialized_diagram.attachments = []
 
@@ -1869,14 +1870,11 @@ class TestSerializers:
         attachment = work_item.attachments[0]
         attachment.content_bytes = None
 
-        assert attachment == polarion_api.WorkItemAttachment(
-            "",
-            "",
-            "Context Diagram",
-            None,
-            "image/svg+xml",
-            "__C2P__context_diagram.svg",
-        )
+        assert attachment.work_item_id == ""
+        assert attachment.id == ""
+        assert attachment.title == "Context Diagram"
+        assert attachment.mime_type == "image/svg+xml"
+        assert attachment.file_name == "__C2P__context_diagram.svg"
 
     @staticmethod
     @pytest.mark.parametrize(

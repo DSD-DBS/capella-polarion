@@ -196,18 +196,7 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        try:
-            old_checksums = json.loads(old.checksum or "")
-        except json.JSONDecodeError:
-            old_checksums = {"__C2P__WORK_ITEM": ""}
-
-        assert new.checksum is not None
-        new_checksums = json.loads(new.checksum)
-
-        new_work_item_check_sum = new_checksums.pop("__C2P__WORK_ITEM")
-        old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
-
-        work_item_changed = new_work_item_check_sum != old_work_item_check_sum
+        work_item_changed = new.content_checksum != old.content_checksum
         try:
             if work_item_changed or self.force_update:
                 old = self.project_client.work_items.get(
@@ -231,7 +220,10 @@ class CapellaPolarionWorker:
                 )
             if old_attachments or new.attachments:
                 work_item_changed |= self.update_attachments(
-                    new, old_checksums, new_checksums, old_attachments
+                    new,
+                    old.attachment_checksums,
+                    new.attachment_checksums,
+                    old_attachments,
                 )
         except (polarion_api.PolarionApiException, ValueError) as error:
             logger.error(
