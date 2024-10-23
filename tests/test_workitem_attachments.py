@@ -288,35 +288,38 @@ def test_diagram_attachments_unchanged_work_item_changed(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     converter = model_converter.ModelConverter(model, "TEST")
-    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [
-            data_models.CapellaWorkItem(
+    diagram_work_item = data_models.CapellaWorkItem(
+        WORKITEM_ID,
+        uuid_capella=TEST_DIAG_UUID,
+        checksum=json.dumps(
+            {
+                "__C2P__WORK_ITEM": "123",
+                "__C2P__diagram.png": DIAGRAM_PNG_CHECKSUM,
+            }
+        ),
+        attachments=[
+            polarion_api.WorkItemAttachment(
                 WORKITEM_ID,
-                uuid_capella=TEST_DIAG_UUID,
-                checksum=json.dumps(
-                    {
-                        "__C2P__WORK_ITEM": "123",
-                        "__C2P__diagram.png": DIAGRAM_PNG_CHECKSUM,
-                    }
-                ),
-            )
-        ]
+                "SVG-ATTACHMENT",
+                "test",
+                file_name="__C2P__diagram.svg",
+            ),
+            polarion_api.WorkItemAttachment(
+                WORKITEM_ID,
+                "PNG-ATTACHMENT",
+                "test",
+                file_name="__C2P__diagram.png",
+            ),
+        ],
+        attachments_truncated=True,
     )
-    worker.project_client.work_items.attachments.get_all = mock.MagicMock()
-    worker.project_client.work_items.attachments.get_all.return_value = [
-        polarion_api.WorkItemAttachment(
-            WORKITEM_ID,
-            "SVG-ATTACHMENT",
-            "test",
-            file_name="__C2P__diagram.svg",
-        ),
-        polarion_api.WorkItemAttachment(
-            WORKITEM_ID,
-            "PNG-ATTACHMENT",
-            "test",
-            file_name="__C2P__diagram.png",
-        ),
-    ]
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [diagram_work_item]
+    )
+    worker.project_client.work_items.get.return_value = diagram_work_item
+    worker.project_client.work_items.attachments.get_all.return_value = (
+        diagram_work_item.attachments
+    )
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
@@ -330,7 +333,9 @@ def test_diagram_attachments_unchanged_work_item_changed(
         converter.converter_session[TEST_DIAG_UUID]
     )
 
+    assert worker.project_client.work_items.get.call_count == 1
     assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.get_all.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0
 
