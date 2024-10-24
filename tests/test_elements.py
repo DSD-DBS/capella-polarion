@@ -1897,10 +1897,11 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-            serializer.serialize_all()
+            wis = serializer.serialize_all()
+            _ = wis[0].attachments[0].content_bytes
 
-            assert wrapped_render.call_count == 1
-            assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+        assert wrapped_render.call_count == 1
+        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
         uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
@@ -2086,10 +2087,12 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-            serializer.serialize_all()
 
-            assert wrapped_render.call_count == 1
-            assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+            wis = serializer.serialize_all()
+            _ = wis[0].attachments[0].content_bytes
+
+        assert wrapped_render.call_count == 1
+        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 
     @staticmethod
     def test_read_config_links(caplog: pytest.LogCaptureFixture):
