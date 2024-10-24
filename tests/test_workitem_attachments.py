@@ -11,7 +11,7 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse_context_diagrams import context
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo, polarion_worker
 from capella2polarion.converters import (
     converter_config,
@@ -136,11 +136,11 @@ def test_diagram_attachments_new(
 ):
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
+        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
 
     worker.project_client.work_items.get.return_value = (
-        data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
+        data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
     )
     worker.project_client.work_items.attachments = mock.MagicMock()
     worker.project_client.work_items.attachments.create.side_effect = (
@@ -166,7 +166,7 @@ def test_diagram_attachments_new(
     created_attachments: list[polarion_api.WorkItemAttachment] = (
         worker.project_client.work_items.attachments.create.call_args.args[0]
     )
-    work_item: data_models.CapellaWorkItem = (
+    work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
 
@@ -197,14 +197,14 @@ def test_new_diagram(
 
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
             )
         ]
     )
 
     worker.project_client.work_items.get.return_value = (
-        data_models.CapellaWorkItem(
+        data_model.CapellaWorkItem(
             WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
         )
     )
@@ -243,7 +243,7 @@ def test_diagram_attachments_updated(
 ):
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
+        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
     existing_attachments = [
         polarion_api.WorkItemAttachment(
@@ -261,7 +261,7 @@ def test_diagram_attachments_updated(
     ]
 
     worker.project_client.work_items.get.return_value = (
-        data_models.CapellaWorkItem(
+        data_model.CapellaWorkItem(
             WORKITEM_ID,
             uuid_capella=TEST_DIAG_UUID,
             attachments=existing_attachments,
@@ -290,7 +290,7 @@ def test_diagram_attachments_updated(
     assert worker.project_client.work_items.attachments.update.call_count == 2
     assert worker.project_client.work_items.attachments.get_all.call_count == 1
 
-    work_item: data_models.CapellaWorkItem = (
+    work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
 
@@ -307,7 +307,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     converter = model_converter.ModelConverter(model, "TEST")
-    diagram_work_item = data_models.CapellaWorkItem(
+    diagram_work_item = data_model.CapellaWorkItem(
         WORKITEM_ID,
         uuid_capella=TEST_DIAG_UUID,
         checksum=json.dumps(
@@ -358,7 +358,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     assert worker.project_client.work_items.attachments.create.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0
 
-    work_item: data_models.CapellaWorkItem = (
+    work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
 
@@ -377,7 +377,7 @@ def test_diagram_attachments_fully_unchanged(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=TEST_DIAG_UUID,
                 checksum=DIAGRAM_CHECKSUM,
@@ -410,7 +410,7 @@ def test_add_context_diagram(
     uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_models.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
+        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
     )
 
     converter.converter_session[uuid] = data_session.ConverterData(
@@ -434,7 +434,7 @@ def test_add_context_diagram(
     created_attachments: list[polarion_api.WorkItemAttachment] = (
         worker.project_client.work_items.attachments.create.call_args.args[0]
     )
-    work_item: data_models.CapellaWorkItem = (
+    work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
 
@@ -463,7 +463,7 @@ def test_update_context_diagram_no_changes(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=uuid,
                 checksum=json.dumps(
@@ -499,7 +499,7 @@ def test_update_context_diagram_with_changes(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=uuid,
                 checksum=json.dumps(
@@ -541,7 +541,10 @@ def test_update_context_diagram_with_changes(
     )
 
     with mock.patch.object(context.ContextDiagram, "render") as wrapped_render:
-        wrapped_render.return_value = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"></svg>'
+        wrapped_render.return_value = (
+            '<svg xmlns="http://www.w3.org/2000/svg" '
+            'width="100" height="100"></svg>'
+        )
         converter.generate_work_items(worker.polarion_data_repo, False, True)
         worker.compare_and_update_work_item(converter.converter_session[uuid])
 
@@ -557,7 +560,7 @@ def test_diagram_delete_attachments(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=TEST_DIAG_UUID,
                 checksum=json.dumps(
@@ -609,7 +612,7 @@ def test_diagram_delete_attachments(
     assert worker.project_client.work_items.attachments.update.call_count == 0
     assert worker.project_client.work_items.attachments.delete.call_count == 2
 
-    work_item: data_models.CapellaWorkItem = (
+    work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
 
