@@ -404,11 +404,12 @@ class CapellaPolarionWorker:
         for common_attachment_file_name in (
             old_attachment_file_names & new_attachment_file_names
         ):
+            base_file_name = common_attachment_file_name.rsplit(".", 1)[0]
             attachment = new_attachment_dict[common_attachment_file_name]
             attachment.id = old_attachment_dict[common_attachment_file_name].id
             if attachment.file_name is not None and (
-                new_checksums.get(attachment.file_name)
-                != old_checksums.get(attachment.file_name)
+                new_checksums.get(base_file_name)
+                != old_checksums.get(base_file_name)
                 or self.force_update
                 or attachment.mime_type == "image/svg+xml"
             ):

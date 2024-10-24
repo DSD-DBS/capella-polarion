@@ -12,13 +12,13 @@ import re
 import typing as t
 from collections import abc as cabc
 
-import cairosvg
 import capellambse
 import jinja2
 import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse import model as m
+from capellambse_context_diagrams import context
 from lxml import etree
 
 from capella2polarion import data_models
@@ -126,21 +126,14 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     def _add_attachment(
         self,
         work_item: data_models.CapellaWorkItem,
-        attachment: polarion_api.WorkItemAttachment,
+        attachment: data_models.Capella2PolarionAttachment,
     ):
         assert attachment.file_name is not None
         attachment.work_item_id = work_item.id or ""
         work_item.attachments.append(attachment)
         if attachment.mime_type == "image/svg+xml":
             work_item.attachments.append(
-                polarion_api.WorkItemAttachment(
-                    attachment.work_item_id,
-                    "",
-                    attachment.title,
-                    cairosvg.svg2png(attachment.content_bytes),
-                    "image/png",
-                    attachment.file_name[:-3] + "png",
-                )
+                data_models.PngConvertedSvgAttachment(attachment)
             )
 
     def _draw_diagram_svg(
@@ -151,13 +144,18 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         max_width: int,
         cls: str,
         render_params: dict[str, t.Any] | None = None,
-    ) -> tuple[str, polarion_api.WorkItemAttachment | None]:
+    ) -> tuple[str, data_models.CapellaDiagramAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
         if self.generate_attachments:
-            attachment = data_models.CapellaDiagramAttachment(
-                diagram, file_name, render_params, title
-            )
+            if not isinstance(diagram, context.ContextDiagram):
+                attachment = data_models.CapellaDiagramAttachment(
+                    diagram, file_name, render_params, title
+                )
+            else:
+                attachment = data_models.CapellaContextDiagramAttachment(
+                    diagram, file_name, render_params, title
+                )
         else:
             attachment = None
 
@@ -257,10 +255,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             "value": diagram_html,
         }
 
-    def _sanitize_linked_text(
-        self, obj: m.ModelElement | m.Diagram
-    ) -> tuple[
-        list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
+    def _sanitize_linked_text(self, obj: m.ModelElement | m.Diagram) -> tuple[
+        list[str],
+        markupsafe.Markup,
+        list[data_models.Capella2PolarionAttachment],
     ]:
         linked_text = getattr(
             obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
@@ -277,7 +275,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     def _sanitize_text(
         self, obj: m.ModelElement | m.Diagram, text: markupsafe.Markup | str
     ) -> tuple[
-        list[str], markupsafe.Markup, list[polarion_api.WorkItemAttachment]
+        list[str],
+        markupsafe.Markup,
+        list[data_models.Capella2PolarionAttachment],
     ]:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
@@ -287,7 +287,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             text,
         )
 
-        attachments: list[polarion_api.WorkItemAttachment] = []
+        attachments: list[data_models.Capella2PolarionAttachment] = []
 
         def repair_images(node: etree._Element) -> None:
             if (
@@ -313,7 +313,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                         + file_path.suffix
                     )
                     attachments.append(
-                        polarion_api.WorkItemAttachment(
+                        data_models.Capella2PolarionAttachment(
                             "",
                             "",
                             file_path.name,
@@ -322,6 +322,8 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                             file_name,
                         )
                     )
+                    # We use the filename here as the ID is unknown here
+                    # This needs to be refactored after updating attachments
                     node.attrib["src"] = f"workitemimg:{file_name}"
 
             except FileNotFoundError:
