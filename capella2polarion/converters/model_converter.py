@@ -10,7 +10,7 @@ import typing as t
 import capellambse
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import (
     converter_config,
@@ -84,7 +84,7 @@ class ModelConverter:
         generate_links: bool = False,
         generate_attachments: bool = False,
         generate_grouped_links_custom_fields: bool = False,
-    ) -> dict[str, data_models.CapellaWorkItem]:
+    ) -> dict[str, data_model.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
         The dictionary maps Capella UUIDs to ``CapellaWorkItem`` s. In

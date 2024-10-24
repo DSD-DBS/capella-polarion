@@ -14,7 +14,7 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse import model as m
 
-from capella2polarion import cli, data_models
+from capella2polarion import cli, data_model
 from capella2polarion.connectors import polarion_repo, polarion_worker
 from capella2polarion.converters import (
     converter_config,
@@ -59,9 +59,9 @@ def model() -> capellambse.MelodyModel:
 
 
 @pytest.fixture
-def dummy_work_items() -> dict[str, data_models.CapellaWorkItem]:
+def dummy_work_items() -> dict[str, data_model.CapellaWorkItem]:
     return {
-        f"uuid{i}": data_models.CapellaWorkItem(
+        f"uuid{i}": data_model.CapellaWorkItem(
             id=f"Obj-{i}",
             uuid_capella=f"uuid{i}",
             title=f"Fake {i}",
@@ -119,7 +119,7 @@ class BaseObjectContainer(t.NamedTuple):
 def base_object(
     model: capellambse.MelodyModel, monkeypatch: pytest.MonkeyPatch
 ) -> BaseObjectContainer:
-    work_item = data_models.CapellaWorkItem(
+    work_item = data_model.CapellaWorkItem(
         id="Obj-1", uuid_capella="uuid1", status="open"
     )
     c2p_cli = cli.Capella2PolarionCli(
@@ -152,7 +152,7 @@ def base_object(
             "oa",
             fake_model_type_config,
             fake,
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 id="Obj-1",
                 uuid_capella="uuid1",
                 status="open",

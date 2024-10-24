@@ -12,7 +12,7 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from capellambse import model as m
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import (
     converter_config,
@@ -246,7 +246,7 @@ class LinkSerializer:
 
     def _create_link_fields(
         self,
-        work_item: data_models.CapellaWorkItem,
+        work_item: data_model.CapellaWorkItem,
         role: str,
         links: list[polarion_api.WorkItemLink],
         reverse: bool = False,
@@ -310,7 +310,7 @@ class LinkSerializer:
 
     def create_grouped_back_link_fields(
         self,
-        work_item: data_models.CapellaWorkItem,
+        work_item: data_model.CapellaWorkItem,
         links: dict[str, list[polarion_api.WorkItemLink]],
     ):
         """Create fields for the given WorkItem using a list of backlinks.

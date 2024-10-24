@@ -7,7 +7,7 @@ import dataclasses
 
 from capellambse import model as m
 
-from capella2polarion import data_models as dm
+from capella2polarion import data_model as dm
 from capella2polarion.converters import converter_config
 
 

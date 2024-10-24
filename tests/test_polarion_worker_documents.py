@@ -4,7 +4,7 @@ from unittest import mock
 
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.connectors import polarion_worker
 from capella2polarion.converters import text_work_item_provider
 
@@ -29,7 +29,7 @@ def test_update_document(
             value=path.read_text("utf-8"),
         ),
     )
-    document_data = data_models.DocumentData(
+    document_data = data_model.DocumentData(
         document,
         [],
         text_work_item_provider.TextWorkItemProvider(
@@ -78,7 +78,7 @@ def test_create_document(
             value=path.read_text("utf-8"),
         ),
     )
-    document_data = data_models.DocumentData(
+    document_data = data_model.DocumentData(
         document,
         [],
         text_work_item_provider.TextWorkItemProvider(
@@ -123,7 +123,7 @@ def test_use_correct_client(
         ),
     )
 
-    document_data = data_models.DocumentData(
+    document_data = data_model.DocumentData(
         document,
         [],
         text_work_item_provider.TextWorkItemProvider(),

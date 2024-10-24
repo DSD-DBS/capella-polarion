@@ -16,7 +16,7 @@ from lxml import html as lxmlhtml
 
 from capella2polarion.connectors import polarion_repo
 
-from .. import data_models
+from .. import data_model
 from . import document_config, polarion_html_helper
 from . import text_work_item_provider as twi
 
@@ -54,10 +54,10 @@ class RenderingSession:
 class ProjectData:
     """A class holding data of a project which documents are rendered for."""
 
-    new_docs: list[data_models.DocumentData] = dataclasses.field(
+    new_docs: list[data_model.DocumentData] = dataclasses.field(
         default_factory=list
     )
-    updated_docs: list[data_models.DocumentData] = dataclasses.field(
+    updated_docs: list[data_model.DocumentData] = dataclasses.field(
         default_factory=list
     )
 
@@ -203,7 +203,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
         document_project_id: str | None = None,
         **kwargs: t.Any,
-    ) -> data_models.DocumentData:
+    ) -> data_model.DocumentData:
         """Render a new Polarion document."""
 
     @t.overload
@@ -216,7 +216,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
         document_project_id: str | None = None,
         **kwargs: t.Any,
-    ) -> data_models.DocumentData:
+    ) -> data_model.DocumentData:
         """Update an existing Polarion document."""
 
     def render_document(
@@ -232,7 +232,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
         document_project_id: str | None = None,
         **kwargs: t.Any,
-    ) -> data_models.DocumentData:
+    ) -> data_model.DocumentData:
         """Render a Polarion document."""
         text_work_item_provider = (
             text_work_item_provider or twi.TextWorkItemProvider()
@@ -279,7 +279,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         )
         document.rendering_layouts = session.rendering_layouts
 
-        return data_models.DocumentData(
+        return data_model.DocumentData(
             document, session.headings, text_work_item_provider
         )
 
@@ -292,7 +292,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         section_parameters: dict[str, dict[str, t.Any]],
         text_work_item_provider: twi.TextWorkItemProvider | None = None,
         document_project_id: str | None = None,
-    ) -> data_models.DocumentData:
+    ) -> data_model.DocumentData:
         """Update a mixed authority document."""
         text_work_item_provider = (
             text_work_item_provider or twi.TextWorkItemProvider()
@@ -360,7 +360,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         )
         document.rendering_layouts = session.rendering_layouts
 
-        return data_models.DocumentData(
+        return data_model.DocumentData(
             document, session.headings, text_work_item_provider
         )
 
