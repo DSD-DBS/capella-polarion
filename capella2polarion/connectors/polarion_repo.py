@@ -48,7 +48,7 @@ class PolarionDataRepository:
         """Return True, if the given capella UUID is in the repository."""
         return item in self._id_mapping
 
-    def __sizeof__(self) -> int:
+    def __len__(self) -> int:
         """Return the amount of registered Capella UUIDs."""
         return len(self._id_mapping)
 

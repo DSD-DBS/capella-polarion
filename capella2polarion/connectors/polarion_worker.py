@@ -159,22 +159,15 @@ class CapellaPolarionWorker:
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Post work items in a Polarion project."""
-        missing_work_items: list[data_models.CapellaWorkItem] = []
-        for uuid, converter_data in converter_session.items():
-            if not (work_item := converter_data.work_item):
-                logger.warning(
-                    "Expected to find a WorkItem for %s, but there is none",
-                    uuid,
-                )
-                continue
-
-            assert work_item is not None
-            if work_item.uuid_capella in self.polarion_data_repo:
-                continue
-
-            work_item.calculate_checksum()
-            missing_work_items.append(work_item)
-            logger.info("Create work item for %r...", work_item.title)
+        missing_work_items = [
+            data_models.CapellaWorkItem(
+                title=converter_data.capella_element.name,
+                type=converter_data.type_config.p_type,
+                uuid_capella=uuid,
+            )
+            for uuid, converter_data in converter_session.items()
+            if uuid not in self.polarion_data_repo
+        ]
         if missing_work_items:
             try:
                 self.project_client.work_items.create(missing_work_items)

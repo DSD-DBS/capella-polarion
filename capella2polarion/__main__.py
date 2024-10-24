@@ -150,8 +150,6 @@ def synchronize(
 
     polarion_worker.load_polarion_work_item_map()
 
-    converter.generate_work_items(polarion_worker.polarion_data_repo)
-
     polarion_worker.delete_orphaned_work_items(converter.converter_session)
     polarion_worker.create_missing_work_items(converter.converter_session)
 
