@@ -29,10 +29,10 @@ classifiers = [
 ]
 dependencies = [
   "capellambse>=0.6.6,<0.7",
-  "capellambse_context_diagrams>=0.4.0",
+  "capellambse_context_diagrams@git+https://github.com/DSD-DBS/capellambse-context-diagrams.git@feat-cache-collection",
   "click",
   "PyYAML",
-  "polarion-rest-api-client==1.2.0",
+  "polarion-rest-api-client@git+https://github.com/DSD-DBS/polarion-rest-api-client.git@fix-description",
   "bidict",
   "cairosvg",
   "jinja2",

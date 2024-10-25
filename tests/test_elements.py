@@ -889,7 +889,7 @@ class TestModelElements:
     def test_create_new_work_item(base_object: BaseObjectContainer):
         polarion_api_get_all_work_items = mock.MagicMock()
         polarion_api_get_all_work_items.return_value = [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 id="Obj-1",
                 type="type",
                 uuid_capella="uuid1",
@@ -913,7 +913,7 @@ class TestModelElements:
         assert polarion_api_create_work_items.call_count == 1
         assert len(polarion_api_create_work_items.call_args[0][0]) == 1
         work_item = polarion_api_create_work_items.call_args[0][0][0]
-        assert isinstance(work_item, data_models.CapellaWorkItem)
+        assert isinstance(work_item, data_model.CapellaWorkItem)
         assert work_item.id == "AUTO-0"
         assert len(base_object.pw.polarion_data_repo) == 2
         assert (
