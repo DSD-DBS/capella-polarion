@@ -72,7 +72,7 @@ class CapellaDiagramAttachment(Capella2PolarionAttachment):
         self._content_bytes: bytes | None = None
 
     @property
-    def content_bytes(self) -> bytes:
+    def content_bytes(self) -> bytes | None:
         """Diagrams are only rendered, if content_bytes are requested."""
         if self._content_bytes:
             return self._content_bytes
@@ -156,7 +156,7 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
         self._svg_attachment = attachment
 
     @property
-    def content_bytes(self) -> bytes:
+    def content_bytes(self) -> bytes | None:
         """The content bytes are created from the SVG when requested."""
         if not self._content_bytes:
             self._content_bytes = cairosvg.svg2png(
