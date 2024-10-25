@@ -72,7 +72,7 @@ class CapellaDiagramAttachment(Capella2PolarionAttachment):
         self._content_bytes: bytes | None = None
 
     @property
-    def content_bytes(self):
+    def content_bytes(self) -> bytes:
         """Diagrams are only rendered, if content_bytes are requested."""
         if self._content_bytes:
             return self._content_bytes
@@ -110,7 +110,7 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
         super().__init__(diagram, file_name, render_params, title)
 
     @property
-    def content_checksum(self):
+    def content_checksum(self) -> str:
         """Return checksum based on elk input for ContextDiagrams else None."""
         if self._checksum is None:
             try:
@@ -156,7 +156,7 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
         self._svg_attachment = attachment
 
     @property
-    def content_bytes(self):
+    def content_bytes(self) -> bytes:
         """The content bytes are created from the SVG when requested."""
         if not self._content_bytes:
             self._content_bytes = cairosvg.svg2png(
