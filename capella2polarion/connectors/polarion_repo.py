@@ -8,7 +8,7 @@ import collections.abc as cabc
 import bidict
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 
 
 class PolarionDataRepository:
@@ -20,11 +20,11 @@ class PolarionDataRepository:
     """
 
     _id_mapping: bidict.bidict[str, str]
-    _work_items: dict[str, data_models.CapellaWorkItem]
+    _work_items: dict[str, data_model.CapellaWorkItem]
 
     def __init__(
         self,
-        polarion_work_items: list[data_models.CapellaWorkItem] | None = None,
+        polarion_work_items: list[data_model.CapellaWorkItem] | None = None,
     ):
         if polarion_work_items is None:
             polarion_work_items = []
@@ -58,7 +58,7 @@ class PolarionDataRepository:
 
     def items(
         self,
-    ) -> cabc.Iterator[tuple[str, str, data_models.CapellaWorkItem]]:
+    ) -> cabc.Iterator[tuple[str, str, data_model.CapellaWorkItem]]:
         """Yield all Capella UUIDs, Work Item IDs and Work Items."""
         for uuid, polarion_id in self._id_mapping.items():
             yield uuid, polarion_id, self._work_items[uuid]
@@ -73,19 +73,19 @@ class PolarionDataRepository:
 
     def get_work_item_by_capella_uuid(
         self, capella_uuid: str
-    ) -> data_models.CapellaWorkItem | None:
+    ) -> data_model.CapellaWorkItem | None:
         """Return a Work Item for a provided Capella UUID."""
         return self._work_items.get(capella_uuid)
 
     def get_work_item_by_polarion_id(
         self, work_item_id: str
-    ) -> data_models.CapellaWorkItem | None:
+    ) -> data_model.CapellaWorkItem | None:
         """Return a Work Item for a provided Work Item ID."""
         return self.get_work_item_by_capella_uuid(
             self.get_capella_uuid(work_item_id)  # type: ignore
         )
 
-    def update_work_items(self, work_items: list[data_models.CapellaWorkItem]):
+    def update_work_items(self, work_items: list[data_model.CapellaWorkItem]):
         """Update all mappings for the given Work Items."""
         for work_item in work_items:
             assert work_item.id is not None
@@ -123,7 +123,7 @@ that the document is in the same project as the model sync work items.
 """
 
 
-def check_work_items(work_items: cabc.Iterable[data_models.CapellaWorkItem]):
+def check_work_items(work_items: cabc.Iterable[data_model.CapellaWorkItem]):
     """Raise a ``ValueError`` if any work item has no ID."""
     if work_item_without_id := next(
         (wi for wi in work_items if wi.id is None), None

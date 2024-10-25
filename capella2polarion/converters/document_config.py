@@ -12,7 +12,7 @@ import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.converters import polarion_html_helper
 
 logger = logging.getLogger(__name__)
@@ -83,11 +83,11 @@ class DocumentConfigs(pydantic.BaseModel):
         pydantic.Field(default_factory=list)
     )
 
-    def iterate_documents(self) -> t.Iterator[data_models.DocumentInfo]:
+    def iterate_documents(self) -> t.Iterator[data_model.DocumentInfo]:
         """Yield all document paths of the config as tuples."""
         for conf in self.full_authority + self.mixed_authority:
             for inst in conf.instances:
-                yield data_models.DocumentInfo(
+                yield data_model.DocumentInfo(
                     project_id=conf.project_id,
                     module_folder=inst.polarion_space,
                     module_name=inst.polarion_name,
