@@ -85,7 +85,7 @@ class CapellaPolarionWorker:
         self.project_client = self.polarion_client.generate_project_client(
             project_id=self.polarion_params.project_id,
             delete_status=(
-                "deleted" if self.polarion_params.delete_work_items else None
+                None if self.polarion_params.delete_work_items else "deleted"
             ),
         )
         self._additional_clients: dict[str, polarion_api.ProjectClient] = {}
