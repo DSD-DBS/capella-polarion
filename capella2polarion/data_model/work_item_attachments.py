@@ -113,10 +113,20 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
     def content_checksum(self):
         """Return checksum based on elk input for ContextDiagrams else None."""
         if self._checksum is None:
-            elk_input = self.diagram.elk_input_data(self.render_params)
-            self._checksum = hashlib.sha256(
-                elk_input.json().encode("utf-8")
-            ).hexdigest()
+            try:
+                elk_input = self.diagram.elk_input_data(self.render_params)
+                self._checksum = hashlib.sha256(
+                    elk_input.json().encode("utf-8")
+                ).hexdigest()
+            except Exception as e:
+                logger.error(
+                    "Failed to get elk_input for attachment %s of WorkItem %s."
+                    " Using content checksum instead.",
+                    self.file_name,
+                    self.work_item_id,
+                    exc_info=e,
+                )
+                return super().content_checksum
         return self._checksum
 
 
