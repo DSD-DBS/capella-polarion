@@ -32,7 +32,7 @@ dependencies = [
   "capellambse_context_diagrams@git+https://github.com/DSD-DBS/capellambse-context-diagrams.git@feat-cache-collection",
   "click",
   "PyYAML",
-  "polarion-rest-api-client@git+https://github.com/DSD-DBS/polarion-rest-api-client.git@fix-description",
+  "polarion-rest-api-client==1.2.1",
   "bidict",
   "cairosvg",
   "jinja2",
