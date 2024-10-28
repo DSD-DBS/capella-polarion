@@ -55,7 +55,7 @@ class CapellaWorkItem(polarion_api.WorkItem):
         assert self._attachment_checksums is not None
         return self._attachment_checksums
 
-    def _calculate_attachment_checksums(self):
+    def _calculate_attachment_checksums(self) -> dict[str, str]:
         attachment_checksums: dict[str, str] = {}
         attachment_groups: dict[
             str, dict[str, polarion_api.WorkItemAttachment]
