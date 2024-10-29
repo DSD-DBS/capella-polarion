@@ -461,7 +461,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             if not (condition := getattr(cap, name)):
                 return ""
             _, value, _ = self._sanitize_linked_text(condition)
-            return value
+            return f'<div style="text-align: center;">{value}</div>'
 
         pre_condition = get_condition(obj, "precondition")
         post_condition = get_condition(obj, "postcondition")
