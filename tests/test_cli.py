@@ -137,8 +137,8 @@ def test_migrate_model_elements(cli_mocks: CLIMocks):
 
     assert result.exit_code == 0
     assert cli_mocks.get_polarion_wi_map.call_count == 1
-    assert cli_mocks.generate_work_items.call_count == 2
-    assert cli_mocks.generate_work_items.call_args_list[1][1] == {
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.generate_work_items.call_args_list[0][1] == {
         "generate_links": True,
         "generate_attachments": True,
         "generate_grouped_links_custom_fields": True,
