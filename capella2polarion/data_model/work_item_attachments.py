@@ -115,8 +115,12 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
         if self._checksum is None:
             try:
                 elk_input = self.diagram.elk_input_data(self.render_params)
+                if isinstance(elk_input, tuple):
+                    input_str = ";".join(eit.json() for eit in elk_input)
+                else:
+                    input_str = elk_input.json()
                 self._checksum = hashlib.sha256(
-                    elk_input.json().encode("utf-8")
+                    input_str.encode("utf-8")
                 ).hexdigest()
             except Exception as e:
                 logger.error(
