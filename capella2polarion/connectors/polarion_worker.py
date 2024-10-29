@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import collections.abc as cabc
-import json
 import logging
 import typing as t
 from urllib import parse
@@ -13,7 +12,7 @@ import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from lxml import etree
 
-from capella2polarion import data_models
+from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.converters import data_session
 
@@ -122,7 +121,7 @@ class CapellaPolarionWorker:
         work_items = self.project_client.work_items.get_all(
             "HAS_VALUE:uuid_capella",
             fields={"workitems": "id,uuid_capella,checksum,status,type"},
-            work_item_cls=data_models.CapellaWorkItem,
+            work_item_cls=data_model.CapellaWorkItem,
         )
         self.polarion_data_repo.update_work_items(work_items)
 
@@ -140,18 +139,19 @@ class CapellaPolarionWorker:
             if work_item.status != "deleted"
         }
         uuids: set[str] = existing_work_items - set(converter_session)
-        work_items: list[data_models.CapellaWorkItem] = []
+        work_items: list[data_model.CapellaWorkItem] = []
         for uuid in uuids:
             if wi := self.polarion_data_repo.get_work_item_by_capella_uuid(
                 uuid
             ):
                 logger.info("Delete work item %r...", wi.id)
                 work_items.append(wi)
-            try:
-                self.project_client.work_items.delete(work_items)
-            except polarion_api.PolarionApiException as error:
-                logger.error("Deleting work items failed. %s", error.args[0])
-                raise error
+
+        try:
+            self.project_client.work_items.delete(work_items)
+        except polarion_api.PolarionApiException as error:
+            logger.error("Deleting work items failed. %s", error.args[0])
+            raise error
 
         self.polarion_data_repo.remove_work_items_by_capella_uuid(uuids)
 
@@ -160,7 +160,7 @@ class CapellaPolarionWorker:
     ) -> None:
         """Post work items in a Polarion project."""
         missing_work_items = [
-            data_models.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 title=converter_data.capella_element.name,
                 type=converter_data.type_config.p_type,
                 uuid_capella=uuid,
@@ -196,22 +196,11 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        try:
-            old_checksums = json.loads(old.checksum or "")
-        except json.JSONDecodeError:
-            old_checksums = {"__C2P__WORK_ITEM": ""}
-
-        assert new.checksum is not None
-        new_checksums = json.loads(new.checksum)
-
-        new_work_item_check_sum = new_checksums.pop("__C2P__WORK_ITEM")
-        old_work_item_check_sum = old_checksums.pop("__C2P__WORK_ITEM")
-
-        work_item_changed = new_work_item_check_sum != old_work_item_check_sum
+        work_item_changed = new.content_checksum != old.content_checksum
         try:
             if work_item_changed or self.force_update:
                 old = self.project_client.work_items.get(
-                    old.id, work_item_cls=data_models.CapellaWorkItem
+                    old.id, work_item_cls=data_model.CapellaWorkItem
                 )
                 assert old is not None
                 assert old.id is not None
@@ -231,7 +220,10 @@ class CapellaPolarionWorker:
                 )
             if old_attachments or new.attachments:
                 work_item_changed |= self.update_attachments(
-                    new, old_checksums, new_checksums, old_attachments
+                    new,
+                    old.attachment_checksums,
+                    new.attachment_checksums,
+                    old_attachments,
                 )
         except (polarion_api.PolarionApiException, ValueError) as error:
             logger.error(
@@ -320,7 +312,7 @@ class CapellaPolarionWorker:
             )
             raise error
 
-    def _refactor_attached_images(self, new: data_models.CapellaWorkItem):
+    def _refactor_attached_images(self, new: data_model.CapellaWorkItem):
         def set_attachment_id(node: etree._Element) -> None:
             if node.tag != "img":
                 return
@@ -353,7 +345,7 @@ class CapellaPolarionWorker:
 
     def update_attachments(
         self,
-        new: data_models.CapellaWorkItem,
+        new: data_model.CapellaWorkItem,
         old_checksums: dict[str, str],
         new_checksums: dict[str, str],
         old_attachments: list[polarion_api.WorkItemAttachment],
@@ -412,11 +404,12 @@ class CapellaPolarionWorker:
         for common_attachment_file_name in (
             old_attachment_file_names & new_attachment_file_names
         ):
+            base_file_name = common_attachment_file_name.rsplit(".", 1)[0]
             attachment = new_attachment_dict[common_attachment_file_name]
             attachment.id = old_attachment_dict[common_attachment_file_name].id
             if attachment.file_name is not None and (
-                new_checksums.get(attachment.file_name)
-                != old_checksums.get(attachment.file_name)
+                new_checksums.get(base_file_name)
+                != old_checksums.get(base_file_name)
                 or self.force_update
                 or attachment.mime_type == "image/svg+xml"
             ):
@@ -468,7 +461,7 @@ class CapellaPolarionWorker:
 
     def create_documents(
         self,
-        document_datas: list[data_models.DocumentData],
+        document_datas: list[data_model.DocumentData],
         document_project: str | None = None,
     ):
         """Create new documents.
@@ -485,7 +478,7 @@ class CapellaPolarionWorker:
 
     def update_documents(
         self,
-        document_datas: list[data_models.DocumentData],
+        document_datas: list[data_model.DocumentData],
         document_project: str | None = None,
     ):
         """Update existing documents.
@@ -506,7 +499,7 @@ class CapellaPolarionWorker:
     def _process_document_datas(
         self,
         client: polarion_api.ProjectClient,
-        document_datas: list[data_models.DocumentData],
+        document_datas: list[data_model.DocumentData],
     ):
         documents: list[polarion_api.Document] = []
         headings: list[polarion_api.WorkItem] = []
@@ -545,7 +538,7 @@ class CapellaPolarionWorker:
 
     def load_polarion_documents(
         self,
-        document_infos: t.Iterable[data_models.DocumentInfo],
+        document_infos: t.Iterable[data_model.DocumentInfo],
     ) -> polarion_repo.DocumentRepository:
         """Load the documents referenced and text work items from Polarion."""
         return {

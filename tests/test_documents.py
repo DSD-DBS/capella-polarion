@@ -5,7 +5,7 @@ import polarion_rest_api_client as polarion_api
 import pytest
 from lxml import etree, html
 
-from capella2polarion import data_models as dm
+from capella2polarion import data_model as dm
 from capella2polarion.connectors import polarion_repo, polarion_worker
 from capella2polarion.converters import (
     document_config,
