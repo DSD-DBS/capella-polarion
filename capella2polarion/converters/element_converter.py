@@ -550,3 +550,40 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             render_params,
             filters,
         )
+
+    def _add_jinja_fields(
+        self,
+        converter_data: data_session.ConverterData,
+        fields: dict[str, dict[str, str]],
+    ) -> data_model.CapellaWorkItem:
+        """Add a new custom field and fill it with rendered jinja content."""
+        assert converter_data.work_item, "No work item set yet"
+        for field, jinja_properties in fields.items():
+            converter_data.work_item.additional_attributes[field] = {
+                "type": "text/html",
+                "value": self._render_jinja_template(
+                    jinja_properties.get("template_folder", ""),
+                    jinja_properties["template_path"],
+                    converter_data,
+                ),
+            }
+
+        return converter_data.work_item
+
+    def _jinja_as_description(
+        self,
+        converter_data: data_session.ConverterData,
+        template_path: str,
+        template_folder: str = "",
+    ) -> data_model.CapellaWorkItem:
+        """Use a Jinja template to render the description content."""
+        assert converter_data.work_item, "No work item set yet"
+        assert (
+            converter_data.work_item.description
+        ), "Description should already be defined"
+        converter_data.work_item.description.value = (
+            self._render_jinja_template(
+                template_folder, template_path, converter_data
+            )
+        )
+        return converter_data.work_item
