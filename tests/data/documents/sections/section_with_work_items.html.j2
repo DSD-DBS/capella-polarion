@@ -1,0 +1,7 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% set element = model.by_uuid(element) %}
+{{ insert_work_item(element, session) }}

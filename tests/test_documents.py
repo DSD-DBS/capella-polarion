@@ -28,6 +28,9 @@ MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
 DOCUMENTS_CONFIG_JINJA = TEST_DOCUMENT_ROOT / "config.yaml.j2"
 MIXED_AUTHORITY_DOCUMENT = TEST_DOCUMENT_ROOT / "mixed_authority_doc.html"
+MIXED_AUTHORITY_DOCUMENT_WI = (
+    TEST_DOCUMENT_ROOT / "mixed_authority_doc_workitem_inserted.html"
+)
 PROJECT_EXTERNAL_WORKITEM_SRC = (
     '<div id="polarion_wiki macro name=module-workitem;params=id=ATSY-1234'
     f'|layout=0|external=true|project={TEST_PROJECT_ID}"></div>'
@@ -286,6 +289,73 @@ def test_mixed_authority_document(
     assert len(document_data.headings) == 1
     assert document_data.headings[0].id == "ATSY-18305"
     assert document_data.headings[0].title == "Keep Heading"
+
+
+def test_mixed_authority_with_work_item(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    empty_polarion_worker.polarion_data_repo.update_work_items(
+        [
+            dm.CapellaWorkItem(
+                "ATSY-1234",
+                uuid_capella="d8655737-39ab-4482-a934-ee847c7ff6bd",
+                type="componentExchange",
+            )
+        ]
+    )
+
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+    old_doc = polarion_api.Document(
+        module_folder="_default",
+        module_name="TEST-DOC",
+        home_page_content=polarion_api.TextContent(
+            type="text/html",
+            value=MIXED_AUTHORITY_DOCUMENT_WI.read_text("utf-8"),
+        ),
+    )
+
+    def _find_links(content: list[etree._Element]):
+        links: list[str] = []
+        for el in content:
+            if el.tag == "p":
+                for e in el.getchildren():
+                    if (
+                        e.tag == "span"
+                        and e.get("class") == "polarion-rte-link"
+                    ):
+                        links.append(e)
+
+        return links
+
+    document_data = renderer.update_mixed_authority_document(
+        old_doc,
+        DOCUMENT_SECTIONS,
+        {
+            "section1": "section_with_work_items.html.j2",
+            "section2": "section_with_work_items.html.j2",
+        },
+        {"element": "d8655737-39ab-4482-a934-ee847c7ff6bd"},
+        {},
+    )
+
+    content: list[etree._Element] = html.fromstring(
+        document_data.document.home_page_content.value
+    )
+    wis = list(
+        filter(
+            lambda el: el.tag == "div"
+            and el.get("id") == "polarion_wiki macro name=module-workitem;"
+            "params=id=ATSY-1234|layout=0|external=true",
+            content,
+        )
+    )
+    wi_links = _find_links(content)
+
+    assert len(wis) == 1
+    assert len(wi_links) == 2
 
 
 def test_create_full_authority_document_text_work_items(
