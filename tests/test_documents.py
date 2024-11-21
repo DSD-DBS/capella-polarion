@@ -317,16 +317,15 @@ def test_mixed_authority_with_work_item(
         ),
     )
 
-    def _find_links(content: list[etree._Element]):
-        links: list[str] = []
+    def _find_links(content: list[etree._Element]) -> list[etree._Element]:
+        links: list[etree._Element] = []
         for el in content:
-            if el.tag == "p":
-                for e in el.getchildren():
-                    if (
-                        e.tag == "span"
-                        and e.get("class") == "polarion-rte-link"
-                    ):
-                        links.append(e)
+            if el.tag != "p":
+                continue
+
+            for e in el:
+                if e.tag == "span" and e.get("class") == "polarion-rte-link":
+                    links.append(e)
 
         return links
 
@@ -344,14 +343,13 @@ def test_mixed_authority_with_work_item(
     content: list[etree._Element] = html.fromstring(
         document_data.document.home_page_content.value
     )
-    wis = list(
-        filter(
-            lambda el: el.tag == "div"
-            and el.get("id") == "polarion_wiki macro name=module-workitem;"
-            "params=id=ATSY-1234|layout=0|external=true",
-            content,
-        )
+    target_id = (
+        "polarion_wiki macro name=module-workitem;"
+        "params=id=ATSY-1234|layout=0|external=true"
     )
+    wis = [
+        el for el in content if el.tag == "div" and el.get("id") == target_id
+    ]
     wi_links = _find_links(content)
 
     assert len(wis) == 1
