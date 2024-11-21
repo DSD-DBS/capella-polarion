@@ -129,6 +129,9 @@ def _setup_polarion_worker(
     monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     pw = polarion_worker.CapellaPolarionWorker(params)
     pw.project_client.work_items.create.side_effect = _set_work_item_id
+    pw.project_client.work_items.delete_status = (
+        None if params.delete_work_items else "deleted"
+    )
     return pw
 
 
