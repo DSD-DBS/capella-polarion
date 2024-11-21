@@ -167,7 +167,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             session.headings.append(polarion_api.WorkItem(id=hid, title=text))
             return (
                 f"<h{level} "
-                f'id="{polarion_html_helper.wi_id_prefix}{hid}">'
+                f'id="{polarion_html_helper.WI_ID_PREFIX}{hid}">'
                 f"</h{level}>"
             )
         return f"<h{level}>{text}</h{level}>"
@@ -586,7 +586,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 current_area_id is None
                 and element.tag == "div"
                 and (
-                    matches := polarion_html_helper.wi_id_regex.match(
+                    matches := polarion_html_helper.WI_ID_REGEX.match(
                         element.get("id", "")
                     )
                 )
