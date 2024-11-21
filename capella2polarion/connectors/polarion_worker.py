@@ -187,6 +187,9 @@ class CapellaPolarionWorker:
         assert old is not None
         assert old.id is not None
 
+        if old.status == self.project_client.work_items.delete_status:
+            old.checksum = None
+
         new.calculate_checksum()
         if not self.force_update and new.checksum == old.checksum:
             return

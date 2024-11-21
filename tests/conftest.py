@@ -114,6 +114,27 @@ class BaseObjectContainer(t.NamedTuple):
     mc: model_converter.ModelConverter
 
 
+def _set_work_item_id(work_items: list[polarion_api.WorkItem]):
+    for index, work_item in enumerate(work_items):
+        work_item.id = f"AUTO-{index}"
+
+
+def _setup_polarion_worker(
+    monkeypatch: pytest.MonkeyPatch,
+    params: polarion_worker.PolarionWorkerParams,
+) -> polarion_worker.CapellaPolarionWorker:
+    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
+    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
+    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
+    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
+    pw = polarion_worker.CapellaPolarionWorker(params)
+    pw.project_client.work_items.create.side_effect = _set_work_item_id
+    pw.project_client.work_items.delete_status = (
+        None if params.delete_work_items else "deleted"
+    )
+    return pw
+
+
 # pylint: disable=redefined-outer-name
 @pytest.fixture
 def base_object(
@@ -132,10 +153,6 @@ def base_object(
     )
 
     c2p_cli.setup_logger()
-    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
-    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
-    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
-    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
     fake = FakeModelObject("uuid1", name="Fake 1")
@@ -166,21 +183,17 @@ def base_object(
         ),
     }
 
-    pw = polarion_worker.CapellaPolarionWorker(c2p_cli.polarion_params)
+    pw = _setup_polarion_worker(monkeypatch, c2p_cli.polarion_params)
     pw.polarion_data_repo = polarion_repo.PolarionDataRepository([work_item])
     return BaseObjectContainer(c2p_cli, pw, mc)
 
 
 @pytest.fixture
 def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
-    mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
-    monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
-    mock_project_client = mock.MagicMock(spec=polarion_api.ProjectClient)
-    monkeypatch.setattr(polarion_api, "ProjectClient", mock_project_client)
     polarion_params = polarion_worker.PolarionWorkerParams(
         project_id=TEST_PROJECT_ID,
         url=TEST_HOST,
         pat="PrivateAccessToken",
-        delete_work_items=True,
+        delete_work_items=False,
     )
-    yield polarion_worker.CapellaPolarionWorker(polarion_params)
+    yield _setup_polarion_worker(monkeypatch, polarion_params)

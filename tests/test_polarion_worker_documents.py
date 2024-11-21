@@ -11,11 +11,6 @@ from capella2polarion.converters import text_work_item_provider
 from .conftest import DOCUMENT_TEMPLATES, DOCUMENT_TEXT_WORK_ITEMS
 
 
-def _set_work_item_id(work_items: list[polarion_api.WorkItem]):
-    for index, work_item in enumerate(work_items):
-        work_item.id = f"id{index}"
-
-
 def test_update_document(
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
 ):
@@ -46,7 +41,6 @@ def test_update_document(
         document.home_page_content.value
     )
     client = empty_polarion_worker.project_client
-    client.work_items.create.side_effect = _set_work_item_id
 
     empty_polarion_worker.update_documents([document_data])
 
@@ -54,7 +48,7 @@ def test_update_document(
         '<div id="polarion_wiki macro name=module-workitem;'
         'params=id=EXISTING|layout=0|external=true"></div>\n'
         '<div id="polarion_wiki macro name=module-workitem;'
-        'params=id=id0|layout=0|external=true"></div>'
+        'params=id=AUTO-0|layout=0|external=true"></div>'
     )
     assert client.documents.update.call_count == 1
     assert client.documents.update.call_args.args[0] == [document]
@@ -90,15 +84,14 @@ def test_create_document(
         document.home_page_content.value
     )
     client = empty_polarion_worker.project_client
-    client.work_items.create.side_effect = _set_work_item_id
 
     empty_polarion_worker.update_documents([document_data])
 
     assert document.home_page_content.value.endswith(
         '<div id="polarion_wiki macro name=module-workitem;'
-        'params=id=id0|layout=0|external=true"></div>\n'
+        'params=id=AUTO-0|layout=0|external=true"></div>\n'
         '<div id="polarion_wiki macro name=module-workitem;'
-        'params=id=id1|layout=0|external=true"></div>'
+        'params=id=AUTO-1|layout=0|external=true"></div>'
     )
     assert client.documents.update.call_count == 1
     assert client.documents.update.call_args.args[0] == [document]
