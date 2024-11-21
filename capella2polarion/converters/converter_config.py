@@ -331,6 +331,8 @@ def _filter_converter_config(
         "linked_text_as_description",
         "add_context_diagram",
         "add_tree_diagram",
+        "add_realization_diagram",
+        "add_cable_tree_diagram",
         "add_jinja_fields",
         "jinja_as_description",
     )
