@@ -42,8 +42,16 @@ def resolve_element_type(type_: str) -> str:
     return type_[0].lower() + type_[1:]
 
 
+class SanitizedText(t.NamedTuple):
+    """Sanitized text from Capella."""
+
+    referenced_uuids: list[str]
+    text: markupsafe.Markup
+    attachments: list[data_model.Capella2PolarionAttachment]
+
+
 def _format_texts(
-    type_texts: dict[str, list[str]],
+    type_texts: dict[str, list[SanitizedText]],
 ) -> dict[str, dict[str, str]]:
     def _format(texts: list[str]) -> dict[str, str]:
         if len(texts) > 1:
@@ -54,8 +62,8 @@ def _format_texts(
         return {"type": "text/html", "value": text}
 
     requirement_types = {}
-    for typ, texts in type_texts.items():
-        requirement_types[typ.lower()] = _format(texts)
+    for typ, stexts in type_texts.items():
+        requirement_types[typ.lower()] = _format([s.text for s in stexts])
     return requirement_types
 
 
@@ -302,11 +310,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _sanitize_text(
         self, obj: m.ModelElement | m.Diagram, text: markupsafe.Markup | str
-    ) -> tuple[
-        list[str],
-        markupsafe.Markup,
-        list[data_model.Capella2PolarionAttachment],
-    ]:
+    ) -> SanitizedText:
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
             lambda match: self._replace_markup(
@@ -373,7 +377,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         repaired_markup = chelpers.process_html_fragments(
             replaced_markup, repair_images
         )
-        return referenced_uuids, repaired_markup, attachments
+        return SanitizedText(referenced_uuids, repaired_markup, attachments)
 
     def _replace_markup(
         self,
@@ -408,7 +412,13 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _get_requirement_types_text(
         self, obj: m.ModelElement | m.Diagram
-    ) -> dict[str, dict[str, str]]:
+    ) -> tuple[
+        list[str],
+        dict[str, dict[str, str]],
+        list[data_model.Capella2PolarionAttachment],
+    ]:
+        referenced_uuids: list[str] = []
+        attachments: list[data_model.Capella2PolarionAttachment] = []
         type_texts = collections.defaultdict(list)
         for req in getattr(obj, "requirements", []):
             if req is None:
@@ -426,8 +436,13 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 )
                 continue
 
-            type_texts[req.type.long_name].append(req.text)
-        return _format_texts(type_texts)
+            sanitized_text = self._sanitize_text(
+                obj, req.text or markupsafe.Markup("")
+            )
+            referenced_uuids.extend(sanitized_text.referenced_uuids)
+            type_texts[req.type.long_name].append(sanitized_text)
+            attachments.extend(sanitized_text.attachments)
+        return referenced_uuids, _format_texts(type_texts), attachments
 
     # Serializer implementation starts below
 
@@ -438,23 +453,20 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     ) -> data_model.CapellaWorkItem:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
-        uuids, value, attachments = self._sanitize_text(
+        sanitized_text = self._sanitize_text(
             obj, raw_description or markupsafe.Markup("")
         )
-        converter_data.description_references = uuids
-        requirement_types = self._get_requirement_types_text(obj)
-
+        converter_data.description_references = sanitized_text.referenced_uuids
         converter_data.work_item = data_model.CapellaWorkItem(
             id=work_item_id,
             type=converter_data.type_config.p_type,
             title=obj.name,
             uuid_capella=obj.uuid,
-            description=polarion_api.HtmlContent(value),
+            description=polarion_api.HtmlContent(sanitized_text.text),
             status="open",
-            **requirement_types,  # type:ignore[arg-type]
         )
         assert converter_data.work_item is not None
-        for attachment in attachments:
+        for attachment in sanitized_text.attachments:
             self._add_attachment(converter_data.work_item, attachment)
 
         return converter_data.work_item
@@ -482,6 +494,19 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             except ValueError as error:
                 logger.error(error.args[0])
 
+    def _add_requirements_text_grouped_by_type(
+        self, converter_data: data_session.ConverterData
+    ):
+        """Add requirements custom fields to work item."""
+        obj = converter_data.capella_element
+        assert converter_data.work_item is not None
+        uuids, requirement_types, attachments = (
+            self._get_requirement_types_text(obj)
+        )
+        converter_data.work_item.additional_attributes |= requirement_types
+        converter_data.requirement_references = uuids
+        for attachment in attachments:
+            self._add_attachment(converter_data.work_item, attachment)
         return converter_data.work_item
 
     def _diagram(

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
 DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
+REQUIREMENT_REFERENCE_SERIALIZER = "requirement_reference"
 DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 ConvertersType: t.TypeAlias = dict[
     str, dict[str, t.Any] | list[dict[str, t.Any]]
@@ -417,6 +418,7 @@ def _filter_links(
         is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
         if (
             capella_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            or capella_attr == REQUIREMENT_REFERENCE_SERIALIZER
             or (is_diagram_elements and c_class == m.Diagram)
             or hasattr(c_class, capella_attr)
         ):
