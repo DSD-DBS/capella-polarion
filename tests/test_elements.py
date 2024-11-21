@@ -80,15 +80,21 @@ TEST_REQ_TEXT = (
     "This&nbsp;is a list</li>\n\t<li>an unordered one</li>\n</ul>\n\n<ol>\n\t"
     "<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n"
 )
+TEST_REQ_TEXT_1 = (
+    "<p>Test requirement 1 really l o n g text that is\xa0way too long to "
+    'display here as that\xa0<span class="polarion-rte-link" '
+    'data-type="workItem" id="fake" data-item-id="TEST" '
+    'data-option-id="long"/></p>\n\n<p>&lt; &gt; " \'</p>\n\n<ul>\n\t'
+    "<li>This\xa0is a list</li>\n\t<li>an unordered one</li>\n</ul>\n\n<ol>"
+    "\n\t<li>Ordered list</li>\n\t<li>Ok</li>\n</ol>\n\n<div>"
+    '<span class="polarion-rte-link" data-type="workItem" id="fake" '
+    'data-item-id="TEST1" data-option-id="long"/></div>\n'
+)
 POLARION_ID_MAP = {f"uuid{i}": f"Obj-{i}" for i in range(3)}
 TEST_LOGICAL_COMPONENT = {
     "type": "logicalComponent",
     "title": "Hogwarts",
     "description": polarion_api.HtmlContent(markupsafe.Markup(TEST_DESCR)),
-}
-TEST_CONDITION = {
-    "type": "text/html",
-    "value": '<div style="text-align: center;"></div>',
 }
 TEST_OPERATIONAL_CAPABILITY = {
     "type": "operationalCapability",
@@ -1670,27 +1676,14 @@ class TestSerializers:
         "layer,uuid,expected",
         [
             pytest.param(
-                "la",
-                TEST_ELEMENT_UUID,
-                {
-                    **TEST_LOGICAL_COMPONENT,
-                    "uuid_capella": TEST_ELEMENT_UUID,
-                    "reqtype": {
-                        "type": "text/html",
-                        "value": markupsafe.Markup(TEST_REQ_TEXT),
-                    },
-                },
-                id="logicalComponent",
-            ),
-            pytest.param(
                 "oa",
                 TEST_OCAP_UUID,
                 {
                     **TEST_OPERATIONAL_CAPABILITY,
                     "uuid_capella": TEST_OCAP_UUID,
                     "additional_attributes": {
-                        "preCondition": TEST_CONDITION,
-                        "postCondition": TEST_CONDITION,
+                        "preCondition": {"type": "text/html", "value": ""},
+                        "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
                 id="operationalCapability",
@@ -1768,10 +1761,7 @@ class TestSerializers:
                                 "<br/></div>"
                             ),
                         },
-                        "postCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
+                        "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
                 id="scenario",
@@ -1787,14 +1777,8 @@ class TestSerializers:
                         markupsafe.Markup("")
                     ),
                     "additional_attributes": {
-                        "preCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
-                        "postCondition": {
-                            "type": "text/html",
-                            "value": '<div style="text-align: center;"></div>',
-                        },
+                        "preCondition": {"type": "text/html", "value": ""},
+                        "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
                 id="capabilityRealization",
@@ -1842,13 +1826,7 @@ class TestSerializers:
                     )
                 ]
             ),
-            {
-                uuid: data_session.ConverterData(
-                    layer,
-                    type_config,
-                    obj,
-                )
-            },
+            {uuid: data_session.ConverterData(layer, type_config, obj)},
             False,
         )
 
@@ -1860,7 +1838,53 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
         assert status == "open"
 
-    def test_add_attributes(self, model: capellambse.MelodyModel):
+    @staticmethod
+    def test_add_requirements_text_grouped_by_type(
+        model: capellambse.MelodyModel,
+    ):
+        expected = {
+            **TEST_LOGICAL_COMPONENT,
+            "uuid_capella": TEST_ELEMENT_UUID,
+            "reqtype": {
+                "type": "text/html",
+                "value": markupsafe.Markup(TEST_REQ_TEXT_1),
+            },
+        }
+        obj = model.by_uuid(TEST_ELEMENT_UUID)
+        type_config = converter_config.CapellaTypeConfig(
+            "logicalComponent",
+            "add_requirements_text_grouped_by_type",
+        )
+        session = {
+            TEST_ELEMENT_UUID: data_session.ConverterData(
+                "sa", type_config, obj
+            )
+        }
+        work_items = [
+            data_model.CapellaWorkItem(
+                id="TEST", uuid_capella="ceffa011-7b66-4b3c-9885-8e075e312ffa"
+            ),
+            data_model.CapellaWorkItem(
+                id="TEST1", uuid_capella="00e7b925-cf4c-4cb0-929e-5409a1cd872b"
+            ),
+        ]
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(work_items),
+            session,
+            False,
+        )
+
+        work_item = serializer.serialize(TEST_ELEMENT_UUID)
+        assert work_item is not None
+        status = work_item.status
+        work_item.status = None
+
+        assert work_item == data_model.CapellaWorkItem(**expected)
+        assert status == "open"
+
+    @staticmethod
+    def test_add_attributes(model: capellambse.MelodyModel):
         converters = {
             "add_attributes": [
                 {"capella_attr": "layer", "polarion_id": "layer"},
@@ -2077,20 +2101,6 @@ class TestSerializers:
         "layer,uuid,expected",
         [
             pytest.param(
-                "la",
-                TEST_ELEMENT_UUID,
-                {
-                    **TEST_LOGICAL_COMPONENT,
-                    "type": "_C2P_logicalComponent",
-                    "uuid_capella": TEST_ELEMENT_UUID,
-                    "reqtype": {
-                        "type": "text/html",
-                        "value": markupsafe.Markup(TEST_REQ_TEXT),
-                    },
-                },
-                id="logicalComponent",
-            ),
-            pytest.param(
                 "oa",
                 TEST_OCAP_UUID,
                 {
@@ -2098,11 +2108,26 @@ class TestSerializers:
                     "type": "_C2P_operationalCapability",
                     "uuid_capella": TEST_OCAP_UUID,
                     "additional_attributes": {
-                        "preCondition": TEST_CONDITION,
-                        "postCondition": TEST_CONDITION,
+                        "preCondition": {"type": "text/html", "value": ""},
+                        "postCondition": {"type": "text/html", "value": ""},
                     },
                 },
                 id="operationalCapability",
+            ),
+            pytest.param(
+                "oa",
+                TEST_WE_UUID,
+                {
+                    "type": "_C2P_entity",
+                    "title": "Environment",
+                    "uuid_capella": TEST_WE_UUID,
+                    "description": polarion_api.HtmlContent(
+                        markupsafe.Markup(
+                            TEST_WE_DESCR.replace("TEST", "_C2P_TEST")
+                        )
+                    ),
+                },
+                id="entity",
             ),
         ],
     )
@@ -2126,7 +2151,9 @@ class TestSerializers:
         type_config = config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
         type_config.p_type = f"{prefix}_{type_config.p_type}"
-        ework_item = data_model.CapellaWorkItem(id=f"{prefix}_TEST")
+        ework_item = data_model.CapellaWorkItem(
+            id=f"{prefix}_TEST", uuid_capella=TEST_E_UUID
+        )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository([ework_item]),
@@ -2141,7 +2168,28 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
 
     @staticmethod
-    def test_tree_view_with_params(model: capellambse.MelodyModel):
+    def test_read_config_context_diagram_with_params():
+        expected_filter = (
+            "capellambse_context_diagrams-show.exchanges.or.exchange.items."
+            "filter"
+        )
+        config = converter_config.ConverterConfig()
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        type_config = config.get_type_config("sa", "SystemFunction")
+
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert "add_context_diagram" in type_config.converters
+        assert type_config.converters["add_context_diagram"]["filters"] == [
+            expected_filter
+        ]
+
+    @staticmethod
+    def test_read_config_tree_view_with_params(
+        model: capellambse.MelodyModel,
+    ):
         cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
