@@ -161,11 +161,6 @@ HTML_LINK_3 = {
 DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", "diagram")
 
 
-def _set_work_item_id(work_items: list[polarion_api.WorkItem]):
-    for index, work_item in enumerate(work_items):
-        work_item.id = f"AUTO-{index}"
-
-
 class GroupedLinksBaseObject(t.TypedDict):
     link_serializer: link_converter.LinkSerializer
     work_items: dict[str, data_model.CapellaWorkItem]
@@ -899,15 +894,14 @@ class TestModelElements:
         base_object.pw.project_client.work_items.get_all = (
             polarion_api_get_all_work_items
         )
-        polarion_api_create_work_items = mock.MagicMock()
-        polarion_api_create_work_items.side_effect = _set_work_item_id
-        base_object.pw.project_client.work_items.create = (
-            polarion_api_create_work_items
-        )
 
         base_object.pw.load_polarion_work_item_map()
         base_object.pw.create_missing_work_items(
             base_object.mc.converter_session
+        )
+
+        polarion_api_create_work_items = (
+            base_object.pw.project_client.work_items.create
         )
 
         assert polarion_api_create_work_items.call_count == 1
