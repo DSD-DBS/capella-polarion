@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing capella2polarion config class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
 DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
+REQUIREMENT_REFERENCE_SERIALIZER = "requirement_reference"
 DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 
 
@@ -81,9 +83,7 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = self._force_link_config(
-            global_links, role_prefix
-        )
+        self.__global_config.links = self._force_link_config(global_links, role_prefix)
 
         if "Diagram" in global_config_dict:
             diagram_config = global_config_dict.pop("Diagram") or {}
@@ -91,9 +91,7 @@ class ConverterConfig:
 
         for c_type, type_config in global_config_dict.items():
             type_config = type_config or {}
-            self.set_global_config(
-                c_type, type_config, type_prefix, role_prefix
-            )
+            self.set_global_config(c_type, type_config, type_prefix, role_prefix)
 
         for layer, type_configs in config_dict.items():
             type_configs = type_configs or {}
@@ -143,9 +141,7 @@ class ConverterConfig:
                 type_prefix,
             )
             self.polarion_types.add(p_type)
-            links = self._force_link_config(
-                type_config.get("links", []), role_prefix
-            )
+            links = self._force_link_config(type_config.get("links", []), role_prefix)
             self._layer_configs[layer][c_type].append(
                 CapellaTypeConfig(
                     p_type,
@@ -165,19 +161,15 @@ class ConverterConfig:
     ):
         """Set a global config for a specific type."""
         p_type = add_prefix(
-            type_config.get("polarion_type")
-            or _default_type_conversion(c_type),
+            type_config.get("polarion_type") or _default_type_conversion(c_type),
             type_prefix,
         )
         self.polarion_types.add(p_type)
-        link_config = self._force_link_config(
-            type_config.get("links", []), role_prefix
-        )
+        link_config = self._force_link_config(type_config.get("links", []), role_prefix)
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
             type_config.get("serializer"),
-            _filter_links(c_type, link_config)
-            + self._get_global_links(c_type),
+            _filter_links(c_type, link_config) + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
             type_config.get("nature", _C2P_DEFAULT),
         )
@@ -283,7 +275,7 @@ def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
 
 
 def _read_capella_type_configs(
-    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None
+    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None,
 ) -> list[dict]:
     if conf is None:
         return [{}]
@@ -300,7 +292,7 @@ def _read_capella_type_configs(
 
 
 def _force_dict(
-    config: str | list[str] | dict[str, dict[str, t.Any]] | None
+    config: str | list[str] | dict[str, dict[str, t.Any]] | None,
 ) -> dict[str, dict[str, t.Any]]:
     match config:
         case None:
@@ -323,11 +315,12 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
 
 
 def _filter_converter_config(
-    config: dict[str, dict[str, t.Any]]
+    config: dict[str, dict[str, t.Any]],
 ) -> dict[str, dict[str, t.Any]]:
     custom_converters = (
         "include_pre_and_post_condition",
         "linked_text_as_description",
+        "add_requirements_text_grouped_by_type",
         "add_context_diagram",
         "add_tree_diagram",
         "add_jinja_fields",
@@ -348,9 +341,7 @@ def _filter_converter_config(
     return filtered_config
 
 
-def _filter_context_diagram_config(
-    config: dict[str, t.Any]
-) -> dict[str, t.Any]:
+def _filter_context_diagram_config(config: dict[str, t.Any]) -> dict[str, t.Any]:
     converted_filters = []
     for filter_name in config.get("filters", []):
         try:
@@ -381,6 +372,7 @@ def _filter_links(
         is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
         if (
             capella_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            or capella_attr == REQUIREMENT_REFERENCE_SERIALIZER
             or (is_diagram_elements and c_class == m.Diagram)
             or hasattr(c_class, capella_attr)
         ):
