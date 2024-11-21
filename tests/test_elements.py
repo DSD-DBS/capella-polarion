@@ -1913,22 +1913,56 @@ class TestSerializers:
         assert expected_filter in inputs[1].filters
 
     @staticmethod
-    def test_add_tree_view_with_params(
+    @pytest.mark.parametrize(
+        "uuid, converter, type_name, render_params, layer",
+        [
+            pytest.param(
+                "c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+                "add_tree_diagram",
+                "systemFunction",
+                {"depth": 1},
+                "pa",
+                id="add_tree_diagram",
+            ),
+            pytest.param(
+                "344a405e-c7e5-4367-8a9a-41d3d9a27f81",
+                "add_realization_diagram",
+                "systemComponent",
+                {"depth": 1, "search_direction": "ALL"},
+                "sa",
+                id="add_realization_diagram",
+            ),
+            pytest.param(
+                "3078ec08-956a-4c61-87ed-0143d1d66715",
+                "add_cable_tree_diagram",
+                "physicalLink",
+                {
+                    "display_port_labels": True,
+                    "port_label_position": "OUTSIDE",
+                },
+                "pa",
+                id="add_cable_tree_diagram",
+            ),
+        ],
+    )
+    def test_context_diagram_serializer(
+        uuid: str,
+        converter: str,
+        type_name: str,
+        render_params: dict[str, t.Any],
+        layer: str,
         model: capellambse.MelodyModel,
     ):
-        cls = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
-        config = {"add_tree_diagram": {"render_params": {"depth": 1}}}
-        type_config = converter_config.CapellaTypeConfig(
-            "systemFunction", config, []
+        config = {converter: {"render_params": render_params}}
+        type_config = data_session.ConverterData(
+            layer,
+            converter_config.CapellaTypeConfig(type_name, config, []),
+            model.by_uuid(uuid),
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
-            {
-                TEST_OCAP_UUID: data_session.ConverterData(
-                    "pa", type_config, cls
-                )
-            },
+            {uuid: type_config},
             True,
         )
 
@@ -1939,7 +1973,7 @@ class TestSerializers:
             _ = wis[0].attachments[0].content_bytes
 
         assert wrapped_render.call_count == 1
-        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+        assert wrapped_render.call_args_list[0][1] == render_params
 
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
         uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
