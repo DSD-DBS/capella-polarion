@@ -41,9 +41,7 @@ class RenderingSession:
     rendering_layouts: list[polarion_api.RenderingLayout] = dataclasses.field(
         default_factory=list
     )
-    inserted_work_items: list[polarion_api.WorkItem] = dataclasses.field(
-        default_factory=list
-    )
+    inserted_work_item_ids: list[str] = dataclasses.field(default_factory=list)
     text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
         default_factory=dict
     )
@@ -109,7 +107,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
         ):
-            if wi in session.inserted_work_items:
+            assert wi.id
+            if wi.id in session.inserted_work_item_ids:
                 logger.info(
                     "WorkItem %s is already in the document."
                     "A link will be added instead of inserting it.",
@@ -126,7 +125,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             if level is not None:
                 custom_info = f"level={level}|"
 
-            session.inserted_work_items.append(wi)
+            session.inserted_work_item_ids.append(wi.id)
             if self._is_external_document(session):
                 # pylint: disable-next=line-too-long
                 return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT_PROJECT.format(
@@ -168,7 +167,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             session.headings.append(polarion_api.WorkItem(id=hid, title=text))
             return (
                 f"<h{level} "
-                f'id="{polarion_html_helper.wi_id_prefix}{hid}">'
+                f'id="{polarion_html_helper.WI_ID_PREFIX}{hid}">'
                 f"</h{level}>"
             )
         return f"<h{level}>{text}</h{level}>"
@@ -303,12 +302,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         html_elements = lxmlhtml.fragments_fromstring(
             document.home_page_content.value
         )
-        section_areas = self._extract_section_areas(html_elements)
 
         session = RenderingSession(
             rendering_layouts=document.rendering_layouts or [],
             document_project_id=document_project_id,
         )
+        section_areas = self._extract_section_areas(html_elements, session)
         env = self._get_jinja_env(template_folder)
 
         new_content = []
@@ -576,11 +575,25 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
                     project_data.new_docs.append(document_data)
 
-    def _extract_section_areas(self, html_elements: list[etree._Element]):
+    def _extract_section_areas(
+        self, html_elements: list[etree._Element], session: RenderingSession
+    ):
         section_areas = {}
         current_area_id = None
         current_area_start = None
         for element_index, element in enumerate(html_elements):
+            if (
+                current_area_id is None
+                and element.tag == "div"
+                and (
+                    matches := polarion_html_helper.WI_ID_REGEX.match(
+                        element.get("id", "")
+                    )
+                )
+            ):
+                session.inserted_work_item_ids.append(matches.group(1))
+                continue
+
             if (
                 element.tag != "div"
                 or element.get("class") != "polarion-dle-wiki-block"

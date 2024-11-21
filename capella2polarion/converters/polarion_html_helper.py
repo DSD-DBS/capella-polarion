@@ -12,9 +12,9 @@ from capellambse import helpers as chelpers
 from capellambse import model as m
 from lxml import html
 
-wi_id_prefix = "polarion_wiki macro name=module-workitem;params=id="
-h_regex = re.compile("h[0-9]")
-wi_id_regex = re.compile(f"{wi_id_prefix}([A-Z|a-z|0-9]*-[0-9]+)")
+WI_ID_PREFIX = "polarion_wiki macro name=module-workitem;params=id="
+H_REGEX = re.compile("h[0-9]")
+WI_ID_REGEX = re.compile(f"{WI_ID_PREFIX}([A-Z|a-z|0-9]*-[0-9]+)")
 
 TEXT_WORK_ITEM_ID_FIELD = "__C2P__id"
 TEXT_WORK_ITEM_TYPE = "text"
@@ -148,7 +148,7 @@ def extract_headings(
     html_content: str | list[html.HtmlElement | str],
 ) -> list[str]:
     """Return a list of work item IDs for all headings in the given content."""
-    return extract_work_items(html_content, h_regex)
+    return extract_work_items(html_content, H_REGEX)
 
 
 def extract_work_items(
@@ -165,7 +165,7 @@ def extract_work_items(
         if (tag_regex is not None and tag_regex.fullmatch(element.tag)) or (
             tag_regex is None and element.tag == "div"
         ):
-            if matches := wi_id_regex.match(element.get("id")):
+            if matches := WI_ID_REGEX.match(element.get("id")):
                 work_item_ids.append(matches.group(1))
     return work_item_ids
 
