@@ -56,7 +56,7 @@
           <ownedRequirements xsi:type="Requirements:Requirement" id="3c2d312c-37c9-41b5-8c32-67578fa52dc3"
               ReqIFIdentifier="REQTYPE-1" ReqIFDescription="This is a test requirement of kind 1."
               ReqIFLongName="1" ReqIFName="" ReqIFPrefix="3" requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e"
-              ReqIFChapterName="TestReq1" ReqIFForeignID="1" ReqIFText="&lt;p>Test requirement 1 really l o n g text that is&amp;nbsp;way too long to display here as that&lt;/p>&#xA;&#xA;&lt;p>&amp;lt; &amp;gt; &amp;quot; &amp;#39;&lt;/p>&#xA;&#xA;&lt;ul>&#xA;&#x9;&lt;li>This&amp;nbsp;is a list&lt;/li>&#xA;&#x9;&lt;li>an unordered one&lt;/li>&#xA;&lt;/ul>&#xA;&#xA;&lt;ol>&#xA;&#x9;&lt;li>Ordered list&lt;/li>&#xA;&#x9;&lt;li>Ok&lt;/li>&#xA;&lt;/ol>&#xA;"
+              ReqIFChapterName="TestReq1" ReqIFForeignID="1" ReqIFText="&lt;p>Test requirement 1 really l o n g text that is&amp;nbsp;way too long to display here as that&amp;nbsp;&lt;a href=&quot;hlink://ceffa011-7b66-4b3c-9885-8e075e312ffa&quot;>Important Function&lt;/a>&lt;/p>&#xA;&#xA;&lt;p>&amp;lt; &amp;gt; &amp;quot; &amp;#39;&lt;/p>&#xA;&#xA;&lt;ul>&#xA;&#x9;&lt;li>This&amp;nbsp;is a list&lt;/li>&#xA;&#x9;&lt;li>an unordered one&lt;/li>&#xA;&lt;/ul>&#xA;&#xA;&lt;ol>&#xA;&#x9;&lt;li>Ordered list&lt;/li>&#xA;&#x9;&lt;li>Ok&lt;/li>&#xA;&lt;/ol>&#xA;&#xA;&lt;div>&lt;a href=&quot;hlink://00e7b925-cf4c-4cb0-929e-5409a1cd872b&quot;>Sysexfunc&lt;/a>&lt;/div>&#xA;"
               requirementTypeProxy="7">
             <ownedAttributes xsi:type="Requirements:BooleanValueAttribute" id="9c692405-b8aa-4caa-b988-51d27db5cd1b"
                 definition="#682bd51d-5451-4930-a97e-8bfca6c3a127" value="true"/>

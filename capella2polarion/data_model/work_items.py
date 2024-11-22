@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing the CapellaWorkItem class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -183,3 +184,9 @@ class CapellaWorkItem(polarion_api.WorkItem):
             | dict(sorted(self._attachment_checksums.items()))
         )
         return self.checksum
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two CapellaWorkItems."""
+        if not isinstance(other, CapellaWorkItem):
+            return False
+        return self.calculate_checksum() == other.calculate_checksum()
