@@ -108,6 +108,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 )
                 converter_data.work_item = None
 
+        if converter_data.work_item is not None:
+            assert converter_data.work_item.title is not None
+            assert converter_data.work_item.type is not None
+
         if converter_data.errors:
             log_args = (
                 converter_data.capella_element._short_repr_(),
