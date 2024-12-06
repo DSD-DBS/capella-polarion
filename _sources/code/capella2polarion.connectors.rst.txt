@@ -1,0 +1,26 @@
+capella2polarion.connectors package
+===================================
+
+.. automodule:: capella2polarion.connectors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+capella2polarion.connectors.polarion\_repo module
+-------------------------------------------------
+
+.. automodule:: capella2polarion.connectors.polarion_repo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.connectors.polarion\_worker module
+---------------------------------------------------
+
+.. automodule:: capella2polarion.connectors.polarion_worker
+   :members:
+   :undoc-members:
+   :show-inheritance:
