@@ -116,6 +116,12 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     is_flag=True,
     default=True,
 )
+@click.option(
+    "--generate-figure-captions",
+    envvar="CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS",
+    is_flag=True,
+    default=False,
+)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -124,6 +130,7 @@ def synchronize(
     type_prefix: str,
     role_prefix: str,
     grouped_links_custom_fields: bool,
+    generate_figure_captions: bool,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -160,6 +167,7 @@ def synchronize(
         generate_links=True,
         generate_attachments=True,
         generate_grouped_links_custom_fields=grouped_links_custom_fields,
+        generate_figure_captions=generate_figure_captions,
     )
 
     polarion_worker.compare_and_update_work_items(converter.converter_session)
