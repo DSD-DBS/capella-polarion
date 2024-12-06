@@ -84,6 +84,7 @@ class ModelConverter:
         generate_links: bool = False,
         generate_attachments: bool = False,
         generate_grouped_links_custom_fields: bool = False,
+        generate_figure_captions: bool = False,
     ) -> dict[str, data_model.CapellaWorkItem]:
         """Return a work items mapping from model elements for Polarion.
 
@@ -104,12 +105,15 @@ class ModelConverter:
         generate_grouped_links_custom_fields
             A boolean flag to control grouped links custom fields
             generation.
+        generate_figure_captions
+            A boolean flag to enable the generation of figure captions
         """
         serializer = element_converter.CapellaWorkItemSerializer(
             self.model,
             polarion_data_repo,
             self.converter_session,
             generate_attachments,
+            generate_figure_captions,
         )
         work_items = serializer.serialize_all()
         for work_item in work_items:

@@ -620,3 +620,49 @@ def test_diagram_delete_attachments(
     assert len(work_item.additional_attributes) == 1
     assert work_item.title is None
     assert work_item.checksum == DIAGRAM_CHECKSUM
+
+
+def test_attached_image_in_description_with_caption(
+    model: capellambse.MelodyModel,
+    worker: polarion_worker.CapellaPolarionWorker,
+):
+    uuid = "e76aa1f5-cc12-4885-a8c2-a0022b061549"
+    converter = model_converter.ModelConverter(model, "TEST")
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
+    )
+
+    converter.converter_session[uuid] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig("test"),
+        model.by_uuid(uuid),
+    )
+
+    worker.project_client.work_items.attachments.create = mock.MagicMock()
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
+
+    converter.generate_work_items(
+        worker.polarion_data_repo, False, True, False, True
+    )
+    worker.compare_and_update_work_item(converter.converter_session[uuid])
+
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 1
+
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.project_client.work_items.attachments.create.call_args.args[0]
+    )
+    work_item: data_model.CapellaWorkItem = (
+        worker.project_client.work_items.update.call_args.args[0]
+    )
+
+    assert len(created_attachments) == 1
+    assert str(work_item.description.value) == (
+        '<p><img alt="Other Text used as Caption" '
+        'src="workitemimg:0-5b5bdfe8be29ca756dee7c7af74bca64.png"/></p>'
+        '<p class="polarion-rte-caption-paragraph">\n  Figure '
+        '<span data-sequence="Figure" class="polarion-rte-caption">#</span>'
+        " Other Text used as Caption\n</p>\n\n<p>Test</p>\n"
+    )

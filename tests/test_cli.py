@@ -142,6 +142,7 @@ def test_migrate_model_elements(cli_mocks: CLIMocks):
         "generate_links": True,
         "generate_attachments": True,
         "generate_grouped_links_custom_fields": True,
+        "generate_figure_captions": False,
     }
     assert cli_mocks.delete_work_items.call_count == 1
     assert cli_mocks.patch_work_items.call_count == 1

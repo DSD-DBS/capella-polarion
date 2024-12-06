@@ -246,6 +246,36 @@ class TestDiagramElements:
         )
 
     @staticmethod
+    def test_create_diagram_with_caption(
+        diagr_base_object: BaseObjectContainer,
+    ):
+        pw = diagr_base_object.pw
+        new_work_items: dict[str, data_model.CapellaWorkItem]
+        new_work_items = diagr_base_object.mc.generate_work_items(
+            pw.polarion_data_repo,
+            generate_attachments=True,
+            generate_figure_captions=True,
+        )
+        assert len(new_work_items) == 1
+        work_item = new_work_items[TEST_DIAG_UUID]
+        assert isinstance(work_item, data_model.CapellaWorkItem)
+        description = work_item.description
+        work_item.description = None
+        work_item.attachments = []
+        assert work_item == data_model.CapellaWorkItem(**TEST_SER_DIAGRAM)
+        assert description is not None
+        assert description.value == TEST_DIAG_DESCR.format(
+            title="Diagram",
+            attachment_id="__C2P__diagram.svg",
+            width=750,
+            cls="diagram",
+        ) + (
+            '<p class="polarion-rte-caption-paragraph">\n  '
+            'Figure <span data-sequence="Figure" class="polarion-rte-caption">'
+            "#</span> Diagram [CC] Capability\n</p>"
+        )
+
+    @staticmethod
     def test_delete_diagrams(diagr_base_object: BaseObjectContainer):
         pw = diagr_base_object.pw
         diagr_base_object.mc.converter_session = {}
@@ -2170,4 +2200,41 @@ class TestSerializers:
             include={"Exchange Items": "exchange_items"},
             link_field="output_exchanges",
             reverse_field="output_exchanges_reverse",
+        )
+
+    @staticmethod
+    def test_add_context_diagram_with_caption(model: capellambse.MelodyModel):
+        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
+        type_config = converter_config.CapellaTypeConfig(
+            "test", "add_context_diagram", []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                uuid: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(uuid),
+                )
+            },
+            True,
+            generate_figure_captions=True,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        assert "context_diagram" in work_item.additional_attributes
+        assert str(
+            work_item.additional_attributes["context_diagram"]["value"]
+        ) == TEST_DIAG_DESCR.format(
+            title="Context Diagram",
+            attachment_id="__C2P__context_diagram.svg",
+            width=650,
+            cls="additional-attributes-diagram",
+        ) + (
+            '<p class="polarion-rte-caption-paragraph">\n  '
+            'Figure <span data-sequence="Figure" class="polarion-rte-caption">'
+            "#</span> Context Diagram of PhysicalFunction 3\n</p>"
         )

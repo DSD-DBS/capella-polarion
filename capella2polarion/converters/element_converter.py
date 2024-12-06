@@ -19,7 +19,7 @@ import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from capellambse import model as m
 from capellambse_context_diagrams import context
-from lxml import etree
+from lxml import etree, html
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
@@ -69,11 +69,13 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         capella_polarion_mapping: polarion_repo.PolarionDataRepository,
         converter_session: data_session.ConverterSession,
         generate_attachments: bool,
+        generate_figure_captions: bool = False,
     ):
         self.model = model
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
         self.generate_attachments = generate_attachments
+        self.generate_figure_captions = generate_figure_captions
         self.jinja_envs: dict[str, jinja2.Environment] = {}
 
     def serialize_all(self) -> list[data_model.CapellaWorkItem]:
@@ -144,6 +146,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         max_width: int,
         cls: str,
         render_params: dict[str, t.Any] | None = None,
+        caption: tuple[str, str] | None = None,
     ) -> tuple[str, data_model.CapellaDiagramAttachment | None]:
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
@@ -161,7 +164,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
         return (
             polarion_html_helper.generate_image_html(
-                title, file_name, max_width, cls
+                title, file_name, max_width, cls, caption
             ),
             attachment,
         )
@@ -201,6 +204,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         file_name: str,
         render_params: dict[str, t.Any] | None = None,
         max_width: int = 800,
+        caption: tuple[str, str] | None = None,
     ):
         if attachment := next(
             (
@@ -216,6 +220,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 attachment.file_name,
                 max_width,
                 JINJA_RENDERED_IMG_CLS,
+                caption,
             )
 
         diagram_html, attachment = self._draw_diagram_svg(
@@ -246,6 +251,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             650,
             "additional-attributes-diagram",
             render_params,
+            (
+                ("Figure", f"{title} of {work_item.title}")
+                if self.generate_figure_captions
+                else None
+            ),
         )
         if attachment:
             self._add_attachment(work_item, attachment)
@@ -325,6 +335,17 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                     # We use the filename here as the ID is unknown here
                     # This needs to be refactored after updating attachments
                     node.attrib["src"] = f"workitemimg:{file_name}"
+                    if self.generate_figure_captions:
+                        caption = node.get(
+                            "alt", f'Image "{file_url.stem}" of {obj.name}'
+                        )
+                        node.addnext(
+                            html.fromstring(
+                                polarion_html_helper.POLARION_CAPTION.format(
+                                    label="Figure", caption=caption
+                                )
+                            )
+                        )
 
             except FileNotFoundError:
                 self.converter_session[obj.uuid].errors.add(
@@ -432,7 +453,17 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         work_item_id = converter_data.work_item.id
 
         diagram_html, attachment = self._draw_diagram_svg(
-            diagram, "diagram", "Diagram", 750, "diagram", render_params
+            diagram,
+            "diagram",
+            "Diagram",
+            750,
+            "diagram",
+            render_params,
+            (
+                ("Figure", f"Diagram {diagram.name}")
+                if self.generate_figure_captions
+                else None
+            ),
         )
 
         converter_data.work_item = data_model.CapellaWorkItem(
