@@ -37,6 +37,11 @@ POLARION_WORK_ITEM_DOCUMENT_PROJECT = (
     "params=id={pid}|layout={lid}|{custom_info}external=true"
     '|project={project}"></div>'
 )
+POLARION_CAPTION = (
+    '<p class="polarion-rte-caption-paragraph">\n  '
+    '{label} <span data-sequence="{label}" '
+    'class="polarion-rte-caption">#</span> {caption}\n</p>'
+)
 RE_DESCR_DELETED_PATTERN = re.compile(
     f"&lt;deleted element ({chelpers.RE_VALID_UUID.pattern})&gt;"
 )
@@ -52,7 +57,11 @@ def strike_through(string: str) -> str:
 
 
 def generate_image_html(
-    title: str, attachment_id: str, max_width: int, cls: str
+    title: str,
+    attachment_id: str,
+    max_width: int,
+    cls: str,
+    caption: tuple[str, str] | None = None,
 ) -> str:
     """Generate an image as HTMl with the given source."""
     description = (
@@ -60,6 +69,10 @@ def generate_image_html(
         f'src="workitemimg:{attachment_id}" '
         f'style="max-width: {max_width}px;"/></span>'
     )
+    if caption:
+        description += POLARION_CAPTION.format(
+            label=caption[0], caption=caption[1]
+        )
     return description
 
 
