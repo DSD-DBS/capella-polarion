@@ -1,9 +1,11 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing the CapellaWorkItemAttachment classes."""
+
 from __future__ import annotations
 
 import base64
+import copy
 import dataclasses
 import hashlib
 import logging
@@ -12,7 +14,7 @@ import typing as t
 import cairosvg
 import polarion_rest_api_client as polarion_api
 from capellambse import model
-from capellambse_context_diagrams import context
+from capellambse_context_diagrams import _elkjs, context
 
 SVG_MIME_TYPE = "image/svg+xml"
 PNG_MIME_TYPE = "image/png"
@@ -116,9 +118,15 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
             try:
                 elk_input = self.diagram.elk_input_data(self.render_params)
                 if isinstance(elk_input, tuple):
-                    input_str = ";".join(eit.json() for eit in elk_input)
+                    input_str = ";".join(
+                        remove_width_and_height(eit).model_dump_json()
+                        for eit in elk_input
+                    )
                 else:
-                    input_str = elk_input.json()
+                    input_str = remove_width_and_height(
+                        elk_input
+                    ).model_dump_json()
+
                 self._checksum = hashlib.sha256(
                     input_str.encode("utf-8")
                 ).hexdigest()
@@ -132,6 +140,26 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
                 )
                 return super().content_checksum
         return self._checksum
+
+
+def remove_width_and_height(
+    elk_input: _elkjs.ELKInputData,
+) -> _elkjs.ELKInputData:
+    """Remove width and height from all elements in elk input."""
+
+    def process_item(item):
+        if hasattr(item, "width"):
+            del item.width
+        if hasattr(item, "height"):
+            del item.height
+
+        for attr in ("children", "edges", "ports", "labels"):
+            for element in getattr(item, attr, []):
+                process_item(element)
+
+    elk_input_copy = copy.deepcopy(elk_input)
+    process_item(elk_input_copy)
+    return elk_input_copy
 
 
 class PngConvertedSvgAttachment(Capella2PolarionAttachment):

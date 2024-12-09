@@ -54,7 +54,10 @@ TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_SYS_FNC = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
+TEST_SYS_FNC_CTX = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
 TEST_SYS_FNC_EX = "1a414995-f4cd-488c-8152-486e459fb9de"
+TEST_SYS_CMP = "344a405e-c7e5-4367-8a9a-41d3d9a27f81"
+TEST_PHYS_LINK = "3078ec08-956a-4c61-87ed-0143d1d66715"
 TEST_DIAG_DESCR = (
     '<span><img title="{title}" class="{cls}" '
     'src="workitemimg:{attachment_id}" '
@@ -1942,22 +1945,56 @@ class TestSerializers:
         assert expected_filter in inputs[1].filters
 
     @staticmethod
-    def test_add_tree_view_with_params(
+    @pytest.mark.parametrize(
+        "uuid, converter, type_name, render_params, layer",
+        [
+            pytest.param(
+                TEST_SYS_FNC_CTX,
+                "add_tree_diagram",
+                "systemFunction",
+                {"depth": 1},
+                "pa",
+                id="add_tree_diagram",
+            ),
+            pytest.param(
+                TEST_SYS_CMP,
+                "add_realization_diagram",
+                "systemComponent",
+                {"depth": 1, "search_direction": "ALL"},
+                "sa",
+                id="add_realization_diagram",
+            ),
+            pytest.param(
+                TEST_PHYS_LINK,
+                "add_cable_tree_diagram",
+                "physicalLink",
+                {
+                    "display_port_labels": True,
+                    "port_label_position": "OUTSIDE",
+                },
+                "pa",
+                id="add_cable_tree_diagram",
+            ),
+        ],
+    )
+    def test_context_diagram_serializer(
+        uuid: str,
+        converter: str,
+        type_name: str,
+        render_params: dict[str, t.Any],
+        layer: str,
         model: capellambse.MelodyModel,
     ):
-        cls = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
-        config = {"add_tree_diagram": {"render_params": {"depth": 1}}}
-        type_config = converter_config.CapellaTypeConfig(
-            "systemFunction", config, []
+        config = {converter: {"render_params": render_params}}
+        type_config = data_session.ConverterData(
+            layer,
+            converter_config.CapellaTypeConfig(type_name, config, []),
+            model.by_uuid(uuid),
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
-            {
-                TEST_OCAP_UUID: data_session.ConverterData(
-                    "pa", type_config, cls
-                )
-            },
+            {uuid: type_config},
             True,
         )
 
@@ -1968,10 +2005,10 @@ class TestSerializers:
             _ = wis[0].attachments[0].content_bytes
 
         assert wrapped_render.call_count == 1
-        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+        assert wrapped_render.call_args_list[0][1] == render_params
 
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
-        uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
+        uuid = TEST_SYS_FNC_CTX
         type_config = converter_config.CapellaTypeConfig(
             "test",
             {
@@ -2127,7 +2164,7 @@ class TestSerializers:
     def test_read_config_tree_view_with_params(
         model: capellambse.MelodyModel,
     ):
-        cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
+        cap = model.by_uuid(TEST_SYS_FNC_CTX)
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)
@@ -2154,7 +2191,6 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-
             wis = serializer.serialize_all()
             _ = wis[0].attachments[0].content_bytes
 

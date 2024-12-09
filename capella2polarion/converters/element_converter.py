@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for serialization of capella objects to workitems."""
+
 from __future__ import annotations
 
 import collections
@@ -108,6 +109,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                     ", ".join([str(a) for a in error.args])
                 )
                 converter_data.work_item = None
+
+        if converter_data.work_item is not None:
+            assert converter_data.work_item.title is not None
+            assert converter_data.work_item.type is not None
 
         if converter_data.errors:
             log_args = (
@@ -411,6 +416,30 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             type_texts[req.type.long_name].append(req.text)
         return _format_texts(type_texts)
 
+    def _add_diagram(
+        self,
+        converter_data: data_session.ConverterData,
+        diagram_attr: str,
+        diagram_label: str,
+        render_params: dict[str, t.Any] | None = None,
+        filters: list[str] | None = None,
+    ) -> data_model.CapellaWorkItem:
+        """Add a new custom field diagram based on provided attributes."""
+        assert converter_data.work_item, "No work item set yet"
+        diagram = getattr(converter_data.capella_element, diagram_attr)
+
+        for filter in filters or []:
+            diagram.filters.add(filter)
+
+        self._draw_additional_attributes_diagram(
+            converter_data.work_item,
+            diagram,
+            diagram_attr,
+            diagram_label,
+            render_params,
+        )
+        return converter_data.work_item
+
     # Serializer implementation starts below
 
     def __generic_work_item(
@@ -531,21 +560,13 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         render_params: dict[str, t.Any] | None = None,
         filters: list[str] | None = None,
     ) -> data_model.CapellaWorkItem:
-        """Add a new custom field context diagram."""
-        assert converter_data.work_item, "No work item set yet"
-        diagram = converter_data.capella_element.context_diagram
-        for filter in filters or []:
-            diagram.filters.add(filter)
-
-        self._draw_additional_attributes_diagram(
-            converter_data.work_item,
-            diagram,
+        return self._add_diagram(
+            converter_data,
             "context_diagram",
             "Context Diagram",
             render_params,
+            filters,
         )
-
-        return converter_data.work_item
 
     def _add_tree_diagram(
         self,
@@ -553,21 +574,37 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         render_params: dict[str, t.Any] | None = None,
         filters: list[str] | None = None,
     ) -> data_model.CapellaWorkItem:
-        """Add a new custom field tree diagram."""
-        assert converter_data.work_item, "No work item set yet"
-        diagram = converter_data.capella_element.tree_view
-        for filter in filters or []:
-            diagram.filters.add(filter)
-
-        self._draw_additional_attributes_diagram(
-            converter_data.work_item,
-            diagram,
-            "tree_view",
-            "Tree View",
-            render_params,
+        return self._add_diagram(
+            converter_data, "tree_view", "Tree View", render_params, filters
         )
 
-        return converter_data.work_item
+    def _add_realization_diagram(
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
+        filters: list[str] | None = None,
+    ) -> data_model.CapellaWorkItem:
+        return self._add_diagram(
+            converter_data,
+            "realization_view",
+            "Realization Diagram",
+            render_params,
+            filters,
+        )
+
+    def _add_cable_tree_diagram(
+        self,
+        converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
+        filters: list[str] | None = None,
+    ) -> data_model.CapellaWorkItem:
+        return self._add_diagram(
+            converter_data,
+            "cable_tree",
+            "Cable Tree Diagram",
+            render_params,
+            filters,
+        )
 
     def _add_jinja_fields(
         self,
