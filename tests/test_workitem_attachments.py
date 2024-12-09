@@ -28,7 +28,9 @@ from .test_elements import (
     TEST_SYS_FNC_CTX,
 )
 
-DIAGRAM_WI_CHECKSUM = "76fc1f7e4b73891488de7e47de8ef75fc24e85fc3cdde80661503201e70b1733"
+DIAGRAM_WI_CHECKSUM = (
+    "76fc1f7e4b73891488de7e47de8ef75fc24e85fc3cdde80661503201e70b1733"
+)
 WI_CONTEXT_DIAGRAM_CHECKSUM = (
     "0ed1417e8e4717524bc91162dcf8633afca686e93f8b036d0bc48d81f0444f56"
 )
@@ -39,18 +41,24 @@ CONTEXT_DIAGRAM_CHECKSUM = (
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 WORKITEM_ID = "TEST-ID"
 
-with open(TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", "r", encoding="utf8") as f:
+with open(
+    TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", "r", encoding="utf8"
+) as f:
     diagram_svg = f.read()
 
 wia_dict = {
     "work_item_id": WORKITEM_ID,
     "title": "Diagram",
-    "content_bytes": base64.b64encode(cairosvg.svg2png(diagram_svg)).decode("utf8"),
+    "content_bytes": base64.b64encode(cairosvg.svg2png(diagram_svg)).decode(
+        "utf8"
+    ),
     "mime_type": "image/png",
     "file_name": "__C2P__diagram.png",
 }
 
-DIAGRAM_PNG_CHECKSUM = hashlib.sha256(json.dumps(wia_dict).encode("utf8")).hexdigest()
+DIAGRAM_PNG_CHECKSUM = hashlib.sha256(
+    json.dumps(wia_dict).encode("utf8")
+).hexdigest()
 DIAGRAM_CHECKSUM = json.dumps(
     {
         "__C2P__WORK_ITEM": DIAGRAM_WI_CHECKSUM,
@@ -101,7 +109,9 @@ def test_diagram_no_attachments(model: capellambse.MelodyModel):
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
         model.diagrams.by_uuid(TEST_DIAG_UUID),
     )
-    converter.generate_work_items(polarion_repo.PolarionDataRepository(), False, False)
+    converter.generate_work_items(
+        polarion_repo.PolarionDataRepository(), False, False
+    )
     work_item = converter.converter_session[TEST_DIAG_UUID].work_item
     assert work_item is not None
     assert work_item.attachments == []
@@ -114,7 +124,9 @@ def test_diagram_has_attachments(model: capellambse.MelodyModel):
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
         model.diagrams.by_uuid(TEST_DIAG_UUID),
     )
-    converter.generate_work_items(polarion_repo.PolarionDataRepository(), False, True)
+    converter.generate_work_items(
+        polarion_repo.PolarionDataRepository(), False, True
+    )
 
     work_item = converter.converter_session[TEST_DIAG_UUID].work_item
     assert work_item is not None
@@ -132,11 +144,13 @@ def test_diagram_attachments_new(
         [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
 
-    worker.project_client.work_items.get.return_value = data_model.CapellaWorkItem(
-        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID
+    worker.project_client.work_items.get.return_value = (
+        data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
     )
     worker.project_client.work_items.attachments = mock.MagicMock()
-    worker.project_client.work_items.attachments.create.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
@@ -146,7 +160,9 @@ def test_diagram_attachments_new(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.update.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 1
@@ -161,7 +177,10 @@ def test_diagram_attachments_new(
 
     assert len(created_attachments) == 2
     assert created_attachments[0].title == created_attachments[1].title
-    assert created_attachments[0].file_name[:3] == created_attachments[0].file_name[:3]
+    assert (
+        created_attachments[0].file_name[:3]
+        == created_attachments[0].file_name[:3]
+    )
 
     assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
@@ -189,11 +208,15 @@ def test_new_diagram(
         ]
     )
 
-    worker.project_client.work_items.get.return_value = data_model.CapellaWorkItem(
-        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+    worker.project_client.work_items.get.return_value = (
+        data_model.CapellaWorkItem(
+            WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+        )
     )
     worker.project_client.work_items.attachments.create = mock.MagicMock()
-    worker.project_client.work_items.attachments.create.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         "",
@@ -203,7 +226,9 @@ def test_new_diagram(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.update.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 1
@@ -240,10 +265,12 @@ def test_diagram_attachments_updated(
         ),
     ]
 
-    worker.project_client.work_items.get.return_value = data_model.CapellaWorkItem(
-        WORKITEM_ID,
-        uuid_capella=TEST_DIAG_UUID,
-        attachments=existing_attachments,
+    worker.project_client.work_items.get.return_value = (
+        data_model.CapellaWorkItem(
+            WORKITEM_ID,
+            uuid_capella=TEST_DIAG_UUID,
+            attachments=existing_attachments,
+        )
     )
 
     worker.project_client.work_items.attachments.get_all = mock.MagicMock()
@@ -259,7 +286,9 @@ def test_diagram_attachments_updated(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.update.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 0
@@ -324,7 +353,9 @@ def test_diagram_attachments_unchanged_work_item_changed(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.get.call_count == 1
     assert worker.project_client.work_items.update.call_count == 1
@@ -367,7 +398,9 @@ def test_diagram_attachments_fully_unchanged(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.update.call_count == 0
     assert worker.project_client.work_items.attachments.create.call_count == 0
@@ -440,7 +473,9 @@ def test_context_diagram_serializers(
     )
 
     worker.project_client.work_items.attachments.create = mock.MagicMock()
-    worker.project_client.work_items.attachments.create.side_effect = set_attachment_ids
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
@@ -458,7 +493,10 @@ def test_context_diagram_serializers(
 
     assert len(created_attachments) == 2
     assert created_attachments[0].title == created_attachments[1].title
-    assert created_attachments[0].file_name[:3] == created_attachments[0].file_name[:3]
+    assert (
+        created_attachments[0].file_name[:3]
+        == created_attachments[0].file_name[:3]
+    )
 
     assert str(
         work_item.additional_attributes[attribute_id]["value"]
@@ -550,11 +588,14 @@ def test_update_context_diagram_with_changes(
         ),
     ]
     # read the content manually on update as it be read in the client
-    worker.project_client.work_items.attachments.update.side_effect = read_content
+    worker.project_client.work_items.attachments.update.side_effect = (
+        read_content
+    )
 
     with mock.patch.object(context.ContextDiagram, "render") as wrapped_render:
         wrapped_render.return_value = (
-            '<svg xmlns="http://www.w3.org/2000/svg" ' 'width="100" height="100"></svg>'
+            '<svg xmlns="http://www.w3.org/2000/svg" '
+            'width="100" height="100"></svg>'
         )
         converter.generate_work_items(worker.polarion_data_repo, False, True)
         worker.compare_and_update_work_item(converter.converter_session[uuid])
@@ -614,7 +655,9 @@ def test_diagram_delete_attachments(
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
 
-    worker.compare_and_update_work_item(converter.converter_session[TEST_DIAG_UUID])
+    worker.compare_and_update_work_item(
+        converter.converter_session[TEST_DIAG_UUID]
+    )
 
     assert worker.project_client.work_items.update.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 0
