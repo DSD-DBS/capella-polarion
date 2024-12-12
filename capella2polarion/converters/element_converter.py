@@ -11,6 +11,7 @@ import mimetypes
 import pathlib
 import re
 import typing as t
+import warnings
 from collections import abc as cabc
 
 import capellambse
@@ -24,7 +25,11 @@ from lxml import etree
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session, polarion_html_helper
+from capella2polarion.converters import (
+    converter_config,
+    data_session,
+    polarion_html_helper,
+)
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -101,6 +106,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                     ...,
                     data_model.CapellaWorkItem,
                 ] = getattr(self, f"_{converter}")
+                assert isinstance(params, dict)
                 serializer(converter_data, **params)
             except Exception as error:
                 converter_data.errors.add(
@@ -235,30 +241,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             self._add_attachment(work_item, attachment)
 
         return diagram_html
-
-    def _draw_additional_attributes_diagram(
-        self,
-        work_item: data_model.CapellaWorkItem,
-        diagram: m.AbstractDiagram,
-        attribute: str,
-        title: str,
-        render_params: dict[str, t.Any] | None = None,
-    ):
-        diagram_html, attachment = self._draw_diagram_svg(
-            diagram,
-            attribute,
-            title,
-            650,
-            "additional-attributes-diagram",
-            render_params,
-        )
-        if attachment:
-            self._add_attachment(work_item, attachment)
-
-        work_item.additional_attributes[attribute] = {
-            "type": "text/html",
-            "value": diagram_html,
-        }
 
     def _sanitize_linked_text(self, obj: m.ModelElement | m.Diagram) -> tuple[
         list[str],
@@ -395,30 +377,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             type_texts[req.type.long_name].append(req.text)
         return _format_texts(type_texts)
 
-    def _add_diagram(
-        self,
-        converter_data: data_session.ConverterData,
-        diagram_attr: str,
-        diagram_label: str,
-        render_params: dict[str, t.Any] | None = None,
-        filters: list[str] | None = None,
-    ) -> data_model.CapellaWorkItem:
-        """Add a new custom field diagram based on provided attributes."""
-        assert converter_data.work_item, "No work item set yet"
-        diagram = getattr(converter_data.capella_element, diagram_attr)
-
-        for filter in filters or []:
-            diagram.filters.add(filter)
-
-        self._draw_additional_attributes_diagram(
-            converter_data.work_item,
-            diagram,
-            diagram_attr,
-            diagram_label,
-            render_params,
-        )
-        return converter_data.work_item
-
     # Serializer implementation starts below
 
     def __generic_work_item(
@@ -523,18 +481,60 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         converter_data.work_item.attachments += attachments
         return converter_data.work_item
 
+    def _add_custom_diagrams(
+        self,
+        converter_data: data_session.ConverterData,
+        custom_diagrams_configs: list[converter_config.CustomDiagramConfig],
+    ) -> data_model.CapellaWorkItem:
+        """Add new custom field diagrams to the work item."""
+        assert converter_data.work_item, "No work item set yet"
+        for cd_config in custom_diagrams_configs:
+            diagram = getattr(
+                converter_data.capella_element, cd_config.capella_attr
+            )
+
+            for filter in cd_config.filters or []:
+                diagram.filters.add(filter)
+
+            diagram_html, attachment = self._draw_diagram_svg(
+                diagram,
+                cd_config.capella_attr,
+                cd_config.title,
+                650,
+                "additional-attributes-diagram",
+                cd_config.render_params,
+            )
+            if attachment:
+                self._add_attachment(converter_data.work_item, attachment)
+
+            converter_data.work_item.additional_attributes[
+                cd_config.polarion_id
+            ] = polarion_api.HtmlContent(diagram_html)
+        return converter_data.work_item
+
     def _add_context_diagram(
         self,
         converter_data: data_session.ConverterData,
         render_params: dict[str, t.Any] | None = None,
         filters: list[str] | None = None,
     ) -> data_model.CapellaWorkItem:
-        return self._add_diagram(
+        warnings.warn(
+            "Using 'add_context_diagram' is deprecated. "
+            "Use 'add_custom_diagrams' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._add_custom_diagrams(
             converter_data,
-            "context_diagram",
-            "Context Diagram",
-            render_params,
-            filters,
+            [
+                converter_config.CustomDiagramConfig(
+                    capella_attr="context_diagram",
+                    polarion_id="context_diagram",
+                    title="Context Diagram",
+                    render_params=render_params,
+                    filters=filters,
+                )
+            ],
         )
 
     def _add_tree_diagram(
@@ -543,36 +543,23 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         render_params: dict[str, t.Any] | None = None,
         filters: list[str] | None = None,
     ) -> data_model.CapellaWorkItem:
-        return self._add_diagram(
-            converter_data, "tree_view", "Tree View", render_params, filters
+        warnings.warn(
+            "Using 'add_tree_diagram' is deprecated. "
+            "Use 'add_custom_diagrams' instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-
-    def _add_realization_diagram(
-        self,
-        converter_data: data_session.ConverterData,
-        render_params: dict[str, t.Any] | None = None,
-        filters: list[str] | None = None,
-    ) -> data_model.CapellaWorkItem:
-        return self._add_diagram(
+        return self._add_custom_diagrams(
             converter_data,
-            "realization_view",
-            "Realization Diagram",
-            render_params,
-            filters,
-        )
-
-    def _add_cable_tree_diagram(
-        self,
-        converter_data: data_session.ConverterData,
-        render_params: dict[str, t.Any] | None = None,
-        filters: list[str] | None = None,
-    ) -> data_model.CapellaWorkItem:
-        return self._add_diagram(
-            converter_data,
-            "cable_tree",
-            "Cable Tree Diagram",
-            render_params,
-            filters,
+            [
+                converter_config.CustomDiagramConfig(
+                    capella_attr="tree_view",
+                    polarion_id="tree_view",
+                    title="Tree View",
+                    render_params=render_params,
+                    filters=filters,
+                )
+            ],
         )
 
     def _add_jinja_fields(
@@ -583,14 +570,15 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         """Add a new custom field and fill it with rendered jinja content."""
         assert converter_data.work_item, "No work item set yet"
         for field, jinja_properties in fields.items():
-            converter_data.work_item.additional_attributes[field] = {
-                "type": "text/html",
-                "value": self._render_jinja_template(
-                    jinja_properties.get("template_folder", ""),
-                    jinja_properties["template_path"],
-                    converter_data,
-                ),
-            }
+            converter_data.work_item.additional_attributes[field] = (
+                polarion_api.HtmlContent(
+                    self._render_jinja_template(
+                        jinja_properties.get("template_folder", ""),
+                        jinja_properties["template_path"],
+                        converter_data,
+                    ),
+                )
+            )
 
         return converter_data.work_item
 

@@ -59,45 +59,36 @@ specific serializer alone:
 | linked_text_as_description           | A serializer resolving ``Constraint`` s and their    |
 |                                      | linked text.                                         |
 +--------------------------------------+------------------------------------------------------+
-| add_context_diagram                  | A serializer adding a context diagram to the work    |
+| add_context_diagram (Deprecated)     | A serializer adding a context diagram to the work    |
 |                                      | item. This requires node.js to be installed.         |
 |                                      | The Capella objects where ``context_diagram`` is     |
-|                                      | available can be seen in the `context-diagrams       |
-|                                      | documentation`_.                                     |
+|                                      | available can be seen in the `Context Diagram`_      |
+|                                      | documentation.                                       |
 |                                      | You can provide ``render_params`` in the config and  |
 |                                      | these will be passed to the render function of       |
 |                                      | capellambse.                                         |
 |                                      | You can provide ``filters`` in the config, and these |
 |                                      | will be passed to the render function of capellambse.|
-|                                      | See `context-diagrams filters`_ for documentation.   |
+|                                      | See `Context Diagram filters`_ for documentation.    |
 +--------------------------------------+------------------------------------------------------+
-| add_tree_diagram                     | A serializer adding a tree view diagram to the       |
+| add_tree_diagram (Deprecated)        | A serializer adding a tree view diagram to the       |
 |                                      | work item. Same requirements as for                  |
-|                                      | ``add_context_diagram``. `Tree View Documentation`_. |
+|                                      | ``add_context_diagram``. `Tree View`_ Documentation. |
 |                                      | You can provide ``render_params`` in the config and  |
 |                                      | these will be passed to the render function of       |
 |                                      | capellambse.                                         |
 |                                      | ``filters`` are available here too.                  |
 +--------------------------------------+------------------------------------------------------+
-| add_realization_diagram              | A serializer adding a realization diagram to the     |
-|                                      | work item. Requires similar setup as                 |
-|                                      | ``add_context_diagram``. `Realization Diagram        |
-|                                      | Documentation`_.                                     |
-|                                      | You can provide ``render_params`` in the config and  |
-|                                      | these will be passed to the render function of       |
-|                                      | capellambse.                                         |
-|                                      | ``filters`` can also be provided for additional      |
-|                                      | customization.                                       |
-+--------------------------------------+------------------------------------------------------+
-| add_cable_tree_diagram               | A serializer adding a cable tree diagram to the      |
-|                                      | work item. Requires similar setup as                 |
-|                                      | ``add_context_diagram``. `Cable Tree Diagram         |
-|                                      | Documentation`_.                                     |
-|                                      | You can provide ``render_params`` in the config and  |
-|                                      | these will be passed to the render function of       |
-|                                      | capellambse.                                         |
-|                                      | ``filters`` are also supported here for additional   |
-|                                      | customization.                                       |
+| add_custom_diagrams                  | A serializer for adding custom diagrams to work      |
+|                                      | items. Requires node.js to be installed. Supported   |
+|                                      | diagrams include `Context Diagram`_, `Tree View`_,   |
+|                                      | `Realization Diagram`_ and `Cable Tree Diagram`_.    |
+|                                      | The `capella_attr`, `polarion_id` and `title` need to|
+|                                      | provided in the configuration.                       |
+|                                      | You can provide ``render_params`` and ``filters`` in |
+|                                      | the config for customization. Documentation for each |
+|                                      | diagram type can be found in their respective        |
+|                                      | sections.                                            |
 +--------------------------------------+------------------------------------------------------+
 | add_jinja_fields                     | A serializer that allows custom field values to be   |
 |                                      | filled with rendered Jinja2 template content. This   |
@@ -111,11 +102,11 @@ specific serializer alone:
 |                                      | description field.                                   |
 +--------------------------------------+------------------------------------------------------+
 
-.. _context-diagrams documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/#context-diagram-extension-for-capellambse
-.. _Tree View documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/tree_view/
-.. _Realization Diagram documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/realization_view/
-.. _Cable Tree Diagram documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/cable_tree/
-.. _context-diagrams filters: https://dsd-dbs.github.io/capellambse-context-diagrams/extras/filters/
+.. _Context Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/#context-diagram-extension-for-capellambse
+.. _Tree View: https://dsd-dbs.github.io/capellambse-context-diagrams/tree_view/
+.. _Realization Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/realization_view/
+.. _Cable Tree Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/cable_tree/
+.. _Context Diagram filters: https://dsd-dbs.github.io/capellambse-context-diagrams/extras/filters/
 
 Links
 *****

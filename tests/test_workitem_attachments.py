@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import typing as t
 from unittest import mock
 
 import cairosvg
@@ -23,6 +24,7 @@ from capella2polarion.converters import (
 from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import (
     TEST_DIAG_DESCR,
+    TEST_PHYS_CONTEXT_DIAGRAM,
     TEST_PHYS_LINK,
     TEST_SYS_CMP,
     TEST_SYS_FNC_CTX,
@@ -412,14 +414,14 @@ def test_diagram_attachments_fully_unchanged(
     "uuid,converter_id,attribute_id,diagr_descr",
     [
         pytest.param(
-            "11906f7b-3ae9-4343-b998-95b170be2e2b",
+            TEST_PHYS_CONTEXT_DIAGRAM,
             "add_context_diagram",
             "context_diagram",
             {
                 "title": "Context Diagram",
                 "attachment_id": "1-__C2P__context_diagram.svg",
             },
-            id="ContextDiagram",
+            id="Context Diagram",
         ),
         pytest.param(
             TEST_SYS_FNC_CTX,
@@ -429,27 +431,7 @@ def test_diagram_attachments_fully_unchanged(
                 "title": "Tree View",
                 "attachment_id": "1-__C2P__tree_view.svg",
             },
-            id="TreeViewDiagram",
-        ),
-        pytest.param(
-            TEST_SYS_CMP,
-            "add_realization_diagram",
-            "realization_view",
-            {
-                "title": "Realization Diagram",
-                "attachment_id": "1-__C2P__realization_view.svg",
-            },
-            id="RealizationViewDiagram",
-        ),
-        pytest.param(
-            TEST_PHYS_LINK,
-            "add_cable_tree_diagram",
-            "cable_tree",
-            {
-                "title": "Cable Tree Diagram",
-                "attachment_id": "1-__C2P__cable_tree.svg",
-            },
-            id="CableTreeDiagram",
+            id="Tree View",
         ),
     ],
 )
@@ -502,6 +484,102 @@ def test_context_diagram_serializers(
         work_item.additional_attributes[attribute_id]["value"]
     ) == TEST_DIAG_DESCR.format(
         **diagr_descr,
+        width=650,
+        cls="additional-attributes-diagram",
+    )
+
+
+@pytest.mark.parametrize(
+    "uuid,conv_config,attachment_id",
+    [
+        pytest.param(
+            TEST_PHYS_CONTEXT_DIAGRAM,
+            {
+                "capella_attr": "context_diagram",
+                "polarion_id": "context_diagram",
+                "title": "Context Diagram",
+            },
+            "1-__C2P__context_diagram.svg",
+            id="ContextDiagram",
+        ),
+        pytest.param(
+            TEST_SYS_FNC_CTX,
+            {
+                "capella_attr": "tree_view",
+                "polarion_id": "tree_view",
+                "title": "Tree View",
+            },
+            "1-__C2P__tree_view.svg",
+            id="TreeViewDiagram",
+        ),
+        pytest.param(
+            TEST_SYS_CMP,
+            {
+                "capella_attr": "realization_view",
+                "polarion_id": "realization_view",
+                "title": "Realization View",
+            },
+            "1-__C2P__realization_view.svg",
+            id="RealizationViewDiagram",
+        ),
+        pytest.param(
+            TEST_PHYS_LINK,
+            {
+                "capella_attr": "cable_tree",
+                "polarion_id": "cable_tree",
+                "title": "Cable Tree Diagram",
+            },
+            "1-__C2P__cable_tree.svg",
+            id="CableTreeDiagram",
+        ),
+    ],
+)
+def test_custom_diagrams_serializers(
+    model: capellambse.MelodyModel,
+    worker: polarion_worker.CapellaPolarionWorker,
+    uuid: str,
+    conv_config: dict[str, t.Any],
+    attachment_id: dict[str, str],
+):
+    attribute_id = conv_config["polarion_id"]
+    converter = model_converter.ModelConverter(model, "TEST")
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
+    )
+    converter.converter_session[uuid] = data_session.ConverterData(
+        "",
+        converter_config.CapellaTypeConfig(
+            "test", {"add_custom_diagrams": [conv_config]}, []
+        ),
+        model.by_uuid(uuid),
+    )
+    worker.project_client.work_items.attachments.create = mock.MagicMock()
+    worker.project_client.work_items.attachments.create.side_effect = (
+        set_attachment_ids
+    )
+
+    converter.generate_work_items(worker.polarion_data_repo, False, True)
+    worker.compare_and_update_work_item(converter.converter_session[uuid])
+
+    assert worker.project_client.work_items.update.call_count == 1
+    assert worker.project_client.work_items.attachments.create.call_count == 1
+
+    created_attachments: list[polarion_api.WorkItemAttachment] = (
+        worker.project_client.work_items.attachments.create.call_args.args[0]
+    )
+    work_item: data_model.CapellaWorkItem = (
+        worker.project_client.work_items.update.call_args.args[0]
+    )
+    assert len(created_attachments) == 2
+    assert created_attachments[0].title == created_attachments[1].title
+    assert (
+        created_attachments[0].file_name[:3]
+        == created_attachments[0].file_name[:3]
+    )
+    assert str(
+        work_item.additional_attributes[attribute_id]["value"]
+    ) == TEST_DIAG_DESCR.format(
+        **{"title": conv_config["title"], "attachment_id": attachment_id},
         width=650,
         cls="additional-attributes-diagram",
     )
