@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import collections
+import enum
 import hashlib
 import logging
 import mimetypes
@@ -64,6 +65,16 @@ def _format_texts(
     for typ, texts in type_texts.items():
         requirement_types[typ.lower()] = _format(texts)
     return requirement_types
+
+
+def _resolve_capella_attribute(
+    element: m.ModelElement | m.Diagram, attribute: str
+) -> polarion_api.TextContent:
+    value = getattr(element, attribute)
+    if isinstance(value, enum.Enum):
+        return polarion_api.TextContent(type="string", value=value.name)
+
+    raise ValueError("Unsupported attribute type: %r", value)
 
 
 class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
@@ -452,6 +463,32 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
+
+        return converter_data.work_item
+
+    def _add_attributes(
+        self,
+        converter_data: data_session.ConverterData,
+        attributes: list[dict[str, t.Any]],
+    ):
+        assert converter_data.work_item is not None
+        for attribute in attributes:
+            try:
+                value = _resolve_capella_attribute(
+                    converter_data.capella_element, attribute["capella_attr"]
+                )
+                setattr(
+                    converter_data.work_item, attribute["polarion_id"], value
+                )
+            except AttributeError:
+                logger.error(
+                    "Attribute %r not found on %r",
+                    attribute["capella_attr"],
+                    converter_data.type_config.p_type,
+                )
+                continue
+            except ValueError as error:
+                logger.error(error.args[0])
 
         return converter_data.work_item
 

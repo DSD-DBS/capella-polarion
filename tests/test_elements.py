@@ -1860,6 +1860,35 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
         assert status == "open"
 
+    def test_add_attributes(self, model: capellambse.MelodyModel):
+        converters = {
+            "add_attributes": [
+                {"capella_attr": "nature", "polarion_id": "nature"},
+                {"capella_attr": "kind", "polarion_id": "kind"},
+            ]
+        }
+        type_config = converter_config.CapellaTypeConfig(
+            "PhysicalComponent", converters, []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_PHYS_COMP: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(TEST_PHYS_COMP),
+                )
+            },
+            True,
+        )
+
+        work_item = serializer.serialize(TEST_PHYS_COMP)
+
+        assert work_item is not None
+        assert work_item.nature == {"type": "string", "value": "UNSET"}
+        assert work_item.kind == {"type": "string", "value": "UNSET"}
+
     @staticmethod
     def test_add_context_diagram(model: capellambse.MelodyModel):
         type_config = converter_config.CapellaTypeConfig(

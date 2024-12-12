@@ -52,7 +52,50 @@ class CapellaTypeConfig:
 
     def __post_init__(self):
         """Post processing for the initialization."""
-        self.converters = _force_dict(self.converters)
+        self.converters = self._force_dict()
+
+    def _force_dict(self) -> dict[str, dict[str, t.Any]]:
+        match self.converters:
+            case None:
+                return {}
+            case str():
+                return {self.converters: {}}
+            case list():
+                return {c: {} for c in self.converters}
+            case dict():
+                return self._filter_converter_config()
+            case _:
+                raise TypeError("Unsupported Type")
+
+    def _filter_converter_config(self) -> dict[str, dict[str, t.Any]]:
+        custom_converters = (
+            "include_pre_and_post_condition",
+            "linked_text_as_description",
+            "add_attributes",
+            "add_context_diagram",
+            "add_tree_diagram",
+            "add_jinja_fields",
+            "jinja_as_description",
+        )
+        filtered_config = {}
+        assert isinstance(self.converters, dict)
+        for name, params in self.converters.items():
+            params = params or {}
+            if name not in custom_converters:
+                logger.error("Unknown converter in config %r", name)
+                continue
+
+            if name in ("add_context_diagram", "add_tree_diagram"):
+                assert isinstance(params, dict)
+                params = _filter_context_diagram_config(params)
+
+            if name in ("add_attributes"):
+                assert isinstance(params, list)  # type: ignore[unreachable]
+                params = {"attributes": params}  # type: ignore[unreachable]
+
+            filtered_config[name] = params
+
+        return filtered_config
 
 
 def _default_type_conversion(c_type: str) -> str:
@@ -283,7 +326,7 @@ def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
 
 
 def _read_capella_type_configs(
-    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None
+    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None,
 ) -> list[dict]:
     if conf is None:
         return [{}]
@@ -299,53 +342,11 @@ def _read_capella_type_configs(
     )
 
 
-def _force_dict(
-    config: str | list[str] | dict[str, dict[str, t.Any]] | None
-) -> dict[str, dict[str, t.Any]]:
-    match config:
-        case None:
-            return {}
-        case str():
-            return {config: {}}
-        case list():
-            return {c: {} for c in config}
-        case dict():
-            return _filter_converter_config(config)
-        case _:
-            raise TypeError("Unsupported Type")
-
-
 def add_prefix(polarion_type: str, prefix: str) -> str:
     """Add a prefix to the given ``polarion_type``."""
     if prefix:
         return f"{prefix}_{polarion_type}"
     return polarion_type
-
-
-def _filter_converter_config(
-    config: dict[str, dict[str, t.Any]]
-) -> dict[str, dict[str, t.Any]]:
-    custom_converters = (
-        "include_pre_and_post_condition",
-        "linked_text_as_description",
-        "add_context_diagram",
-        "add_tree_diagram",
-        "add_jinja_fields",
-        "jinja_as_description",
-    )
-    filtered_config = {}
-    for name, params in config.items():
-        params = params or {}
-        if name not in custom_converters:
-            logger.error("Unknown converter in config %r", name)
-            continue
-
-        if name in ("add_context_diagram", "add_tree_diagram"):
-            params = _filter_context_diagram_config(params)
-
-        filtered_config[name] = params
-
-    return filtered_config
 
 
 def _filter_context_diagram_config(
