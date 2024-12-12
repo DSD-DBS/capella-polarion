@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for serialization of capella objects to workitems."""
+
 from __future__ import annotations
 
 import collections
@@ -33,6 +34,14 @@ RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 logger = logging.getLogger(__name__)
 C2P_IMAGE_PREFIX = "__C2P__"
 JINJA_RENDERED_IMG_CLS = "jinja-rendered-image"
+ARCHITECTURE_LAYERS: dict[str, str] = {
+    "common": "Common",
+    "oa": "Operational Analysis",
+    "sa": "System Analysis",
+    "la": "Logical Architecture",
+    "pa": "Physical Architecture",
+    "epbs": "EPBS",
+}
 
 
 def resolve_element_type(type_: str) -> str:
@@ -424,6 +433,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             obj, raw_description or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
+        layer = polarion_api.TextContent(
+            type="string",
+            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
+        )
         requirement_types = self._get_requirement_types_text(obj)
 
         converter_data.work_item = data_model.CapellaWorkItem(
@@ -433,6 +446,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=obj.uuid,
             description=polarion_api.HtmlContent(value),
             status="open",
+            layer=layer,
             **requirement_types,  # type:ignore[arg-type]
         )
         assert converter_data.work_item is not None
@@ -451,6 +465,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         assert isinstance(diagram, m.Diagram)
         work_item_id = converter_data.work_item.id
+        layer = polarion_api.TextContent(
+            type="string",
+            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
+        )
 
         diagram_html, attachment = self._draw_diagram_svg(
             diagram,
@@ -473,6 +491,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=diagram.uuid,
             description=polarion_api.HtmlContent(diagram_html),
             status="open",
+            layer=layer,
         )
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)

@@ -98,34 +98,38 @@ def set_attachment_ids(attachments: list[polarion_api.WorkItemAttachment]):
 
 
 def test_diagram_no_attachments(model: capellambse.MelodyModel):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
+
     converter.generate_work_items(
         polarion_repo.PolarionDataRepository(), False, False
     )
+
     work_item = converter.converter_session[TEST_DIAG_UUID].work_item
     assert work_item is not None
     assert work_item.attachments == []
 
 
 def test_diagram_has_attachments(model: capellambse.MelodyModel):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
+
     converter.generate_work_items(
         polarion_repo.PolarionDataRepository(), False, True
     )
 
     work_item = converter.converter_session[TEST_DIAG_UUID].work_item
     assert work_item is not None
-
     assert len(work_item.attachments) == 2
 
 
@@ -134,11 +138,11 @@ def test_diagram_attachments_new(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
-
     worker.project_client.work_items.get.return_value = (
         data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
     )
@@ -146,15 +150,13 @@ def test_diagram_attachments_new(
     worker.project_client.work_items.attachments.create.side_effect = (
         set_attachment_ids
     )
-
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
-
     worker.compare_and_update_work_item(
         converter.converter_session[TEST_DIAG_UUID]
     )
@@ -162,21 +164,18 @@ def test_diagram_attachments_new(
     assert worker.project_client.work_items.update.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 1
     assert worker.project_client.work_items.attachments.get_all.call_count == 0
-
     created_attachments: list[polarion_api.WorkItemAttachment] = (
         worker.project_client.work_items.attachments.create.call_args.args[0]
     )
     work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
-
     assert len(created_attachments) == 2
     assert created_attachments[0].title == created_attachments[1].title
     assert (
         created_attachments[0].file_name[:3]
         == created_attachments[0].file_name[:3]
     )
-
     assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="1-__C2P__diagram.svg",
@@ -191,10 +190,9 @@ def test_new_diagram(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
-
     checksum = json.dumps({"__C2P__WORK_ITEM": DIAGRAM_WI_CHECKSUM})
-
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
             data_model.CapellaWorkItem(
@@ -202,7 +200,6 @@ def test_new_diagram(
             )
         ]
     )
-
     worker.project_client.work_items.get.return_value = (
         data_model.CapellaWorkItem(
             WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
@@ -212,15 +209,13 @@ def test_new_diagram(
     worker.project_client.work_items.attachments.create.side_effect = (
         set_attachment_ids
     )
-
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
-
     worker.compare_and_update_work_item(
         converter.converter_session[TEST_DIAG_UUID]
     )
@@ -241,6 +236,7 @@ def test_diagram_attachments_updated(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
@@ -259,7 +255,6 @@ def test_diagram_attachments_updated(
             file_name="__C2P__diagram.png",
         ),
     ]
-
     worker.project_client.work_items.get.return_value = (
         data_model.CapellaWorkItem(
             WORKITEM_ID,
@@ -267,20 +262,17 @@ def test_diagram_attachments_updated(
             attachments=existing_attachments,
         )
     )
-
     worker.project_client.work_items.attachments.get_all = mock.MagicMock()
     worker.project_client.work_items.attachments.get_all.return_value = (
         existing_attachments
     )
-
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
-
     worker.compare_and_update_work_item(
         converter.converter_session[TEST_DIAG_UUID]
     )
@@ -289,11 +281,9 @@ def test_diagram_attachments_updated(
     assert worker.project_client.work_items.attachments.create.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 2
     assert worker.project_client.work_items.attachments.get_all.call_count == 1
-
     work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
-
     assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="SVG-ATTACHMENT",
@@ -306,6 +296,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     diagram_work_item = data_model.CapellaWorkItem(
         WORKITEM_ID,
@@ -339,15 +330,13 @@ def test_diagram_attachments_unchanged_work_item_changed(
     worker.project_client.work_items.attachments.get_all.return_value = (
         diagram_work_item.attachments
     )
-
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
-
     worker.compare_and_update_work_item(
         converter.converter_session[TEST_DIAG_UUID]
     )
@@ -357,11 +346,9 @@ def test_diagram_attachments_unchanged_work_item_changed(
     assert worker.project_client.work_items.attachments.get_all.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0
-
     work_item: data_model.CapellaWorkItem = (
         worker.project_client.work_items.update.call_args.args[0]
     )
-
     assert work_item.description.value == TEST_DIAG_DESCR.format(
         title="Diagram",
         attachment_id="SVG-ATTACHMENT",
@@ -374,6 +361,7 @@ def test_diagram_attachments_fully_unchanged(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
@@ -384,15 +372,13 @@ def test_diagram_attachments_fully_unchanged(
             )
         ]
     )
-
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
-
     worker.compare_and_update_work_item(
         converter.converter_session[TEST_DIAG_UUID]
     )
@@ -557,6 +543,7 @@ def test_diagram_delete_attachments(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
 ):
+    diag = model.diagrams.by_uuid(TEST_DIAG_UUID)
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
@@ -596,9 +583,9 @@ def test_diagram_delete_attachments(
     ]
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
-        "",
+        model_converter.get_layer_name(diag),
         converter_config.CapellaTypeConfig("diagram", "diagram", []),
-        model.diagrams.by_uuid(TEST_DIAG_UUID),
+        diag,
     )
 
     converter.generate_work_items(worker.polarion_data_repo, False, True)
