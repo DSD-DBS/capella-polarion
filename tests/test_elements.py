@@ -50,6 +50,7 @@ TEST_WE_DESCR = (
 TEST_ACTOR_UUID = "08e02248-504d-4ed8-a295-c7682a614f66"
 TEST_PHYS_COMP = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
 TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
+TEST_PHYS_FNC = "11906f7b-3ae9-4343-b998-95b170be2e2b"
 TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
@@ -1859,9 +1860,37 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
         assert status == "open"
 
+    def test_add_attributes(self, model: capellambse.MelodyModel):
+        converters = {
+            "add_attributes": [
+                {"capella_attr": "nature", "polarion_id": "nature"},
+                {"capella_attr": "kind", "polarion_id": "kind"},
+            ]
+        }
+        type_config = converter_config.CapellaTypeConfig(
+            "PhysicalComponent", converters, []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_PHYS_COMP: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(TEST_PHYS_COMP),
+                )
+            },
+            True,
+        )
+
+        work_item = serializer.serialize(TEST_PHYS_COMP)
+
+        assert work_item is not None
+        assert work_item.nature == {"type": "string", "value": "UNSET"}
+        assert work_item.kind == {"type": "string", "value": "UNSET"}
+
     @staticmethod
     def test_add_context_diagram(model: capellambse.MelodyModel):
-        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
         type_config = converter_config.CapellaTypeConfig(
             "test", "add_context_diagram", []
         )
@@ -1869,16 +1898,16 @@ class TestSerializers:
             model,
             polarion_repo.PolarionDataRepository(),
             {
-                uuid: data_session.ConverterData(
+                TEST_PHYS_FNC: data_session.ConverterData(
                     "pa",
                     type_config,
-                    model.by_uuid(uuid),
+                    model.by_uuid(TEST_PHYS_FNC),
                 )
             },
             True,
         )
 
-        work_item = serializer.serialize(uuid)
+        work_item = serializer.serialize(TEST_PHYS_FNC)
 
         assert work_item is not None
         assert "context_diagram" in work_item.additional_attributes
@@ -2154,7 +2183,6 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-
             wis = serializer.serialize_all()
             _ = wis[0].attachments[0].content_bytes
 
@@ -2204,7 +2232,6 @@ class TestSerializers:
 
     @staticmethod
     def test_add_context_diagram_with_caption(model: capellambse.MelodyModel):
-        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
         type_config = converter_config.CapellaTypeConfig(
             "test", "add_context_diagram", []
         )
@@ -2212,17 +2239,17 @@ class TestSerializers:
             model,
             polarion_repo.PolarionDataRepository(),
             {
-                uuid: data_session.ConverterData(
+                TEST_PHYS_FNC: data_session.ConverterData(
                     "pa",
                     type_config,
-                    model.by_uuid(uuid),
+                    model.by_uuid(TEST_PHYS_FNC),
                 )
             },
             True,
             generate_figure_captions=True,
         )
 
-        work_item = serializer.serialize(uuid)
+        work_item = serializer.serialize(TEST_PHYS_FNC)
 
         assert work_item is not None
         assert "context_diagram" in work_item.additional_attributes

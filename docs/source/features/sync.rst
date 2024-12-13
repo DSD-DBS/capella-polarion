@@ -59,6 +59,10 @@ specific serializer alone:
 | linked_text_as_description           | A serializer resolving ``Constraint`` s and their    |
 |                                      | linked text.                                         |
 +--------------------------------------+------------------------------------------------------+
+| add_attributes                       | A serializer adding arbitrary attributes as custom   |
+|                                      | fields to the work item. For now only supports enum  |
+|                                      | attributes!                                          |
++--------------------------------------+------------------------------------------------------+
 | add_context_diagram                  | A serializer adding a context diagram to the work    |
 |                                      | item. This requires node.js to be installed.         |
 |                                      | The Capella objects where ``context_diagram`` is     |

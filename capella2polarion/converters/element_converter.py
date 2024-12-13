@@ -1,9 +1,11 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for serialization of capella objects to workitems."""
+
 from __future__ import annotations
 
 import collections
+import enum
 import hashlib
 import logging
 import mimetypes
@@ -33,6 +35,14 @@ RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 logger = logging.getLogger(__name__)
 C2P_IMAGE_PREFIX = "__C2P__"
 JINJA_RENDERED_IMG_CLS = "jinja-rendered-image"
+ARCHITECTURE_LAYERS: dict[str, str] = {
+    "common": "Common",
+    "oa": "Operational Analysis",
+    "sa": "System Analysis",
+    "la": "Logical Architecture",
+    "pa": "Physical Architecture",
+    "epbs": "EPBS",
+}
 
 
 def resolve_element_type(type_: str) -> str:
@@ -55,6 +65,16 @@ def _format_texts(
     for typ, texts in type_texts.items():
         requirement_types[typ.lower()] = _format(texts)
     return requirement_types
+
+
+def _resolve_capella_attribute(
+    element: m.ModelElement | m.Diagram, attribute: str
+) -> polarion_api.TextContent:
+    value = getattr(element, attribute)
+    if isinstance(value, enum.Enum):
+        return polarion_api.TextContent(type="string", value=value.name)
+
+    raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
 class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
@@ -424,6 +444,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             obj, raw_description or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
+        layer = polarion_api.TextContent(
+            type="string",
+            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
+        )
         requirement_types = self._get_requirement_types_text(obj)
 
         converter_data.work_item = data_model.CapellaWorkItem(
@@ -433,11 +457,38 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=obj.uuid,
             description=polarion_api.HtmlContent(value),
             status="open",
+            layer=layer,
             **requirement_types,  # type:ignore[arg-type]
         )
         assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
+
+        return converter_data.work_item
+
+    def _add_attributes(
+        self,
+        converter_data: data_session.ConverterData,
+        attributes: list[dict[str, t.Any]],
+    ):
+        assert converter_data.work_item is not None
+        for attribute in attributes:
+            try:
+                value = _resolve_capella_attribute(
+                    converter_data.capella_element, attribute["capella_attr"]
+                )
+                setattr(
+                    converter_data.work_item, attribute["polarion_id"], value
+                )
+            except AttributeError:
+                logger.error(
+                    "Attribute %r not found on %r",
+                    attribute["capella_attr"],
+                    converter_data.type_config.p_type,
+                )
+                continue
+            except ValueError as error:
+                logger.error(error.args[0])
 
         return converter_data.work_item
 
@@ -451,6 +502,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         assert isinstance(diagram, m.Diagram)
         work_item_id = converter_data.work_item.id
+        layer = polarion_api.TextContent(
+            type="string",
+            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
+        )
 
         diagram_html, attachment = self._draw_diagram_svg(
             diagram,
@@ -473,6 +528,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=diagram.uuid,
             description=polarion_api.HtmlContent(diagram_html),
             status="open",
+            layer=layer,
         )
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)
