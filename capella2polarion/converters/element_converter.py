@@ -558,6 +558,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 650,
                 "additional-attributes-diagram",
                 cd_config.render_params,
+                (
+                    ("Figure", f"Context Diagram of {diagram.target.name}")
+                    if self.generate_figure_captions
+                    else None
+                ),
             )
             if attachment:
                 self._add_attachment(converter_data.work_item, attachment)
