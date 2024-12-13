@@ -74,7 +74,7 @@ def _resolve_capella_attribute(
     if isinstance(value, enum.Enum):
         return polarion_api.TextContent(type="string", value=value.name)
 
-    raise ValueError("Unsupported attribute type: %r", value)
+    raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
 class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
