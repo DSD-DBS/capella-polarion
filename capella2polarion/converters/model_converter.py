@@ -116,10 +116,6 @@ class ModelConverter:
             generate_figure_captions,
         )
         work_items = serializer.serialize_all()
-        for work_item in work_items:
-            assert work_item.title is not None
-            assert work_item.type is not None
-
         if generate_links:
             self.generate_work_item_links(
                 polarion_data_repo, generate_grouped_links_custom_fields

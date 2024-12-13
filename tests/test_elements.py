@@ -13,7 +13,7 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
 from capellambse import model as m
-from capellambse_context_diagrams import context, filters
+from capellambse_context_diagrams import context
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
@@ -54,7 +54,11 @@ TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_SYS_FNC = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
+TEST_SYS_FNC_CTX = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
 TEST_SYS_FNC_EX = "1a414995-f4cd-488c-8152-486e459fb9de"
+TEST_SYS_CMP = "344a405e-c7e5-4367-8a9a-41d3d9a27f81"
+TEST_PHYS_LINK = "3078ec08-956a-4c61-87ed-0143d1d66715"
+TEST_PHYS_CONTEXT_DIAGRAM = "11906f7b-3ae9-4343-b998-95b170be2e2b"
 TEST_DIAG_DESCR = (
     '<span><img title="{title}" class="{cls}" '
     'src="workitemimg:{attachment_id}" '
@@ -1815,21 +1819,18 @@ class TestSerializers:
     )
     def test_generic_work_item(
         model: capellambse.MelodyModel,
+        test_config: converter_config.ConverterConfig,
         layer: str,
         uuid: str,
         expected: dict[str, t.Any],
     ):
         obj = model.by_uuid(uuid)
-        config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
-
         c_type = type(obj).__name__
         attributes = {
             "is_actor": getattr(obj, "is_actor", None),
             "nature": getattr(obj, "nature", None),
         }
-        type_config = config.get_type_config(layer, c_type, **attributes)
+        type_config = test_config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
 
         serializer = element_converter.CapellaWorkItemSerializer(
@@ -1861,7 +1862,7 @@ class TestSerializers:
 
     @staticmethod
     def test_add_context_diagram(model: capellambse.MelodyModel):
-        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
+        uuid = TEST_PHYS_CONTEXT_DIAGRAM
         type_config = converter_config.CapellaTypeConfig(
             "test", "add_context_diagram", []
         )
@@ -1901,63 +1902,19 @@ class TestSerializers:
         assert attachment.file_name == "__C2P__context_diagram.svg"
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "context_diagram_filter",
-        [
-            "SHOW_EX_ITEMS",
-            "EX_ITEMS",
-            "EX_ITEMS_OR_EXCH",
-            "NO_UUID",
-            "SYSTEM_EX_RELABEL",
-        ],
-    )
-    def test_add_context_diagram_with_params(
-        model: capellambse.MelodyModel,
-        monkeypatch: pytest.MonkeyPatch,
-        context_diagram_filter: str,
-    ):
-        uuid = "00e7b925-cf4c-4cb0-929e-5409a1cd872b"
-        fnc = model.by_uuid(uuid)
-        config = {"add_context_diagram": {"filters": [context_diagram_filter]}}
-        type_config = converter_config.CapellaTypeConfig(
-            "systemFunction", config, []
-        )
-        expected_filter = getattr(filters, context_diagram_filter)
-        monkeypatch.setattr(
-            element_converter.CapellaWorkItemSerializer,
-            "_draw_additional_attributes_diagram",
-            draw_diagram_mock := mock.MagicMock(),
+    def test_tree_diagram_serializer(model: capellambse.MelodyModel):
+        uuid = TEST_SYS_FNC_CTX
+        render_params = {"depth": 1}
+        config = {"add_tree_diagram": {"render_params": render_params}}
+        type_config = data_session.ConverterData(
+            "pa",
+            converter_config.CapellaTypeConfig("systemFunction", config, []),
+            model.by_uuid(uuid),
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
-            {uuid: data_session.ConverterData("sa", type_config, fnc)},
-            True,
-        )
-
-        work_item = serializer.serialize(uuid)
-
-        assert draw_diagram_mock.call_count == 1
-        assert (inputs := draw_diagram_mock.call_args[0])[0] == work_item
-        assert expected_filter in inputs[1].filters
-
-    @staticmethod
-    def test_add_tree_view_with_params(
-        model: capellambse.MelodyModel,
-    ):
-        cls = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
-        config = {"add_tree_diagram": {"render_params": {"depth": 1}}}
-        type_config = converter_config.CapellaTypeConfig(
-            "systemFunction", config, []
-        )
-        serializer = element_converter.CapellaWorkItemSerializer(
-            model,
-            polarion_repo.PolarionDataRepository(),
-            {
-                TEST_OCAP_UUID: data_session.ConverterData(
-                    "pa", type_config, cls
-                )
-            },
+            {uuid: type_config},
             True,
         )
 
@@ -1968,10 +1925,103 @@ class TestSerializers:
             _ = wis[0].attachments[0].content_bytes
 
         assert wrapped_render.call_count == 1
-        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
+        assert wrapped_render.call_args_list[0][1] == render_params
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "uuid, converter, type_name, config, layer",
+        [
+            pytest.param(
+                TEST_PHYS_CONTEXT_DIAGRAM,
+                "add_custom_diagrams",
+                "physicalFunction",
+                {
+                    "capella_attr": "context_diagram",
+                    "polarion_id": "context_diagram",
+                    "title": "Context Diagram",
+                    "filters": ["SHOW_EX_ITEMS"],
+                },
+                "pa",
+                id="Context Diagram",
+            ),
+            pytest.param(
+                TEST_SYS_FNC_CTX,
+                "add_custom_diagrams",
+                "systemFunction",
+                {
+                    "capella_attr": "tree_view",
+                    "polarion_id": "tree_view",
+                    "title": "Tree View",
+                    "render_params": {"depth": 1},
+                },
+                "pa",
+                id="add_tree_diagram",
+            ),
+            pytest.param(
+                TEST_SYS_CMP,
+                "add_custom_diagrams",
+                "systemComponent",
+                {
+                    "capella_attr": "realization_view",
+                    "polarion_id": "realization_view",
+                    "title": "Realization View",
+                    "render_params": {"depth": 1, "search_direction": "ALL"},
+                },
+                "sa",
+                id="add_realization_diagram",
+            ),
+            pytest.param(
+                TEST_PHYS_LINK,
+                "add_custom_diagrams",
+                "physicalLink",
+                {
+                    "capella_attr": "cable_tree",
+                    "polarion_id": "cable_tree",
+                    "title": "Cable Tree Diagram",
+                    "render_params": {
+                        "display_port_labels": True,
+                        "port_label_position": "OUTSIDE",
+                    },
+                },
+                "pa",
+                id="add_cable_tree_diagram",
+            ),
+        ],
+    )
+    def test_custom_diagrams_serializer(
+        uuid: str,
+        converter: str,
+        type_name: str,
+        config: dict[str, t.Any],
+        layer: str,
+        model: capellambse.MelodyModel,
+    ):
+        expected_render_params = config.get("render_params", {})
+        type_config = data_session.ConverterData(
+            layer,
+            converter_config.CapellaTypeConfig(
+                type_name, {converter: [config]}, []
+            ),
+            model.by_uuid(uuid),
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {uuid: type_config},
+            True,
+        )
+
+        with mock.patch.object(
+            context.ContextDiagram, "render"
+        ) as wrapped_render:
+            wis = serializer.serialize_all()
+            _ = wis[0].attachments[0].content_bytes
+
+        assert wrapped_render.call_count == 1
+        assert wrapped_render.call_args_list[0][1] == expected_render_params
 
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
-        uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
+        uuid = TEST_SYS_FNC_CTX
         type_config = converter_config.CapellaTypeConfig(
             "test",
             {
@@ -2072,22 +2122,19 @@ class TestSerializers:
     )
     def test_generic_work_item_with_type_prefix(
         model: capellambse.MelodyModel,
+        test_config: converter_config.ConverterConfig,
         layer: str,
         uuid: str,
         expected: dict[str, t.Any],
     ):
         prefix = "_C2P"
         obj = model.by_uuid(uuid)
-        config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
-
         c_type = type(obj).__name__
         attributes = {
             "is_actor": getattr(obj, "is_actor", None),
             "nature": getattr(obj, "nature", None),
         }
-        type_config = config.get_type_config(layer, c_type, **attributes)
+        type_config = test_config.get_type_config(layer, c_type, **attributes)
         assert type_config is not None
         type_config.p_type = f"{prefix}_{type_config.p_type}"
         ework_item = data_model.CapellaWorkItem(id=f"{prefix}_TEST")
@@ -2105,61 +2152,86 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
 
     @staticmethod
-    def test_read_config_context_diagram_with_params():
+    def test_read_config_custom_diagrams(
+        test_config: converter_config.ConverterConfig,
+    ):
+        expected_converters = {
+            "custom_diagrams_configs": [
+                converter_config.CustomDiagramConfig(
+                    capella_attr="realization_view",
+                    polarion_id="realization_view",
+                    title="Realization View Diagram",
+                )
+            ]
+        }
+
+        type_config = test_config.get_type_config("sa", "SystemComponent")
+
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert (
+            type_config.converters["add_custom_diagrams"]
+            == expected_converters
+        )
+
+    @staticmethod
+    def test_read_config_custom_diagrams_with_multiple_diagrams(
+        test_config: converter_config.ConverterConfig,
+    ):
+        expected_converters = {
+            "custom_diagrams_configs": [
+                converter_config.CustomDiagramConfig(
+                    capella_attr="context_diagram",
+                    polarion_id="context_diagram",
+                    title="Context Diagram",
+                ),
+                converter_config.CustomDiagramConfig(
+                    capella_attr="realization_view",
+                    polarion_id="realization_view",
+                    title="Realization View Diagram",
+                ),
+            ]
+        }
+
+        type_config = test_config.get_type_config("pa", "PhysicalComponent")
+
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert (
+            type_config.converters["add_custom_diagrams"]
+            == expected_converters
+        )
+
+    @staticmethod
+    def test_read_config_context_diagram_with_params(
+        test_config: converter_config.ConverterConfig,
+    ):
         expected_filter = (
             "capellambse_context_diagrams-show.exchanges.or.exchange.items."
             "filter"
         )
-        config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
 
-        type_config = config.get_type_config("sa", "SystemFunction")
+        type_config = test_config.get_type_config("sa", "SystemFunction")
 
         assert type_config is not None
         assert isinstance(type_config.converters, dict)
-        assert "add_context_diagram" in type_config.converters
-        assert type_config.converters["add_context_diagram"]["filters"] == [
-            expected_filter
-        ]
+        assert (converter := type_config.converters["add_context_diagram"])
+        assert isinstance(converter, dict)
+        assert converter["filters"] == [expected_filter]
 
     @staticmethod
     def test_read_config_tree_view_with_params(
-        model: capellambse.MelodyModel,
+        test_config: converter_config.ConverterConfig,
     ):
-        cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
-        config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
+        type_config = test_config.get_type_config("la", "Class")
 
-        type_config = config.get_type_config("la", "Class")
         assert type_config is not None
         assert isinstance(type_config.converters, dict)
         assert "add_tree_diagram" in type_config.converters
+        assert isinstance(type_config.converters["add_tree_diagram"], dict)
         assert type_config.converters["add_tree_diagram"]["render_params"] == {
             "depth": 1
         }
-
-        serializer = element_converter.CapellaWorkItemSerializer(
-            model,
-            polarion_repo.PolarionDataRepository(),
-            {
-                TEST_OCAP_UUID: data_session.ConverterData(
-                    "pa", type_config, cap
-                )
-            },
-            True,
-        )
-
-        with mock.patch.object(
-            context.ContextDiagram, "render"
-        ) as wrapped_render:
-
-            wis = serializer.serialize_all()
-            _ = wis[0].attachments[0].content_bytes
-
-        assert wrapped_render.call_count == 1
-        assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 
     @staticmethod
     def test_read_config_links(caplog: pytest.LogCaptureFixture):

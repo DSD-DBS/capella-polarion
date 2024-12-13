@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Provides a class to generate and inset text work items in documents."""
+
 import polarion_rest_api_client as polarion_api
 from lxml import html
 

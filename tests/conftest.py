@@ -59,6 +59,16 @@ def model() -> capellambse.MelodyModel:
 
 
 @pytest.fixture
+def test_config() -> converter_config.ConverterConfig:
+    """Return the test config."""
+    config = converter_config.ConverterConfig()
+    config.read_config_file(
+        TEST_MODEL_ELEMENTS_CONFIG.read_text(encoding="utf8")
+    )
+    return config
+
+
+@pytest.fixture
 def dummy_work_items() -> dict[str, data_model.CapellaWorkItem]:
     return {
         f"uuid{i}": data_model.CapellaWorkItem(

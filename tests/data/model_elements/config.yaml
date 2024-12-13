@@ -42,6 +42,11 @@ sa:
   SystemComponent:
     - links:
         - allocated_functions
+      serializer:
+        add_custom_diagrams:
+          - capella_attr: realization_view
+            polarion_id: realization_view
+            title: Realization View Diagram
     - is_actor: false
       polarion_type: systemComponent
     - is_actor: true
@@ -74,6 +79,14 @@ pa:
   PhysicalComponent:
     - links:
         - allocated_functions
+      serializer:
+        add_custom_diagrams:
+          - capella_attr: context_diagram
+            polarion_id: context_diagram
+            title: Context Diagram
+          - capella_attr: realization_view
+            polarion_id: realization_view
+            title: Realization View Diagram
     - is_actor: false
       nature: UNSET
       polarion_type: physicalComponent
@@ -89,6 +102,12 @@ pa:
     - is_actor: true
       nature: BEHAVIOR
       polarion_type: physicalActorBehavior
+  PhysicalLink:
+    serializer:
+      add_custom_diagrams:
+        - capella_attr: cable_tree
+          polarion_id: cable_tree
+          title: Cable Tree Diagram
 
 la:
   LogicalComponent:

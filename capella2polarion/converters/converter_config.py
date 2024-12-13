@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing capella2polarion config class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -17,6 +18,10 @@ logger = logging.getLogger(__name__)
 _C2P_DEFAULT = "_C2P_DEFAULT"
 DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
 DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
+
+ConverterConfigDict_type: t.TypeAlias = dict[
+    str, t.Union[dict[str, t.Any], list[dict[str, t.Any]]]
+]
 
 
 @dataclasses.dataclass
@@ -45,14 +50,27 @@ class CapellaTypeConfig:
     """A single Capella Type configuration."""
 
     p_type: str | None = None
-    converters: str | list[str] | dict[str, dict[str, t.Any]] | None = None
+    converters: str | list[str] | ConverterConfigDict_type | None = None
     links: list[LinkConfig] = dataclasses.field(default_factory=list)
     is_actor: bool | None = None
     nature: str | None = None
 
     def __post_init__(self):
         """Post processing for the initialization."""
-        self.converters = _force_dict(self.converters)
+        self.converters = _force_dict(  # type: ignore[assignment]
+            self.converters
+        )
+
+
+@dataclasses.dataclass
+class CustomDiagramConfig:
+    """A single Capella Custom Diagram configuration."""
+
+    capella_attr: str
+    polarion_id: str
+    title: str
+    render_params: dict[str, t.Any] | None = None
+    filters: list[str] | None = None
 
 
 def _default_type_conversion(c_type: str) -> str:
@@ -71,7 +89,7 @@ class ConverterConfig:
 
     def read_config_file(
         self,
-        synchronize_config: t.TextIO,
+        synchronize_config: str | t.TextIO,
         type_prefix: str = "",
         role_prefix: str = "",
     ):
@@ -283,7 +301,7 @@ def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:
 
 
 def _read_capella_type_configs(
-    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None
+    conf: dict[str, t.Any] | list[dict[str, t.Any]] | None,
 ) -> list[dict]:
     if conf is None:
         return [{}]
@@ -300,7 +318,7 @@ def _read_capella_type_configs(
 
 
 def _force_dict(
-    config: str | list[str] | dict[str, dict[str, t.Any]] | None
+    config: str | list[str] | ConverterConfigDict_type | None,
 ) -> dict[str, dict[str, t.Any]]:
     match config:
         case None:
@@ -323,17 +341,18 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
 
 
 def _filter_converter_config(
-    config: dict[str, dict[str, t.Any]]
+    config: ConverterConfigDict_type,
 ) -> dict[str, dict[str, t.Any]]:
     custom_converters = (
         "include_pre_and_post_condition",
         "linked_text_as_description",
-        "add_context_diagram",
-        "add_tree_diagram",
+        "add_custom_diagrams",
+        "add_context_diagram",  # TODO: Deprecated, so remove in next release
+        "add_tree_diagram",  # TODO: Deprecated, so remove in next release
         "add_jinja_fields",
         "jinja_as_description",
     )
-    filtered_config = {}
+    filtered_config: dict[str, dict[str, t.Any]] = {}
     for name, params in config.items():
         params = params or {}
         if name not in custom_converters:
@@ -341,8 +360,28 @@ def _filter_converter_config(
             continue
 
         if name in ("add_context_diagram", "add_tree_diagram"):
+            assert isinstance(params, dict)
             params = _filter_context_diagram_config(params)
 
+        if name in ("add_custom_diagrams",):
+            if isinstance(params, list):
+                params = {
+                    "custom_diagrams_configs": [
+                        CustomDiagramConfig(
+                            **_filter_context_diagram_config(rp)
+                        )
+                        for rp in params
+                    ]
+                }
+            elif isinstance(params, dict):
+                assert "custom_diagrams_configs" in params
+            else:
+                logger.error(  # type: ignore[unreachable]
+                    "Unknown 'add_custom_diagrams' config %r", params
+                )
+                continue
+
+        assert isinstance(params, dict)
         filtered_config[name] = params
 
     return filtered_config

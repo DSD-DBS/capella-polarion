@@ -45,17 +45,20 @@ serializers in the configs. These will be called in the order provided in the
 list. Some serializers also support additional configuration. This can be done
 by providing a dictionary of serializers with the serializer as key and the
 configuration of the serializer as value. For example ``Class`` using the
-``add_tree_diagram`` serializer:
+``add_custom_diagrams`` serializer to render the tree view diagram from the
+``tree_view`` Capella attribute into a custom field with the ID ``tree_view``
+and title ``Tree View``:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
    :lines: 9-13
 
-or ``SystemFunction`` with the ``add_context_diagram`` serializer using ``filters``:
+or ``SystemFunction`` with the ``add_custom_diagrams`` serializer using
+``filters``:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 64-67
+   :lines: 57-72
 
 If a serializer supports additional parameters this will be documented in the
 supported capella serializers table in :ref:`Model synchronization
@@ -73,7 +76,7 @@ to the desired Polarion type.
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 73-91
+   :lines: 79-104
 
 For the ``PhysicalComponent`` you can see this in extreme action, where based
 on the different permutation of the attributes actor and nature different
@@ -90,14 +93,14 @@ Links can be configured by just providing a list of strings:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 33-37
+   :lines: 35-37
 
 However there is a more verbose way that gives you the option to configure the
 link further:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 52-63
+   :lines: 58-68
 
 The links of ``SystemFunction`` are configured such that a ``polarion_role``,
 a separate ``capella_attr``, an ``include``, ``link_field`` and
