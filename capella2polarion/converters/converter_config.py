@@ -89,7 +89,7 @@ class CapellaTypeConfig:
                 assert isinstance(params, dict)
                 params = _filter_context_diagram_config(params)
 
-            if name in ("add_attributes"):
+            if name in ("add_attributes",):
                 assert isinstance(params, list)  # type: ignore[unreachable]
                 params = {"attributes": params}  # type: ignore[unreachable]
 
