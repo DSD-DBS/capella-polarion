@@ -288,8 +288,8 @@ class CapellaPolarionWorker:
                 logger.info(
                     "Delete work item links %r for model %s %r",
                     id_list_str,
-                    new.type,
-                    new.title,
+                    old.type,
+                    old.title,
                 )
                 self.project_client.work_items.links.delete(
                     list(delete_links.values())
@@ -300,8 +300,8 @@ class CapellaPolarionWorker:
                 logger.info(
                     "Create work item links %r for model %s %r",
                     id_list_str,
-                    new.type,
-                    new.title,
+                    old.type,
+                    old.title,
                 )
                 self.project_client.work_items.links.create(
                     list(create_links.values())
