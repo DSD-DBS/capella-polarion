@@ -13,6 +13,8 @@ variables:
   # CAPELLA2POLARION_FORCE_UPDATE - Simulate initial run
   # CAPELLA2POLARION_TYPE_PREFIX - Prefix for work item types
   # CAPELLA2POLARION_ROLE_PREFIX - Prefix for work item link roles
+  # CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS - Generate captions for figures
+  # CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS - Generate custom fields for links grouped by role
 
 capella2polarion_synchronise_elements:
   needs:
