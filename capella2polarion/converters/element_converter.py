@@ -68,11 +68,37 @@ def _format_texts(
 
 
 def _resolve_capella_attribute(
-    element: m.ModelElement | m.Diagram, attribute: str
-) -> polarion_api.TextContent:
-    value = getattr(element, attribute)
-    if isinstance(value, enum.Enum):
-        return polarion_api.TextContent(type="string", value=value.name)
+    converter_data: data_session.ConverterData, attribute: dict[str, t.Any]
+) -> polarion_api.TextContent | str:
+    def _handle_value(
+        value: str | enum.Enum, capella_attr: str, enum_id: str | None
+    ) -> polarion_api.TextContent | str:
+        if enum_id is not None:
+            return polarion_api.TextContent(
+                type=f"enum:{enum_id}",
+                value=value if isinstance(value, str) else value.name,
+            )
+
+        if isinstance(value, enum.Enum):
+            logger.warning(
+                "The attribute %r has no enum configured in Polarion. "
+                "The attribute name is posted as a string instead.",
+                capella_attr,
+            )
+            return value.name
+
+        return value
+
+    if attribute["capella_attr"] == "layer":
+        value = converter_data.layer
+    else:
+        value = getattr(
+            converter_data.capella_element, attribute["capella_attr"]
+        )
+
+    enum_id = attribute.get("enum_id")
+    if isinstance(value, (str, enum.Enum)):
+        return _handle_value(value, attribute["capella_attr"], enum_id)
 
     raise ValueError(f"Unsupported attribute type: {value!r}")
 
@@ -444,10 +470,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             obj, raw_description or markupsafe.Markup("")
         )
         converter_data.description_references = uuids
-        layer = polarion_api.TextContent(
-            type="string",
-            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
-        )
         requirement_types = self._get_requirement_types_text(obj)
 
         converter_data.work_item = data_model.CapellaWorkItem(
@@ -457,7 +479,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=obj.uuid,
             description=polarion_api.HtmlContent(value),
             status="open",
-            layer=layer,
             **requirement_types,  # type:ignore[arg-type]
         )
         assert converter_data.work_item is not None
@@ -474,9 +495,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         for attribute in attributes:
             try:
-                value = _resolve_capella_attribute(
-                    converter_data.capella_element, attribute["capella_attr"]
-                )
+                value = _resolve_capella_attribute(converter_data, attribute)
                 setattr(
                     converter_data.work_item, attribute["polarion_id"], value
                 )
@@ -502,10 +521,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         assert isinstance(diagram, m.Diagram)
         work_item_id = converter_data.work_item.id
-        layer = polarion_api.TextContent(
-            type="string",
-            value=ARCHITECTURE_LAYERS.get(converter_data.layer, "UNKNOWN"),
-        )
 
         diagram_html, attachment = self._draw_diagram_svg(
             diagram,
@@ -528,7 +543,6 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             uuid_capella=diagram.uuid,
             description=polarion_api.HtmlContent(diagram_html),
             status="open",
-            layer=layer,
         )
         if attachment:
             self._add_attachment(converter_data.work_item, attachment)

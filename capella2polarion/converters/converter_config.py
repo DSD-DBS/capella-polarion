@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing capella2polarion config class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -17,6 +18,9 @@ logger = logging.getLogger(__name__)
 _C2P_DEFAULT = "_C2P_DEFAULT"
 DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
 DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
+ConvertersType: t.TypeAlias = dict[
+    str, dict[str, t.Any] | list[dict[str, t.Any]]
+]
 
 
 @dataclasses.dataclass
@@ -39,35 +43,70 @@ class LinkConfig:
     link_field: str = ""
     reverse_field: str = ""
 
+    @staticmethod
+    def _force_config(
+        links: list[str | dict[str, t.Any]], role_prefix: str = ""
+    ) -> list[LinkConfig]:
+        result: list[LinkConfig] = []
+        for link in links:
+            if isinstance(link, str):
+                config = LinkConfig(
+                    capella_attr=link,
+                    polarion_role=add_prefix(link, role_prefix),
+                    link_field=link,
+                    reverse_field=f"{link}_reverse",
+                )
+            elif isinstance(link, dict):
+                config = LinkConfig(
+                    capella_attr=(lid := link["capella_attr"]),
+                    polarion_role=add_prefix(
+                        (pid := link.get("polarion_role", lid)),
+                        role_prefix,
+                    ),
+                    include=link.get("include", {}),
+                    link_field=(lf := link.get("link_field", pid)),
+                    reverse_field=link.get("reverse_field", f"{lf}_reverse"),
+                )
+            else:
+                logger.error(
+                    "Link not configured correctly: %r",
+                    link,
+                )
+                continue
+            result.append(config)
+        return result
+
 
 @dataclasses.dataclass
 class CapellaTypeConfig:
     """A single Capella Type configuration."""
 
     p_type: str | None = None
-    converters: str | list[str] | dict[str, dict[str, t.Any]] | None = None
+    converters: dict[str, dict[str, t.Any]] | None = None
     links: list[LinkConfig] = dataclasses.field(default_factory=list)
     is_actor: bool | None = None
     nature: str | None = None
 
-    def __post_init__(self):
-        """Post processing for the initialization."""
-        self.converters = self._force_dict()
-
-    def _force_dict(self) -> dict[str, dict[str, t.Any]]:
-        match self.converters:
+    @staticmethod
+    def _force_dict(
+        converters: str | list[str] | ConvertersType | None,
+    ) -> dict[str, dict[str, t.Any]]:
+        match converters:
             case None:
                 return {}
             case str():
-                return {self.converters: {}}
+                return {converters: {}}
             case list():
-                return {c: {} for c in self.converters}
+                return {c: {} for c in converters}
             case dict():
-                return self._filter_converter_config()
+                return CapellaTypeConfig._filter_config(converters)
             case _:
                 raise TypeError("Unsupported Type")
 
-    def _filter_converter_config(self) -> dict[str, dict[str, t.Any]]:
+    @staticmethod
+    def _filter_config(
+        converters: dict[str, t.Any],
+    ) -> dict[str, dict[str, t.Any]]:
         custom_converters = (
             "include_pre_and_post_condition",
             "linked_text_as_description",
@@ -78,8 +117,8 @@ class CapellaTypeConfig:
             "jinja_as_description",
         )
         filtered_config = {}
-        assert isinstance(self.converters, dict)
-        for name, params in self.converters.items():
+        assert isinstance(converters, dict)
+        for name, params in converters.items():
             params = params or {}
             if name not in custom_converters:
                 logger.error("Unknown converter in config %r", name)
@@ -124,8 +163,11 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = self._force_link_config(
+        self.__global_config.links = LinkConfig._force_config(
             global_links, role_prefix
+        )
+        self.__global_config.converters = CapellaTypeConfig._force_dict(
+            all_type_config.get("serializer", {})
         )
 
         if "Diagram" in global_config_dict:
@@ -186,13 +228,19 @@ class ConverterConfig:
                 type_prefix,
             )
             self.polarion_types.add(p_type)
-            links = self._force_link_config(
+            links = LinkConfig._force_config(
                 type_config.get("links", []), role_prefix
             )
+            converters = CapellaTypeConfig._force_dict(
+                type_config.get("serializer")
+            )
+            assert self.__global_config.converters is not None
+            assert closest_config.converters is not None
             self._layer_configs[layer][c_type].append(
                 CapellaTypeConfig(
                     p_type,
-                    type_config.get("serializer") or closest_config.converters,
+                    self.__global_config.converters
+                    | (converters or closest_config.converters),
                     _filter_links(c_type, links) + closest_links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
@@ -213,12 +261,16 @@ class ConverterConfig:
             type_prefix,
         )
         self.polarion_types.add(p_type)
-        link_config = self._force_link_config(
+        link_config = LinkConfig._force_config(
             type_config.get("links", []), role_prefix
         )
+        converters = CapellaTypeConfig._force_dict(
+            type_config.get("serializer")
+        )
+        assert self.__global_config.converters is not None
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
-            type_config.get("serializer"),
+            self.__global_config.converters | converters,
             _filter_links(c_type, link_config)
             + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
@@ -237,47 +289,18 @@ class ConverterConfig:
             diagram_config.get("polarion_type") or "diagram", type_prefix
         )
         self.polarion_types.add(p_type)
-        link_config = self._force_link_config(
+        link_config = LinkConfig._force_config(
             diagram_config.get("links", []), role_prefix
         )
         links = _filter_links(c_type, link_config)
+        converters = CapellaTypeConfig._force_dict(
+            diagram_config.get("serializer") or "diagram"
+        )
         self.diagram_config = CapellaTypeConfig(
             p_type,
-            diagram_config.get("serializer") or "diagram",
+            self.__global_config.converters or {} | converters,
             links + self._get_global_links(c_type),
         )
-
-    def _force_link_config(
-        self, links: t.Any, role_prefix: str = ""
-    ) -> list[LinkConfig]:
-        result: list[LinkConfig] = []
-        for link in links:
-            if isinstance(link, str):
-                config = LinkConfig(
-                    capella_attr=link,
-                    polarion_role=add_prefix(link, role_prefix),
-                    link_field=link,
-                    reverse_field=f"{link}_reverse",
-                )
-            elif isinstance(link, dict):
-                config = LinkConfig(
-                    capella_attr=(lid := link["capella_attr"]),
-                    polarion_role=add_prefix(
-                        (pid := link.get("polarion_role", lid)),
-                        role_prefix,
-                    ),
-                    include=link.get("include", {}),
-                    link_field=(lf := link.get("link_field", pid)),
-                    reverse_field=link.get("reverse_field", f"{lf}_reverse"),
-                )
-            else:
-                logger.error(
-                    "Link not configured correctly: %r",
-                    link,
-                )
-                continue
-            result.append(config)
-        return result
 
     def get_type_config(
         self, layer: str, c_type: str, **attributes: t.Any
