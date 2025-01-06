@@ -6,6 +6,11 @@
     links: # Specify workitem links
       - parent
       - description_reference
+    serializer:
+      add_attributes:
+        - capella_attr: layer
+          polarion_id: layer
+          enum_id: layer
   Class:
     serializer:
       add_tree_diagram:

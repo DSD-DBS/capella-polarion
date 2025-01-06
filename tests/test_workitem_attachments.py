@@ -24,13 +24,13 @@ from .conftest import TEST_DIAGRAM_CACHE
 from .test_elements import TEST_DIAG_DESCR, TEST_PHYS_FNC
 
 DIAGRAM_WI_CHECKSUM = (
-    "1239ced17306dc92213cd1b729e3652a1cbc9b07997683ed36033a9d05adcb75"
+    "76fc1f7e4b73891488de7e47de8ef75fc24e85fc3cdde80661503201e70b1733"
 )
 WI_CONTEXT_DIAGRAM_CHECKSUM = (
-    "69d8b2ca4e690ccaf70fff16d2e42bbf2ecf434307d49e020d2138160ba35cb2"
+    "0ed1417e8e4717524bc91162dcf8633afca686e93f8b036d0bc48d81f0444f56"
 )
 CONTEXT_DIAGRAM_CHECKSUM = (
-    "2b86192f2f65353512e1b4af0e652577d0ca3d0cf8595f5dcfba7d52bcb6d702"
+    "73f7c01dcedba1f47889ddf20302ed371f3b5039102d26429094e5612a3e90ec"
 )
 
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
@@ -71,7 +71,7 @@ def converter(
     converter = model_converter.ModelConverter(model, "TEST")
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         model_converter.get_layer_name(diag),
-        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        converter_config.CapellaTypeConfig("diagram", {"diagram": {}}, []),
         diag,
     )
     return converter
@@ -368,7 +368,9 @@ def test_add_context_diagram(
 
     converter.converter_session[TEST_PHYS_FNC] = data_session.ConverterData(
         "pa",
-        converter_config.CapellaTypeConfig("test", "add_context_diagram", []),
+        converter_config.CapellaTypeConfig(
+            "test", {"add_context_diagram": {}}, []
+        ),
         model.by_uuid(TEST_PHYS_FNC),
     )
 
@@ -417,7 +419,7 @@ def test_update_context_diagram_no_changes(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            data_model.CapellaWorkItem(
+            old := data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=TEST_PHYS_FNC,
                 checksum=json.dumps(
@@ -432,15 +434,20 @@ def test_update_context_diagram_no_changes(
 
     converter.converter_session[TEST_PHYS_FNC] = data_session.ConverterData(
         "pa",
-        converter_config.CapellaTypeConfig("test", "add_context_diagram", []),
+        converter_config.CapellaTypeConfig(
+            "test", {"add_context_diagram": {}}, []
+        ),
         model.by_uuid(TEST_PHYS_FNC),
     )
 
     with mock.patch.object(context.ContextDiagram, "render") as wrapped_render:
         converter.generate_work_items(worker.polarion_data_repo, False, True)
         worker.compare_and_update_work_item(
-            converter.converter_session[TEST_PHYS_FNC]
+            new := converter.converter_session[TEST_PHYS_FNC]
         )
+
+    print(old.checksum)
+    print(new.work_item.checksum)
 
     assert worker.project_client.work_items.update.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0
@@ -469,7 +476,9 @@ def test_update_context_diagram_with_changes(
 
     converter.converter_session[TEST_PHYS_FNC] = data_session.ConverterData(
         "",
-        converter_config.CapellaTypeConfig("test", "add_context_diagram", []),
+        converter_config.CapellaTypeConfig(
+            "test", {"add_context_diagram": {}}, []
+        ),
         model.by_uuid(TEST_PHYS_FNC),
     )
     worker.project_client.work_items.attachments.get_all.return_value = [
@@ -555,7 +564,7 @@ def test_diagram_delete_attachments(
 
     converter.converter_session[TEST_DIAG_UUID] = data_session.ConverterData(
         model_converter.get_layer_name(diag),
-        converter_config.CapellaTypeConfig("diagram", "diagram", []),
+        converter_config.CapellaTypeConfig("diagram", {"diagram": {}}, []),
         diag,
     )
 
@@ -592,7 +601,7 @@ def test_attached_image_in_description_with_caption(
 
     converter.converter_session[uuid] = data_session.ConverterData(
         "",
-        converter_config.CapellaTypeConfig("test"),
+        converter_config.CapellaTypeConfig("test", {}),
         model.by_uuid(uuid),
     )
 

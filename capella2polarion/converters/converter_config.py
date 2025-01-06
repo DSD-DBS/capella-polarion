@@ -68,7 +68,7 @@ class LinkConfig:
                     reverse_field=link.get("reverse_field", f"{lf}_reverse"),
                 )
             else:
-                logger.error(
+                logger.error(  # type: ignore[unreachable]
                     "Link not configured correctly: %r",
                     link,
                 )

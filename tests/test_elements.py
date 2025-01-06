@@ -159,7 +159,7 @@ HTML_LINK_3 = {
         "</li></ul></ul>"
     )
 }
-DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", "diagram")
+DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", {"diagram": {}})
 
 
 class GroupedLinksBaseObject(t.TypedDict):
@@ -345,7 +345,7 @@ class TestModelElements:
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
-                    _type[0].lower() + _type[1:]
+                    _type[0].lower() + _type[1:], {}
                 ),
                 model.by_uuid(uuid),
             )
@@ -1369,6 +1369,7 @@ class TestModelElements:
         ex = model.by_uuid(TEST_SYS_FNC_EX)
         fnc_config = converter_config.CapellaTypeConfig(
             "systemFunction",
+            {},
             links=[
                 converter_config.LinkConfig(
                     capella_attr="inputs.exchanges",
@@ -1381,6 +1382,7 @@ class TestModelElements:
         )
         ex_config = converter_config.CapellaTypeConfig(
             "systemFunctionalExchange",
+            {},
             links=[
                 converter_config.LinkConfig(
                     capella_attr="exchange_items",
@@ -1390,7 +1392,7 @@ class TestModelElements:
                 )
             ],
         )
-        ex_item_config = converter_config.CapellaTypeConfig("exchangeItem")
+        ex_item_config = converter_config.CapellaTypeConfig("exchangeItem", {})
         base_object.mc.converter_session = {
             TEST_SYS_FNC: data_session.ConverterData(
                 "sa", fnc_config, fnc, None
@@ -1578,9 +1580,7 @@ def test_grouped_linked_work_items_order_consistency(
         base_object.pw.polarion_params.project_id,
         base_object.c2pcli.capella_model,
     )
-    config = converter_config.CapellaTypeConfig(
-        "fakeModelObject",
-    )
+    config = converter_config.CapellaTypeConfig("fakeModelObject", {})
     work_item = data_model.CapellaWorkItem("id", title="Dummy")
     converter_data = data_session.ConverterData(
         "test", config, FakeModelObject(""), work_item
@@ -1863,12 +1863,19 @@ class TestSerializers:
     def test_add_attributes(self, model: capellambse.MelodyModel):
         converters = {
             "add_attributes": [
+                {
+                    "capella_attr": "layer",
+                    "polarion_id": "layer",
+                    "enum_id": "layer",
+                },
                 {"capella_attr": "nature", "polarion_id": "nature"},
                 {"capella_attr": "kind", "polarion_id": "kind"},
             ]
         }
         type_config = converter_config.CapellaTypeConfig(
-            "PhysicalComponent", converters, []
+            "PhysicalComponent",
+            converter_config.CapellaTypeConfig._force_dict(converters),
+            [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
@@ -1886,13 +1893,14 @@ class TestSerializers:
         work_item = serializer.serialize(TEST_PHYS_COMP)
 
         assert work_item is not None
-        assert work_item.nature == {"type": "string", "value": "UNSET"}
-        assert work_item.kind == {"type": "string", "value": "UNSET"}
+        assert work_item.layer == {"type": "enum:layer", "value": "pa"}
+        assert work_item.nature == "UNSET"
+        assert work_item.kind == "UNSET"
 
     @staticmethod
     def test_add_context_diagram(model: capellambse.MelodyModel):
         type_config = converter_config.CapellaTypeConfig(
-            "test", "add_context_diagram", []
+            "test", {"add_context_diagram": {}}, []
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
@@ -1950,6 +1958,9 @@ class TestSerializers:
         config = {"add_context_diagram": {"filters": [context_diagram_filter]}}
         type_config = converter_config.CapellaTypeConfig(
             "systemFunction", config, []
+        )
+        type_config.converters = (
+            converter_config.CapellaTypeConfig._force_dict(config)
         )
         expected_filter = getattr(filters, context_diagram_filter)
         monkeypatch.setattr(
@@ -2034,7 +2045,7 @@ class TestSerializers:
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
             f"{prefix}_test" if prefix else "test",
-            ["include_pre_and_post_condition", "add_context_diagram"],
+            {"include_pre_and_post_condition": {}, "add_context_diagram": {}},
             [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
@@ -2233,7 +2244,7 @@ class TestSerializers:
     @staticmethod
     def test_add_context_diagram_with_caption(model: capellambse.MelodyModel):
         type_config = converter_config.CapellaTypeConfig(
-            "test", "add_context_diagram", []
+            "test", {"add_context_diagram": {}}, []
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
