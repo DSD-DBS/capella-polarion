@@ -91,9 +91,9 @@ specific serializer alone:
 |                                      | description field.                                   |
 +--------------------------------------+------------------------------------------------------+
 
-.. _context-diagrams documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/#context-diagram-extension-for-capellambse
-.. _Tree View documentation: https://dsd-dbs.github.io/capellambse-context-diagrams/tree_view/
-.. _context-diagrams filters: https://dsd-dbs.github.io/capellambse-context-diagrams/extras/filters/
+.. _context-diagrams documentation: https://capellambse-context-diagrams.readthedocs.io/#context-diagram-extension-for-capellambse
+.. _Tree View documentation: https://capellambse-context-diagrams.readthedocs.io/tree_view/
+.. _context-diagrams filters: https://capellambse-context-diagrams.readthedocs.io/extras/filters/
 
 Links
 *****
