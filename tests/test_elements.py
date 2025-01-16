@@ -1976,7 +1976,7 @@ class TestSerializers:
             "test",
             {
                 "jinja_as_description": {
-                    "template_folder": "jupyter-notebooks/element_templates",
+                    "template_folder": "docs/source/examples/element_templates",
                     "template_path": "class.html.j2",
                 }
             },
@@ -2154,7 +2154,6 @@ class TestSerializers:
         with mock.patch.object(
             context.ContextDiagram, "render"
         ) as wrapped_render:
-
             wis = serializer.serialize_all()
             _ = wis[0].attachments[0].content_bytes
 

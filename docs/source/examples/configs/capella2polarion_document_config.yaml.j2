@@ -1,0 +1,44 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+full_authority:
+  - template_directory: jinja/document_templates
+    template: test-pcd.html.j2
+    heading_numbering: True
+    work_item_layouts:
+      componentExchange:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      physicalLink:
+        fields_at_start:
+          - id
+      physicalActor:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      physicalComponentNode:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      physicalComponentBehavior:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      physicalFunction:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+    instances:
+    {%- for pc in model.search("PhysicalComponent") %}
+    - polarion_space: PC-Drafts
+      polarion_name: {{ pc.uuid }}
+      polarion_title: "{{ pc.name | safe }}"
+      params:
+        uuid: {{ pc.uuid }}
+    {% endfor %}
