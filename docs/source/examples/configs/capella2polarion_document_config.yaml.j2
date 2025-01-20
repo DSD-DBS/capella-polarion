@@ -2,34 +2,34 @@
 # SPDX-License-Identifier: Apache-2.0
 
 full_authority:
-  - template_directory: jinja/document_templates
+  - template_directory: document_templates
     template: test-pcd.html.j2
     heading_numbering: True
     work_item_layouts:
-      componentExchange:
+      _C2P_componentExchange:
         fields_at_start:
           - id
         fields_at_end:
           - context_diagram
-      physicalLink:
+      _C2P_physicalLink:
         fields_at_start:
           - id
-      physicalActor:
-        fields_at_start:
-          - id
-        fields_at_end:
-          - context_diagram
-      physicalComponentNode:
+      _C2P_physicalActor:
         fields_at_start:
           - id
         fields_at_end:
           - context_diagram
-      physicalComponentBehavior:
+      _C2P_physicalComponentNode:
         fields_at_start:
           - id
         fields_at_end:
           - context_diagram
-      physicalFunction:
+      _C2P_physicalComponentBehavior:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalFunction:
         fields_at_start:
           - id
         fields_at_end:
@@ -38,7 +38,8 @@ full_authority:
     {%- for pc in model.search("PhysicalComponent") %}
     - polarion_space: PC-Drafts
       polarion_name: {{ pc.uuid }}
-      polarion_title: "{{ pc.name | safe }}"
+      polarion_title: {{ pc.name | safe }}
       params:
         uuid: {{ pc.uuid }}
+        title: {{ pc.name | safe }}
     {% endfor %}

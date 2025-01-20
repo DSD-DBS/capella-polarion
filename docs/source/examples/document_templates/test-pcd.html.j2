@@ -3,8 +3,6 @@
     SPDX-License-Identifier: Apache-2.0
 #}
 
-{% from 'polarion_props.j2' import table_attributes, th_attributes, td_attributes %}
-
 {% set table_attributes='class="polarion-Document-table" style="margin: auto;margin-left: 0px;empty-cells: show;border-collapse: collapse;max-width: 1280px;border: 1px solid #CCCCCC;" id="polarion_wiki macro name=table"' %}
 {% set th_attributes='style="height: 12px;text-align: left;vertical-align: top;font-weight: bold;background-color: #F0F0F0;border: 1px solid #CCCCCC;padding: 5px;"' %}
 {% set td_attributes='style="height: 12px;text-align: left;vertical-align: top;line-height: 18px;border: 1px solid #CCCCCC;padding: 5px;"' %}
@@ -20,9 +18,16 @@
 {{ heading(2, "Context", session) }}
 <workitem id="context">The context of {{ physical_component.name }} is summarized by the context diagram below:</workitem>
 {{ insert_work_item(physical_component, session) }}
-<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div>
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
 
-{% set software_components = [comp for comp in physical_component.components if comp.kind == "SOFTWARE"] %}
+{# {% set software_components = physical_component.components | selectattr("kind", "equalto", "SOFTWARE") %} #}
+{% set software_components = [] %}
+{% for comp in physical_component.components %}
+    {% if comp.kind == "SOFTWARE" %}
+        {% set _ = software_components.append(comp) %}
+    {% endif %}
+{% endfor %}
+
 {% if software_components %}
     {{ heading(2, "Deployed software", session) }}
     <workitem id="software">{{ physical_component.name }} has the following software components deployed:</workitem>
@@ -30,7 +35,7 @@
         {{ insert_work_item(sw, session) }}
     {% endfor %}
 {% endif %}
-<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div>
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
 
 {{ heading(2, "Electrical interfaces", session) }}
 <workitem id="electrical-interfaces">All electrical interfaces of {{ physical_component.name }} are summarized by the table below:</workitem>
@@ -44,7 +49,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for port in object.physical_ports %}
+        {% for port in physical_component.physical_ports %}
             {% set cables = port.links %}
             {% if cables %}
                 {% for cable in cables %}
@@ -67,14 +72,13 @@
         {% endfor %}
     </tbody>
 </table>
-<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div>
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
 
 {% if physical_component.allocated_functions %}
 {{ heading(2, "Allocated functions", session) }}
 <workitem id="allocated-functiosn">All allocated functions of {{ physical_component.name }} are identified below:</workitem>
-    {{ heading(3, "Allocated Functions", session) }}
     {% for fnc in physical_component.allocated_functions %}
         {{ insert_work_item(fnc, session) }}
     {% endfor %}
-<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div>
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
 {% endif %}
