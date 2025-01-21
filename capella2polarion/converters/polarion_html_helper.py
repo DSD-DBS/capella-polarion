@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Functions for polarion specific HTMl elements."""
+
 from __future__ import annotations
 
 import pathlib
@@ -80,6 +81,7 @@ def camel_case_to_words(camel_case_str: str):
     """Split camel or dromedary case and return it as a space separated str.
 
     Handle prefixed underscores as well.
+
     Examples
     --------
     >>> camel_case_to_words("camelCase")
