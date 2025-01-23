@@ -1874,7 +1874,7 @@ class TestSerializers:
         }
         type_config = converter_config.CapellaTypeConfig(
             "PhysicalComponent",
-            converter_config.CapellaTypeConfig._force_dict(converters),
+            converter_config.ConverterConfig()._force_dict(converters),
             [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
@@ -1960,7 +1960,7 @@ class TestSerializers:
             "systemFunction", config, []
         )
         type_config.converters = (
-            converter_config.CapellaTypeConfig._force_dict(config)
+            converter_config.ConverterConfig()._force_dict(config)
         )
         expected_filter = getattr(filters, context_diagram_filter)
         monkeypatch.setattr(

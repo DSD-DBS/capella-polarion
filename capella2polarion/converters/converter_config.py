@@ -44,9 +44,10 @@ class LinkConfig:
     reverse_field: str = ""
 
     @staticmethod
-    def _force_config(
+    def generate_links_configs(
         links: list[str | dict[str, t.Any]], role_prefix: str = ""
     ) -> list[LinkConfig]:
+        """Generate LinkConfigs based on a list dict."""
         result: list[LinkConfig] = []
         for link in links:
             if isinstance(link, str):
@@ -87,55 +88,6 @@ class CapellaTypeConfig:
     is_actor: bool | None = None
     nature: str | None = None
 
-    @staticmethod
-    def _force_dict(
-        converters: str | list[str] | ConvertersType | None,
-    ) -> dict[str, dict[str, t.Any]]:
-        match converters:
-            case None:
-                return {}
-            case str():
-                return {converters: {}}
-            case list():
-                return {c: {} for c in converters}
-            case dict():
-                return CapellaTypeConfig._filter_config(converters)
-            case _:
-                raise TypeError("Unsupported Type")
-
-    @staticmethod
-    def _filter_config(
-        converters: dict[str, t.Any],
-    ) -> dict[str, dict[str, t.Any]]:
-        custom_converters = (
-            "include_pre_and_post_condition",
-            "linked_text_as_description",
-            "add_attributes",
-            "add_context_diagram",
-            "add_tree_diagram",
-            "add_jinja_fields",
-            "jinja_as_description",
-        )
-        filtered_config = {}
-        assert isinstance(converters, dict)
-        for name, params in converters.items():
-            params = params or {}
-            if name not in custom_converters:
-                logger.error("Unknown converter in config %r", name)
-                continue
-
-            if name in ("add_context_diagram", "add_tree_diagram"):
-                assert isinstance(params, dict)
-                params = _filter_context_diagram_config(params)
-
-            if name in ("add_attributes",):
-                assert isinstance(params, list)  # type: ignore[unreachable]
-                params = {"attributes": params}  # type: ignore[unreachable]
-
-            filtered_config[name] = params
-
-        return filtered_config
-
 
 def _default_type_conversion(c_type: str) -> str:
     return c_type[0].lower() + c_type[1:]
@@ -163,10 +115,10 @@ class ConverterConfig:
         global_config_dict = config_dict.pop("*", {})
         all_type_config = global_config_dict.pop("*", {})
         global_links = all_type_config.get("links", [])
-        self.__global_config.links = LinkConfig._force_config(
+        self.__global_config.links = LinkConfig.generate_links_configs(
             global_links, role_prefix
         )
-        self.__global_config.converters = CapellaTypeConfig._force_dict(
+        self.__global_config.converters = self._force_dict(
             all_type_config.get("serializer", {})
         )
 
@@ -228,12 +180,10 @@ class ConverterConfig:
                 type_prefix,
             )
             self.polarion_types.add(p_type)
-            links = LinkConfig._force_config(
+            links = LinkConfig.generate_links_configs(
                 type_config.get("links", []), role_prefix
             )
-            converters = CapellaTypeConfig._force_dict(
-                type_config.get("serializer")
-            )
+            converters = self._force_dict(type_config.get("serializer"))
             assert self.__global_config.converters is not None
             assert closest_config.converters is not None
             self._layer_configs[layer][c_type].append(
@@ -261,12 +211,10 @@ class ConverterConfig:
             type_prefix,
         )
         self.polarion_types.add(p_type)
-        link_config = LinkConfig._force_config(
+        link_config = LinkConfig.generate_links_configs(
             type_config.get("links", []), role_prefix
         )
-        converters = CapellaTypeConfig._force_dict(
-            type_config.get("serializer")
-        )
+        converters = self._force_dict(type_config.get("serializer"))
         assert self.__global_config.converters is not None
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
@@ -289,11 +237,11 @@ class ConverterConfig:
             diagram_config.get("polarion_type") or "diagram", type_prefix
         )
         self.polarion_types.add(p_type)
-        link_config = LinkConfig._force_config(
+        link_config = LinkConfig.generate_links_configs(
             diagram_config.get("links", []), role_prefix
         )
         links = _filter_links(c_type, link_config)
-        converters = CapellaTypeConfig._force_dict(
+        converters = self._force_dict(
             diagram_config.get("serializer") or "diagram"
         )
         self.diagram_config = CapellaTypeConfig(
@@ -331,6 +279,66 @@ class ConverterConfig:
             for c_type in self._global_configs:
                 if c_type not in layer_types:
                     yield layer, c_type
+
+    def _force_dict(
+        self,
+        converters: str | list[str] | ConvertersType | None,
+    ) -> dict[str, dict[str, t.Any]]:
+        match converters:
+            case None:
+                return {}
+            case str():
+                return {converters: {}}
+            case list():
+                return {c: {} for c in converters}
+            case dict():
+                return self._filter_config(converters)
+            case _:
+                raise TypeError("Unsupported Type")
+
+    def _filter_config(
+        self, converters: dict[str, t.Any]
+    ) -> dict[str, dict[str, t.Any]]:
+        custom_converters = (
+            "include_pre_and_post_condition",
+            "linked_text_as_description",
+            "add_attributes",
+            "add_context_diagram",
+            "add_tree_diagram",
+            "add_jinja_fields",
+            "jinja_as_description",
+        )
+        filtered_config: dict[str, dict[str, t.Any]] = {}
+        assert isinstance(converters, dict)
+        for name, params in converters.items():
+            if name not in custom_converters:
+                logger.error("Unknown converter in config: %r", name)
+                continue
+
+            match name:
+                case "add_context_diagram" | "add_tree_diagram":
+                    params = params or {}
+                    if isinstance(params, dict):
+                        filtered_config[name] = _filter_context_diagram_config(
+                            params
+                        )
+                    else:
+                        logger.error(
+                            "Converter %r must be configured with dict type parameters",
+                            name,
+                        )
+                case "add_attributes":
+                    if isinstance(params, list):
+                        filtered_config[name] = {"attributes": params}
+                    else:
+                        logger.error(
+                            "Converter %r must be configured with list type parameters",
+                            name,
+                        )
+                case _:
+                    filtered_config[name] = params
+
+        return filtered_config
 
 
 def config_matches(config: CapellaTypeConfig | None, **kwargs: t.Any) -> bool:

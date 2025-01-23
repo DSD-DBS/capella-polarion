@@ -487,10 +487,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         for attribute in attributes:
             try:
-                value = _resolve_capella_attribute(converter_data, attribute)
-                setattr(
-                    converter_data.work_item, attribute["polarion_id"], value
-                )
+                converter_data.work_item.additional_attributes[
+                    attribute["polarion_id"]
+                ] = _resolve_capella_attribute(converter_data, attribute)
             except AttributeError:
                 logger.error(
                     "Attribute %r not found on %r",
