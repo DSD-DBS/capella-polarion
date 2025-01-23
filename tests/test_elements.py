@@ -1893,7 +1893,7 @@ class TestSerializers:
         work_item = serializer.serialize(TEST_PHYS_COMP)
 
         assert work_item is not None
-        assert work_item.layer == {"type": "enum:layer", "value": "pa"}
+        assert work_item.layer == "pa"
         assert work_item.nature == "UNSET"
         assert work_item.kind == "UNSET"
 

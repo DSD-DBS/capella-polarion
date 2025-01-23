@@ -66,10 +66,7 @@ def _resolve_capella_attribute(
         value: str | enum.Enum, capella_attr: str, enum_id: str | None
     ) -> polarion_api.TextContent | str:
         if enum_id is not None:
-            return polarion_api.TextContent(
-                type=f"enum:{enum_id}",
-                value=value if isinstance(value, str) else value.name,
-            )
+            return value if isinstance(value, str) else value.name
 
         if isinstance(value, enum.Enum):
             logger.warning(
