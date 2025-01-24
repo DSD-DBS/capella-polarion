@@ -15,16 +15,16 @@
         {% endif %}
     {% endfor %}
 
-    {{ heading(2, title, session) }}
     {% if components %}
-        <workitem id="{{ param_id }}">{{ pc.name }} has the following {{ kind.lower() }} components deployed:</workitem>
+        {{ heading(2, title, session) }}
+        <workitem id="deployed-components-{{ param_id }}">{{ pc.name }} has the following {{ kind.lower() }} components deployed:</workitem>
         {% for component in components %}
             {{ insert_work_item(component, session) }}
         {% endfor %}
     {% else %}
-
+        <workitem id="deployed-components-{{ param_id }}" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
     {% endif %}
-    {# <div id="polarion_wiki macro name=page_break;params=uid=100{{ param_id }};contentEditable=false;data-is-landscape=fales"></div> #}
+    {# <div id="polarion_wiki macro name=page_break;params=uid=100{{ param_id }};contentEditable=false;data-is-landscape=false"></div> #}
 {% endmacro %}
 
 {% set physical_component = model.by_uuid(uuid) %}
@@ -33,12 +33,12 @@
 {{ heading(1, title, session) }}
 {{ heading(2, "Table of Content", session) }}
 <div id="polarion_wiki macro name=toc"></div>
-<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div>
+<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div>
 
 {{ heading(2, "Context", session) }}
 <workitem id="context">The context of {{ physical_component.name }} is summarized by the context diagram below:</workitem>
 {{ insert_work_item(physical_component, session) }}
-{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div> #}
 
 
 {% for kind in kinds %}
@@ -80,7 +80,7 @@
         {% endfor %}
     </tbody>
 </table>
-{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div> #}
 
 {% if physical_component.allocated_functions %}
 {{ heading(2, "Allocated functions", session) }}
@@ -88,7 +88,7 @@
     {% for fnc in physical_component.allocated_functions %}
         {{ insert_work_item(fnc, session) }}
     {% endfor %}
-{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
+{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div> #}
 {% else %}
-<workitem id="allocated-functiosn" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
+<workitem id="allocated-functions" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
 {% endif %}
