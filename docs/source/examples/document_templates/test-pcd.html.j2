@@ -7,6 +7,26 @@
 {% set th_attributes='style="height: 12px;text-align: left;vertical-align: top;font-weight: bold;background-color: #F0F0F0;border: 1px solid #CCCCCC;padding: 5px;"' %}
 {% set td_attributes='style="height: 12px;text-align: left;vertical-align: top;line-height: 18px;border: 1px solid #CCCCCC;padding: 5px;"' %}
 
+{% macro deployed_components(pc, kind, title, param_id, session) %}
+    {% set components = [] %}
+    {% for comp in pc.components %}
+        {% if comp.kind == kind %}
+            {% set _ = components.append(comp) %}
+        {% endif %}
+    {% endfor %}
+
+    {{ heading(2, title, session) }}
+    {% if components %}
+        <workitem id="{{ param_id }}">{{ pc.name }} has the following {{ kind.lower() }} components deployed:</workitem>
+        {% for component in components %}
+            {{ insert_work_item(component, session) }}
+        {% endfor %}
+    {% else %}
+
+    {% endif %}
+    {# <div id="polarion_wiki macro name=page_break;params=uid=100{{ param_id }};contentEditable=false;data-is-landscape=fales"></div> #}
+{% endmacro %}
+
 {% set physical_component = model.by_uuid(uuid) %}
 
 {# Template start #}
@@ -20,22 +40,10 @@
 {{ insert_work_item(physical_component, session) }}
 {# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
 
-{# {% set software_components = physical_component.components | selectattr("kind", "equalto", "SOFTWARE") %} #}
-{% set software_components = [] %}
-{% for comp in physical_component.components %}
-    {% if comp.kind == "SOFTWARE" %}
-        {% set _ = software_components.append(comp) %}
-    {% endif %}
-{% endfor %}
 
-{% if software_components %}
-    {{ heading(2, "Deployed software", session) }}
-    <workitem id="software">{{ physical_component.name }} has the following software components deployed:</workitem>
-    {% for sw in software_components %}
-        {{ insert_work_item(sw, session) }}
-    {% endfor %}
-{% endif %}
-{# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
+{% for kind in kinds %}
+    {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), loop.index, session) }}
+{% endfor %}
 
 {{ heading(2, "Electrical interfaces", session) }}
 <workitem id="electrical-interfaces">All electrical interfaces of {{ physical_component.name }} are summarized by the table below:</workitem>
@@ -81,4 +89,6 @@
         {{ insert_work_item(fnc, session) }}
     {% endfor %}
 {# <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="fales"></div> #}
+{% else %}
+<workitem id="allocated-functiosn" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
 {% endif %}

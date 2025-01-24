@@ -42,4 +42,7 @@ full_authority:
       params:
         uuid: {{ pc.uuid }}
         title: {{ pc.name | safe }}
+        kinds:
+          - SOFTWARE
+          - HARDWARE
     {% endfor %}
