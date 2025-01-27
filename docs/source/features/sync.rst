@@ -102,11 +102,11 @@ specific serializer alone:
 |                                      | description field.                                   |
 +--------------------------------------+------------------------------------------------------+
 
-.. _Context Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/#context-diagram-extension-for-capellambse
-.. _Tree View: https://dsd-dbs.github.io/capellambse-context-diagrams/tree_view/
-.. _Realization Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/realization_view/
-.. _Cable Tree Diagram: https://dsd-dbs.github.io/capellambse-context-diagrams/cable_tree/
-.. _Context Diagram filters: https://dsd-dbs.github.io/capellambse-context-diagrams/extras/filters/
+.. _context-diagrams documentation: https://capellambse-context-diagrams.readthedocs.io/en/stable/#context-diagram-extension-for-capellambse
+.. _Tree View documentation: https://capellambse-context-diagrams.readthedocs.io/en/stable/tree_view/
+.. _Realization Diagram: https://capellambse-context-diagrams.readthedocs.io/en/stable/realization_view/
+.. _Cable Tree Diagram: https://capellambse-context-diagrams.readthedocs.io/en/stable/cable_tree/
+.. _context-diagrams filters: https://capellambse-context-diagrams.readthedocs.io/en/stable/extras/filters/
 
 Links
 *****
