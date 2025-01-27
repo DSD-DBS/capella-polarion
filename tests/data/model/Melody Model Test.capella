@@ -2058,7 +2058,11 @@ The predator is far away</bodies>
         </ownedSystemComponents>
         <ownedSystemComponents xsi:type="org.polarsys.capella.core.data.ctx:SystemComponent"
             id="344a405e-c7e5-4367-8a9a-41d3d9a27f81" name="Kevin Spacey" actor="true"
-            human="true"/>
+            human="true">
+          <ownedComponentRealizations xsi:type="org.polarsys.capella.core.data.cs:ComponentRealization"
+              id="29eb99e0-f326-42b6-b469-d138aefffd3a" targetElement="#e6e4d30c-4d80-4899-8d8d-1350239c15a7"
+              sourceElement="#344a405e-c7e5-4367-8a9a-41d3d9a27f81"/>
+        </ownedSystemComponents>
         <ownedSystemComponents xsi:type="org.polarsys.capella.core.data.ctx:SystemComponent"
             id="d4a22478-5717-4ca7-bfc9-9a193e6218a8" name="SystemActor" actor="true">
           <ownedFunctionalAllocation xsi:type="org.polarsys.capella.core.data.fa:ComponentFunctionalAllocation"
@@ -2650,6 +2654,9 @@ The predator is far away</bodies>
                 id="74bd0ab3-6a28-4025-822e-90201445a56e" targetElement="#3612f112-f0c7-42ec-b0e9-f53afc1ef486"
                 sourceElement="#b4e39757-b0fd-41ff-a7b8-c9fc36de2ca9"/>
           </ownedFeatures>
+          <ownedComponentRealizations xsi:type="org.polarsys.capella.core.data.cs:ComponentRealization"
+              id="eeaa18a8-fe0f-4691-889e-3ad3d03ec4c9" targetElement="#344a405e-c7e5-4367-8a9a-41d3d9a27f81"
+              sourceElement="#6f463eed-c77b-4568-8078-beec0536f243"/>
         </ownedLogicalComponents>
         <ownedLogicalComponents xsi:type="org.polarsys.capella.core.data.la:LogicalComponent"
             id="a8c46457-a702-41c4-a971-c815c4c5a674" name="Harry J. Potter" actor="true">
