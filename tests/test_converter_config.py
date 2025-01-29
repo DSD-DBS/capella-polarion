@@ -1,9 +1,9 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
-from capella2polarion.converters import converter_config
-
 import pytest
+
+from capella2polarion.converters import converter_config
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_MODEL_ELEMENTS_CONFIG  # type: ignore[import]
