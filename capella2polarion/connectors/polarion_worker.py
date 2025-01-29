@@ -532,7 +532,12 @@ class CapellaPolarionWorker:
         client = self._get_client(document_project)
         try:
             return client.documents.get(
-                space, name, fields={"documents": "@all"}
+                space,
+                name,
+                fields={
+                    "documents": "renderingLayouts,homePageContent,status,"
+                    "moduleFolder,moduleName"
+                },
             )
         except polarion_api.PolarionApiBaseException as e:
             if e.args[0] == 404:
