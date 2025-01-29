@@ -60,35 +60,18 @@ def _format_texts(
 
 
 def _resolve_capella_attribute(
-    converter_data: data_session.ConverterData, attribute: dict[str, t.Any]
+    converter_data: data_session.ConverterData, attribute: str
 ) -> polarion_api.TextContent | str:
-    def _handle_value(
-        value: str | enum.Enum, capella_attr: str, enum_id: str | None
-    ) -> polarion_api.TextContent | str:
-        if enum_id is not None:
-            return value if isinstance(value, str) else value.name
+    match attribute:
+        case "layer":
+            value = converter_data.layer
+        case _:
+            value = getattr(converter_data.capella_element, attribute)
 
-        if isinstance(value, enum.Enum):
-            logger.warning(
-                "The attribute %r has no enum configured in Polarion. "
-                "The attribute name is posted as a string instead.",
-                capella_attr,
-            )
-            return value.name
-
-        return value
-
-    if attribute["capella_attr"] == "layer":
-        value = converter_data.layer
-    else:
-        value = getattr(
-            converter_data.capella_element, attribute["capella_attr"]
-        )
-
-    enum_id = attribute.get("enum_id")
     if isinstance(value, (str, enum.Enum)):
-        return _handle_value(value, attribute["capella_attr"], enum_id)
-
+        if isinstance(value, enum.Enum):
+            return value.name
+        return value
     raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
@@ -486,7 +469,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             try:
                 converter_data.work_item.additional_attributes[
                     attribute["polarion_id"]
-                ] = _resolve_capella_attribute(converter_data, attribute)
+                ] = _resolve_capella_attribute(
+                    converter_data, attribute["capella_attr"]
+                )
             except AttributeError:
                 logger.error(
                     "Attribute %r not found on %r",
