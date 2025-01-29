@@ -246,7 +246,7 @@ class ConverterConfig:
         )
         self.diagram_config = CapellaTypeConfig(
             p_type,
-            self.__global_config.converters or {} | converters,
+            converters | (self.__global_config.converters or {}),
             links + self._get_global_links(c_type),
         )
 
