@@ -9,6 +9,7 @@ import typing as t
 
 import capellambse
 import polarion_rest_api_client as polarion_api
+from capellambse import model as m
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
@@ -63,8 +64,9 @@ class ModelConverter:
 
         if config.diagram_config:
             for d in self.model.diagrams:
+                layer = get_layer_name(d)
                 self.converter_session[d.uuid] = data_session.ConverterData(
-                    "", config.diagram_config, d
+                    layer, config.diagram_config, d
                 )
 
         if missing_types:
@@ -176,3 +178,30 @@ class ModelConverter:
                 link_serializer.create_grouped_back_link_fields(
                     converter_data.work_item, local_back_links
                 )
+
+
+def get_layer_name(diagram: m.Diagram) -> str:
+    """Return the layer name for a diagram."""
+    match diagram.type.name:
+        case (
+            "OEBD"
+            | "OAIB"
+            | "OAB"
+            | "OABD"
+            | "ORB"
+            | "OES"
+            | "OAS"
+            | "OPD"
+            | "OCB"
+        ):
+            return "oa"
+        case "CM" | "MB" | "CC" | "MCB" | "SFBD" | "SDFB" | "SAB" | "CSA":
+            return "sa"
+        case "LCBD" | "LFBD" | "LDFB" | "LAB" | "CRR":
+            return "la"
+        case "PFBD" | "PDFB" | "PCBD" | "PAB" | "PPD":
+            return "pa"
+        case "EAB" | "CIBD":
+            return "epbs"
+        case _:
+            return "common"

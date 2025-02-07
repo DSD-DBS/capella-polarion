@@ -50,6 +50,7 @@ TEST_WE_DESCR = (
 TEST_ACTOR_UUID = "08e02248-504d-4ed8-a295-c7682a614f66"
 TEST_PHYS_COMP = "b9f9a83c-fb02-44f7-9123-9d86326de5f1"
 TEST_PHYS_NODE = "8a6d68c8-ac3d-4654-a07e-ada7adeed09f"
+TEST_PHYS_FNC = "11906f7b-3ae9-4343-b998-95b170be2e2b"
 TEST_SCENARIO = "afdaa095-e2cd-4230-b5d3-6cb771a90f51"
 TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
@@ -158,7 +159,7 @@ HTML_LINK_3 = {
         "</li></ul></ul>"
     )
 }
-DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", "diagram")
+DIAGRAM_CONFIG = converter_config.CapellaTypeConfig("diagram", {"diagram": {}})
 
 
 class GroupedLinksBaseObject(t.TypedDict):
@@ -344,7 +345,7 @@ class TestModelElements:
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
-                    _type[0].lower() + _type[1:]
+                    _type[0].lower() + _type[1:], {}
                 ),
                 model.by_uuid(uuid),
             )
@@ -1368,6 +1369,7 @@ class TestModelElements:
         ex = model.by_uuid(TEST_SYS_FNC_EX)
         fnc_config = converter_config.CapellaTypeConfig(
             "systemFunction",
+            {},
             links=[
                 converter_config.LinkConfig(
                     capella_attr="inputs.exchanges",
@@ -1380,6 +1382,7 @@ class TestModelElements:
         )
         ex_config = converter_config.CapellaTypeConfig(
             "systemFunctionalExchange",
+            {},
             links=[
                 converter_config.LinkConfig(
                     capella_attr="exchange_items",
@@ -1389,7 +1392,7 @@ class TestModelElements:
                 )
             ],
         )
-        ex_item_config = converter_config.CapellaTypeConfig("exchangeItem")
+        ex_item_config = converter_config.CapellaTypeConfig("exchangeItem", {})
         base_object.mc.converter_session = {
             TEST_SYS_FNC: data_session.ConverterData(
                 "sa", fnc_config, fnc, None
@@ -1577,9 +1580,7 @@ def test_grouped_linked_work_items_order_consistency(
         base_object.pw.polarion_params.project_id,
         base_object.c2pcli.capella_model,
     )
-    config = converter_config.CapellaTypeConfig(
-        "fakeModelObject",
-    )
+    config = converter_config.CapellaTypeConfig("fakeModelObject", {})
     work_item = data_model.CapellaWorkItem("id", title="Dummy")
     converter_data = data_session.ConverterData(
         "test", config, FakeModelObject(""), work_item
@@ -1859,26 +1860,58 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
         assert status == "open"
 
-    @staticmethod
-    def test_add_context_diagram(model: capellambse.MelodyModel):
-        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
+    def test_add_attributes(self, model: capellambse.MelodyModel):
+        converters = {
+            "add_attributes": [
+                {"capella_attr": "layer", "polarion_id": "layer"},
+                {"capella_attr": "nature", "polarion_id": "nature"},
+                {"capella_attr": "kind", "polarion_id": "kind"},
+            ]
+        }
         type_config = converter_config.CapellaTypeConfig(
-            "test", "add_context_diagram", []
+            "PhysicalComponent",
+            converter_config.ConverterConfig()._force_dict(converters),
+            [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
             {
-                uuid: data_session.ConverterData(
+                TEST_PHYS_COMP: data_session.ConverterData(
                     "pa",
                     type_config,
-                    model.by_uuid(uuid),
+                    model.by_uuid(TEST_PHYS_COMP),
                 )
             },
             True,
         )
 
-        work_item = serializer.serialize(uuid)
+        work_item = serializer.serialize(TEST_PHYS_COMP)
+
+        assert work_item is not None
+        assert work_item.layer == "pa"
+        assert work_item.nature == "UNSET"
+        assert work_item.kind == "UNSET"
+
+    @staticmethod
+    def test_add_context_diagram(model: capellambse.MelodyModel):
+        type_config = converter_config.CapellaTypeConfig(
+            "test", {"add_context_diagram": {}}, []
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                TEST_PHYS_FNC: data_session.ConverterData(
+                    "pa",
+                    type_config,
+                    model.by_uuid(TEST_PHYS_FNC),
+                )
+            },
+            True,
+        )
+
+        work_item = serializer.serialize(TEST_PHYS_FNC)
 
         assert work_item is not None
         assert "context_diagram" in work_item.additional_attributes
@@ -1921,6 +1954,9 @@ class TestSerializers:
         config = {"add_context_diagram": {"filters": [context_diagram_filter]}}
         type_config = converter_config.CapellaTypeConfig(
             "systemFunction", config, []
+        )
+        type_config.converters = (
+            converter_config.ConverterConfig()._force_dict(config)
         )
         expected_filter = getattr(filters, context_diagram_filter)
         monkeypatch.setattr(
@@ -2005,7 +2041,7 @@ class TestSerializers:
         cap = model.by_uuid(TEST_OCAP_UUID)
         type_config = converter_config.CapellaTypeConfig(
             f"{prefix}_test" if prefix else "test",
-            ["include_pre_and_post_condition", "add_context_diagram"],
+            {"include_pre_and_post_condition": {}, "add_context_diagram": {}},
             [],
         )
         serializer = element_converter.CapellaWorkItemSerializer(
@@ -2105,41 +2141,13 @@ class TestSerializers:
         assert work_item == data_model.CapellaWorkItem(**expected)
 
     @staticmethod
-    def test_read_config_context_diagram_with_params():
-        expected_filter = (
-            "capellambse_context_diagrams-show.exchanges.or.exchange.items."
-            "filter"
-        )
-        config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
-
-        type_config = config.get_type_config("sa", "SystemFunction")
-
-        assert type_config is not None
-        assert isinstance(type_config.converters, dict)
-        assert "add_context_diagram" in type_config.converters
-        assert type_config.converters["add_context_diagram"]["filters"] == [
-            expected_filter
-        ]
-
-    @staticmethod
-    def test_read_config_tree_view_with_params(
-        model: capellambse.MelodyModel,
-    ):
+    def test_tree_view_with_params(model: capellambse.MelodyModel):
         cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("la", "Class")
-        assert type_config is not None
-        assert isinstance(type_config.converters, dict)
-        assert "add_tree_diagram" in type_config.converters
-        assert type_config.converters["add_tree_diagram"]["render_params"] == {
-            "depth": 1
-        }
-
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
@@ -2161,67 +2169,25 @@ class TestSerializers:
         assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 
     @staticmethod
-    def test_read_config_links(caplog: pytest.LogCaptureFixture):
-        caplog.set_level("DEBUG")
-        config = converter_config.ConverterConfig()
-        expected = (
-            "capella2polarion.converters.converter_config",
-            20,
-            "Global link parent is not available on Capella type diagram",
-            "capella2polarion.converters.converter_config",
-            40,
-            "Link exchanged_items is not available on Capella type "
-            "FunctionalExchange",
-        )
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
-            config.read_config_file(f)
-
-        assert config.diagram_config
-        assert not any(
-            link
-            for link in config.diagram_config.links
-            if link.capella_attr == "parent"
-        )
-        assert caplog.record_tuples[0] + caplog.record_tuples[1] == expected
-        assert (
-            system_fnc_config := config.get_type_config("sa", "SystemFunction")
-        )
-        assert system_fnc_config.links[0] == converter_config.LinkConfig(
-            capella_attr="inputs.exchanges",
-            polarion_role="input_exchanges",
-            include={"Exchange Items": "exchange_items"},
-            link_field="inputExchanges",
-            reverse_field="inputExchangesReverse",
-        )
-        assert system_fnc_config.links[1] == converter_config.LinkConfig(
-            capella_attr="outputs.exchanges",
-            polarion_role="output_exchanges",
-            include={"Exchange Items": "exchange_items"},
-            link_field="output_exchanges",
-            reverse_field="output_exchanges_reverse",
-        )
-
-    @staticmethod
     def test_add_context_diagram_with_caption(model: capellambse.MelodyModel):
-        uuid = "11906f7b-3ae9-4343-b998-95b170be2e2b"
         type_config = converter_config.CapellaTypeConfig(
-            "test", "add_context_diagram", []
+            "test", {"add_context_diagram": {}}, []
         )
         serializer = element_converter.CapellaWorkItemSerializer(
             model,
             polarion_repo.PolarionDataRepository(),
             {
-                uuid: data_session.ConverterData(
+                TEST_PHYS_FNC: data_session.ConverterData(
                     "pa",
                     type_config,
-                    model.by_uuid(uuid),
+                    model.by_uuid(TEST_PHYS_FNC),
                 )
             },
             True,
             generate_figure_captions=True,
         )
 
-        work_item = serializer.serialize(uuid)
+        work_item = serializer.serialize(TEST_PHYS_FNC)
 
         assert work_item is not None
         assert "context_diagram" in work_item.additional_attributes

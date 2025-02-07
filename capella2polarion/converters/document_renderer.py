@@ -390,6 +390,14 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             (project_id, space, name), (None, [])
         )
         if old_doc is not None:
+            old_doc = polarion_api.Document(
+                id=old_doc.id,
+                module_folder=old_doc.module_folder,
+                module_name=old_doc.module_name,
+                status=old_doc.status,
+                home_page_content=old_doc.home_page_content,
+                rendering_layouts=old_doc.rendering_layouts,
+            )
             if title:
                 old_doc.title = title
             if self.overwrite_layouts:
@@ -422,16 +430,18 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document: polarion_api.Document,
         config: document_config.BaseDocumentRenderingConfig,
     ):
+        status = document.status
+        document.status = None
         if (
             config.status_allow_list is not None
-            and document.status not in config.status_allow_list
+            and status not in config.status_allow_list
         ):
             logger.warning(
                 "Won't update document %s/%s due to status "
                 "restrictions. Status is %s and should be in %r.",
                 document.module_folder,
                 document.module_name,
-                document.status,
+                status,
                 config.status_allow_list,
             )
             return False
