@@ -3,29 +3,8 @@
     SPDX-License-Identifier: Apache-2.0
 #}
 
-{% set table_attributes='class="polarion-Document-table" style="margin: auto;margin-left: 0px;empty-cells: show;border-collapse: collapse;max-width: 1280px;border: 1px solid #CCCCCC;" id="polarion_wiki macro name=table"' %}
-{% set th_attributes='style="height: 12px;text-align: left;vertical-align: top;font-weight: bold;background-color: #F0F0F0;border: 1px solid #CCCCCC;padding: 5px;"' %}
-{% set td_attributes='style="height: 12px;text-align: left;vertical-align: top;line-height: 18px;border: 1px solid #CCCCCC;padding: 5px;"' %}
-
-{% macro deployed_components(pc, kind, title, param_id, session) %}
-    {% set components = [] %}
-    {% for comp in pc.components %}
-        {% if comp.kind == kind %}
-            {% set _ = components.append(comp) %}
-        {% endif %}
-    {% endfor %}
-
-    {% if components %}
-        {{ heading(2, title, session) }}
-        <workitem id="deployed-components-{{ param_id }}">{{ pc.name }} has the following {{ kind.lower() }} components deployed:</workitem>
-        {% for component in components %}
-            {{ insert_work_item(component, session) }}
-        {% endfor %}
-    {% else %}
-        <workitem id="deployed-components-{{ param_id }}" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
-    {% endif %}
-    {# <div id="polarion_wiki macro name=page_break;params=uid=100{{ param_id }};contentEditable=false;data-is-landscape=false"></div> #}
-{% endmacro %}
+{% from 'common-macros.j2' import deployed_components %}
+{% from 'polarion-props.j2' import table_attributes, th_attributes, td_attributes %}
 
 {% set physical_component = model.by_uuid(uuid) %}
 
@@ -42,7 +21,7 @@
 
 
 {% for kind in kinds %}
-    {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), loop.index, session) }}
+    {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), 2, session) }}
 {% endfor %}
 
 {{ heading(2, "Electrical interfaces", session) }}

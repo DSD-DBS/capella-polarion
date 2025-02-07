@@ -350,7 +350,7 @@ def _filter_converter_config(
 
 
 def _filter_context_diagram_config(
-    config: dict[str, t.Any]
+    config: dict[str, t.Any],
 ) -> dict[str, t.Any]:
     converted_filters = []
     for filter_name in config.get("filters", []):
