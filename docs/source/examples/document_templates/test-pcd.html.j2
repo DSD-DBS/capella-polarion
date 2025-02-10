@@ -14,14 +14,18 @@
 <div id="polarion_wiki macro name=toc"></div>
 <div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div>
 
+
+{# Contentstart #}
 {{ heading(2, "Context", session) -}}
     <workitem id="context">The context of {{ physical_component.name }} is summarized by the context diagram below:</workitem>
 {{- insert_work_item(physical_component, session) -}}
 
+{# Deployed Components by kind #}
 {%- for kind in kinds -%}
     {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), 2, session) }}
 {%- endfor -%}
 
+{# Electrical interfaces, i.e. cables #}
 {{ heading(2, "Electrical interfaces", session) }}
 <workitem id="electrical-interfaces">All electrical interfaces of {{ physical_component.name }} are summarized by the table below:</workitem>
 <table {{ table_attributes }}>
@@ -58,6 +62,7 @@
     </tbody>
 </table>
 
+{# Allocated functions #}
 {%- if physical_component.allocated_functions -%}
     {{- heading(2, "Allocated functions", session) -}}
     <workitem id="allocated-functiosn">All allocated functions of {{ physical_component.name }} are identified below:</workitem>
