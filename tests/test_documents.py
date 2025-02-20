@@ -22,7 +22,7 @@ from tests.conftest import (
 )
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
-JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
+JUPYTER_TEMPLATE_FOLDER = "docs/source/examples/document_templates"
 DOCUMENT_SECTIONS = TEST_DOCUMENT_ROOT / "sections"
 MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"

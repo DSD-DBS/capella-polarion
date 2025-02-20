@@ -44,7 +44,16 @@ Documentation = "https://dsd-dbs.github.io/capella2polarion"
 [project.optional-dependencies]
 dev = ["python-dotenv"]
 
-docs = ["furo", "sphinx", "sphinx-copybutton", "tomli"]
+docs = [
+  "furo",
+  "ipython>=8.30.0",
+  "nbsphinx>=0.9.5",
+  "sphinx>=8.1.3,<8.2.0", # Fixated until https://github.com/spatialaudio/nbsphinx/issues/825 is solved
+  "nbsphinx>=0.9.5",
+  "sphinx-copybutton",
+  "python-dotenv",
+  "tomli",
+]
 
 test = ["pytest", "pytest-cov"]
 

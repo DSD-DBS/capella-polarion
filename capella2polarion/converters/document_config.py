@@ -112,7 +112,7 @@ def read_config_file(
 
 
 def generate_work_item_layouts(
-    configs: dict[str, WorkItemLayout]
+    configs: dict[str, WorkItemLayout],
 ) -> list[polarion_api.RenderingLayout]:
     """Create polarion_api.RenderingLayouts for a given configuration."""
     results = []

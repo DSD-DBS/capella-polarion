@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 mixed_authority:
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     project_id: TestProject
     status_allow_list:
       - draft
@@ -20,7 +20,7 @@ mixed_authority:
         polarion_name: id1234
         params:
           interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     sections:
       section1: test-icd.html.j2
       section2: test-icd.html.j2

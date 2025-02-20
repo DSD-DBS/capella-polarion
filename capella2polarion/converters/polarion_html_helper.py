@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Functions for polarion specific HTMl elements."""
+
 from __future__ import annotations
 
 import pathlib
@@ -77,13 +78,28 @@ def generate_image_html(
 
 
 def camel_case_to_words(camel_case_str: str):
-    """Split camel or dromedary case and return it as a space separated str."""
-    return (
-        camel_case_str[0].capitalize()
-        + " ".join(
-            re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", camel_case_str)
-        )[1:]
-    )
+    """Split camel or dromedary case and return it as a space separated str.
+
+    Handle prefixed underscores as well.
+
+    Examples
+    --------
+    >>> camel_case_to_words("camelCase")
+    'Camel Case'
+    >>> camel_case_to_words("_Prefix_camelCaseWithPrefix")
+    'Camel Case With Prefix (Prefix)'
+    """
+    match = re.match(r"^(.*?)(_?[A-Za-z0-9]+)$", camel_case_str)
+    if not match:
+        return camel_case_str
+
+    prefix, camel_case_part = match.groups()
+    words = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", camel_case_part)
+    formatted_words = " ".join(word.capitalize() for word in words)
+    if prefix := prefix.strip("_"):
+        formatted_words += f" ({prefix})"
+
+    return formatted_words
 
 
 class JinjaRendererMixin:
@@ -178,7 +194,8 @@ def extract_work_items(
         if (tag_regex is not None and tag_regex.fullmatch(element.tag)) or (
             tag_regex is None and element.tag == "div"
         ):
-            if matches := WI_ID_REGEX.match(element.get("id")):
+            elmid = element.get("id")
+            if elmid is not None and (matches := WI_ID_REGEX.match(elmid)):
                 work_item_ids.append(matches.group(1))
     return work_item_ids
 

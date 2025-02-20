@@ -6,7 +6,7 @@
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.
-SPHINXOPTS    ?=
+SPHINXOPTS    ?= -W
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
 BUILDDIR      = build
@@ -22,6 +22,11 @@ apidoc:
 	sphinx-apidoc --module-first --output-dir source/code --force ..
 
 .PHONY: apidoc
+
+clean-apidoc:
+	rm -rfv source/code
+
+.PHONY: clean-apidoc
 
 html: apidoc
 

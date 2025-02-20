@@ -1,0 +1,27 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% macro deployed_components(pc, kind, title, level, session) %}
+    {% set components = [] %}
+    {% for comp in pc.components %}
+        {% if comp.kind == kind %}
+            {% set _ = components.append(comp) %}
+        {% endif %}
+    {% endfor %}
+
+    {{ heading(level, title, session) }}
+    {% if components %}
+        <workitem id="deployed-components-{{ pc.uuid }}-{{ kind }}">
+            {{- pc.name }} has the following {{ kind.lower() }} components deployed:
+        </workitem>
+        {% for component in components %}
+            {{ insert_work_item(component, session) }}
+        {% endfor %}
+    {% else %}
+        <workitem id="deployed-components-{{ pc.uuid }}-{{ kind }}">
+            <span style="color: red;"><b>{{- pc.name }}</b> has no subcomponents of kind {{ kind.lower() }}.</span>
+        </workitem>
+    {% endif %}
+{% endmacro %}

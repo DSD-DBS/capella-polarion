@@ -23,6 +23,8 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
           python-version: "3.12"
+      - name: Install system-level dependencies
+        run: sudo apt-get install -y pandoc
       - name: Upgrade pip
         run: |
           python -m pip install -U pip

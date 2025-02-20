@@ -1,0 +1,24 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common-macros.j2' import deployed_components %}
+{% from 'polarion-props.j2' import table_attributes, th_attributes, td_attributes %}
+
+{% for physical_component in model.search("PhysicalComponent") | unique(attribute="uuid") %}
+
+    {{ heading(2, "Definition of " + physical_component.name, session) }}
+    <workitem id="description-{{ loop.index }}">{{ physical_component.description | safe }}</workitem>
+
+    {{ heading(3, "Component Boundary", session) }}
+    <workitem id="context-{{ loop.index }}">
+        The figure below provides an overview of <i>{{ physical_component.name }}</i>'s boundary and depicts all the nodes it is connected to.
+    </workitem>
+    {{ insert_work_item(physical_component, session) }}
+
+    {% for kind in kinds %}
+        {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), 3, session) }}
+    {% endfor %}
+
+{% endfor %}

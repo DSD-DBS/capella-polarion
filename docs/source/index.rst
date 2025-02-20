@@ -75,6 +75,12 @@ how this service is configured see the :ref:`configuration page
    pipeline templates/gitlab
 
 .. toctree::
+   :caption: Tutorials
+   :titlesonly:
+
+   howtos
+
+.. toctree::
    :maxdepth: 2
    :caption: Roadmap:
 
