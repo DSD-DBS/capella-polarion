@@ -43,7 +43,7 @@ def resolve_element_type(type_: str) -> str:
 
 
 def _format_texts(
-    type_texts: dict[str, list[str]]
+    type_texts: dict[str, list[str]],
 ) -> dict[str, dict[str, str]]:
     def _format(texts: list[str]) -> dict[str, str]:
         if len(texts) > 1:

@@ -36,6 +36,7 @@ copyright = f"{author} and the {_metadata['name']} contributors"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
@@ -65,6 +66,9 @@ rst_epilog = """
 """.format(
     project=project, version=version
 )
+
+# -- Options for nbsphinx ----------------------------------------------------
+nbsphinx_execute = "never"
 
 # -- Options for copy-button -------------------------------------------------
 copybutton_here_doc_delimiter = "EOT"
