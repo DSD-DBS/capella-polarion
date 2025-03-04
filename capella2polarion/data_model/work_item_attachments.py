@@ -80,7 +80,9 @@ class CapellaDiagramAttachment(Capella2PolarionAttachment):
         try:
             diagram_svg = self.diagram.render("svg", **self.render_params)
         except Exception as e:
-            logger.error("Failed to render diagram %s", self.diagram.name, exc_info=e)
+            logger.error(
+                "Failed to render diagram %s", self.diagram.name, exc_info=e
+            )
             diagram_svg = self.diagram.as_svg
         if isinstance(diagram_svg, str):
             diagram_svg = diagram_svg.encode("utf8")
@@ -131,8 +133,12 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
                             for obj in elk_input
                         )
                 else:
-                    input_str = elk_input.model_dump_json(exclude_defaults=True)
-                self._checksum = hashlib.sha256(input_str.encode("utf-8")).hexdigest()
+                    input_str = elk_input.model_dump_json(
+                        exclude_defaults=True
+                    )
+                self._checksum = hashlib.sha256(
+                    input_str.encode("utf-8")
+                ).hexdigest()
             except Exception as e:
                 logger.error(
                     "Failed to get elk_input for attachment %s of WorkItem %s."
@@ -174,7 +180,9 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
     def content_bytes(self) -> bytes | None:
         """The content bytes are created from the SVG when requested."""
         if not self._content_bytes:
-            self._content_bytes = cairosvg.svg2png(self._svg_attachment.content_bytes)
+            self._content_bytes = cairosvg.svg2png(
+                self._svg_attachment.content_bytes
+            )
 
         return self._content_bytes
 
