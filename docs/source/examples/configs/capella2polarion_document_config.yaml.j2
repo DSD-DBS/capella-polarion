@@ -1,0 +1,48 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+full_authority:
+  - template_directory: document_templates
+    template: test-pcd.html.j2
+    heading_numbering: True
+    work_item_layouts:
+      _C2P_componentExchange:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalLink:
+        fields_at_start:
+          - id
+      _C2P_physicalActor:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalComponentNode:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalComponentBehavior:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalFunction:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+    instances:
+    {%- for pc in model.search("PhysicalComponent") %}
+    - polarion_space: PC-Drafts
+      polarion_name: {{ pc.uuid }}
+      polarion_title: {{ pc.name | safe }}
+      params:
+        uuid: {{ pc.uuid }}
+        title: {{ pc.name | safe }}
+        kinds:
+          - SOFTWARE
+          - HARDWARE
+    {% endfor %}

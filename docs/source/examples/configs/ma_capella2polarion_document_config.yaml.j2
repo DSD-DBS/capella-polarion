@@ -1,0 +1,41 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+mixed_authority:
+  - template_directory: document_templates
+    heading_numbering: True
+    project_id: SPT0Test240118
+    work_item_layouts:
+      _C2P_physicalLink:
+        fields_at_start:
+          - id
+      _C2P_physicalActor:
+        fields_at_start:
+          - id
+      _C2P_physicalComponentNode:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalComponentBehavior:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalFunction:
+        fields_at_start:
+          - id
+        fields_at_end:
+          - context_diagram
+      _C2P_physicalPort:
+        fields_at_start:
+          - id
+    sections:
+      PCDContent: test-pcd-mixed-auth.html.j2
+    instances:
+      - polarion_space: MA-Drafts
+        polarion_name: Physical Components Description
+        params:
+          kinds:
+            - SOFTWARE
+            - HARDWARE

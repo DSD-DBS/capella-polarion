@@ -2012,7 +2012,7 @@ class TestSerializers:
             "test",
             {
                 "jinja_as_description": {
-                    "template_folder": "jupyter-notebooks/element_templates",
+                    "template_folder": "docs/source/examples/element_templates",
                     "template_path": "class.html.j2",
                 }
             },

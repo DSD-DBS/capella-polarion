@@ -105,7 +105,7 @@ class ConverterConfig:
 
     def read_config_file(
         self,
-        synchronize_config: t.TextIO,
+        synchronize_config: t.TextIO | str,
         type_prefix: str = "",
         role_prefix: str = "",
     ):
@@ -381,7 +381,7 @@ def add_prefix(polarion_type: str, prefix: str) -> str:
 
 
 def _filter_context_diagram_config(
-    config: dict[str, t.Any]
+    config: dict[str, t.Any],
 ) -> dict[str, t.Any]:
     converted_filters = []
     for filter_name in config.get("filters", []):

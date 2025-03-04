@@ -1,7 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
-- template_directory: jupyter-notebooks/document_templates
+- template_directory: docs/source/examples/document_templates
   template: test-icd.html.j2
   project_id: TestProject
   status_allow_list:
@@ -17,7 +17,7 @@
       polarion_name: id1234
       params:
         interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
-- template_directory: jupyter-notebooks/document_templates
+- template_directory: docs/source/examples/document_templates
   template: test-no-args.html.j2
   heading_numbering: True
   work_item_layouts:
