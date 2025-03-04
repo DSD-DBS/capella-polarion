@@ -633,3 +633,45 @@ def test_attached_image_in_description_with_caption(
         '<span data-sequence="Figure" class="polarion-rte-caption">#</span>'
         " Other Text used as Caption\n</p>\n\n<p>Test</p>\n"
     )
+
+
+@pytest.mark.parametrize(
+    "uuid,diagram_attr",
+    [
+        pytest.param(
+            "c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+            "tree_view",
+            id="Tree View",
+        ),
+        pytest.param(
+            "d4a22478-5717-4ca7-bfc9-9a193e6218a8",
+            "realization_view",
+            id="Realization View",
+        ),
+        pytest.param(
+            "d4a22478-5717-4ca7-bfc9-9a193e6218a8",
+            "context_diagram",
+            id="Context Diagram",
+        ),
+    ],
+)
+def test_context_diagram_attachment_checksum_covers_different_custom_diagrams(
+    model: capellambse.MelodyModel, uuid: str, diagram_attr: str
+):
+    obj = model.by_uuid(uuid)
+    expected_file_name = "__C2P__context_diagram.svg"
+    expected_render_params = {}
+    expected_title = "Diagram"
+
+    attachment = data_model.CapellaContextDiagramAttachment(
+        getattr(obj, diagram_attr),
+        expected_file_name,
+        expected_render_params,
+        expected_title,
+    )
+
+    assert attachment.content_checksum
+    assert attachment.file_name == expected_file_name
+    assert attachment.render_params == expected_render_params
+    assert attachment.title == expected_title
+    assert attachment.mime_type == "image/svg+xml"
