@@ -80,9 +80,7 @@ class CapellaDiagramAttachment(Capella2PolarionAttachment):
         try:
             diagram_svg = self.diagram.render("svg", **self.render_params)
         except Exception as e:
-            logger.error(
-                "Failed to render diagram %s", self.diagram.name, exc_info=e
-            )
+            logger.error("Failed to render diagram %s", self.diagram.name, exc_info=e)
             diagram_svg = self.diagram.as_svg
         if isinstance(diagram_svg, str):
             diagram_svg = diagram_svg.encode("utf8")
@@ -117,17 +115,24 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
             try:
                 elk_input = self.diagram.elk_input_data(self.render_params)
                 if isinstance(elk_input, tuple):
-                    input_str = ";".join(
-                        eit.model_dump_json(exclude_defaults=True)
-                        for eit in elk_input
-                    )
+                    input_data, edges_or_list = elk_input
+                    if isinstance(edges_or_list, list):
+                        input_str = (
+                            input_data.model_dump_json(exclude_defaults=True)
+                            + ";"
+                            + ";".join(
+                                edge.model_dump_json(exclude_defaults=True)
+                                for edge in edges_or_list
+                            )
+                        )
+                    else:
+                        input_str = ";".join(
+                            obj.model_dump_json(exclude_defaults=True)
+                            for obj in elk_input
+                        )
                 else:
-                    input_str = elk_input.model_dump_json(
-                        exclude_defaults=True
-                    )
-                self._checksum = hashlib.sha256(
-                    input_str.encode("utf-8")
-                ).hexdigest()
+                    input_str = elk_input.model_dump_json(exclude_defaults=True)
+                self._checksum = hashlib.sha256(input_str.encode("utf-8")).hexdigest()
             except Exception as e:
                 logger.error(
                     "Failed to get elk_input for attachment %s of WorkItem %s."
@@ -169,9 +174,7 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
     def content_bytes(self) -> bytes | None:
         """The content bytes are created from the SVG when requested."""
         if not self._content_bytes:
-            self._content_bytes = cairosvg.svg2png(
-                self._svg_attachment.content_bytes
-            )
+            self._content_bytes = cairosvg.svg2png(self._svg_attachment.content_bytes)
 
         return self._content_bytes
 
