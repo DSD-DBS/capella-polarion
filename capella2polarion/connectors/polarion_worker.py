@@ -192,7 +192,6 @@ class CapellaPolarionWorker:
             old.checksum = None
 
         new.calculate_checksum()
-        print(new.checksum)
         if not self.force_update and new.checksum == old.checksum:
             return
 
