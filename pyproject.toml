@@ -27,7 +27,7 @@ classifiers = [
 ]
 dependencies = [
   "capellambse>=0.6.6,<0.7",
-  "capellambse_context_diagrams>=0.6.0,<0.7",
+  "capellambse_context_diagrams>=0.7.0,<0.8",
   "click",
   "PyYAML",
   "polarion-rest-api-client==1.2.2",

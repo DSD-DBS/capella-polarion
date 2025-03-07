@@ -136,6 +136,7 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
                     input_str = elk_input.model_dump_json(
                         exclude_defaults=True
                     )
+
                 self._checksum = hashlib.sha256(
                     input_str.encode("utf-8")
                 ).hexdigest()
