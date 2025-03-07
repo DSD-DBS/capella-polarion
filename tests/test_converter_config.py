@@ -109,3 +109,23 @@ class TestConverterConfig:
             type_config.converters["add_tree_diagram"]
             == expected_tree_view_params
         )
+
+    @staticmethod
+    def test_add_read_config_global_serializers_are_kept():
+        config = converter_config.ConverterConfig()
+        expected_attribute_params = [
+            {"capella_attr": "layer", "polarion_id": "layer"},
+            {"capella_attr": "nature", "polarion_id": "nature"},
+        ]
+        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+            config.read_config_file(f)
+
+        type_config = config.get_type_config("pa", "PhysicalComponent")
+
+        assert type_config is not None
+        assert isinstance(type_config.converters, dict)
+        assert "add_attributes" in type_config.converters
+        assert (
+            type_config.converters["add_attributes"]["attributes"]
+            == expected_attribute_params
+        )
