@@ -182,26 +182,17 @@ class ModelConverter:
 
 def get_layer_name(diagram: m.Diagram) -> str:
     """Return the layer name for a diagram."""
-    match diagram.type.name:
-        case (
-            "OEBD"
-            | "OAIB"
-            | "OAB"
-            | "OABD"
-            | "ORB"
-            | "OES"
-            | "OAS"
-            | "OPD"
-            | "OCB"
-        ):
+    if diagram.type.name in ["EAB", "CIBD"]:
+        return "epbs"
+
+    match diagram.target.layer.name:
+        case "Operational Analysis":
             return "oa"
-        case "CM" | "MB" | "CC" | "MCB" | "SFBD" | "SDFB" | "SAB" | "CSA":
+        case "System Analysis":
             return "sa"
-        case "LCBD" | "LFBD" | "LDFB" | "LAB" | "CRR":
+        case "Logical Architecture":
             return "la"
-        case "PFBD" | "PDFB" | "PCBD" | "PAB" | "PPD":
+        case "Physical Architecture":
             return "pa"
-        case "EAB" | "CIBD":
-            return "epbs"
         case _:
             return "common"
