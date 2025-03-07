@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module for polarion API client work."""
+
 from __future__ import annotations
 
 import collections.abc as cabc
@@ -191,6 +192,7 @@ class CapellaPolarionWorker:
             old.checksum = None
 
         new.calculate_checksum()
+        print(new.checksum)
         if not self.force_update and new.checksum == old.checksum:
             return
 
