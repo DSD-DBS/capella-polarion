@@ -1,0 +1,13 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+version = 1
+SPDX-PackageName = "Capella-Polarion"
+SPDX-PackageSupplier = "Ernst Würger <ernst.wuerger@deutschebahn.com>"
+SPDX-PackageDownloadLocation = "https://github.com/DSD-DBS/capella-polarion"
+
+[[annotations]]
+path = "docs/source/examples/_static/*.png"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright DB InfraGO AG and contributors"
+SPDX-License-Identifier = "CC0-1.0"

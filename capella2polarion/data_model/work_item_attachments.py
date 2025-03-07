@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing the CapellaWorkItemAttachment classes."""
+
 from __future__ import annotations
 
 import base64
@@ -116,9 +117,25 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
             try:
                 elk_input = self.diagram.elk_input_data(self.render_params)
                 if isinstance(elk_input, tuple):
-                    input_str = ";".join(eit.json() for eit in elk_input)
+                    input_data, edges_or_list = elk_input
+                    if isinstance(edges_or_list, list):
+                        input_str = (
+                            input_data.model_dump_json(exclude_defaults=True)
+                            + ";"
+                            + ";".join(
+                                edge.model_dump_json(exclude_defaults=True)
+                                for edge in edges_or_list
+                            )
+                        )
+                    else:
+                        input_str = ";".join(
+                            obj.model_dump_json(exclude_defaults=True)
+                            for obj in elk_input
+                        )
                 else:
-                    input_str = elk_input.json()
+                    input_str = elk_input.model_dump_json(
+                        exclude_defaults=True
+                    )
                 self._checksum = hashlib.sha256(
                     input_str.encode("utf-8")
                 ).hexdigest()

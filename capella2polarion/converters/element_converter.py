@@ -1,9 +1,11 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for serialization of capella objects to workitems."""
+
 from __future__ import annotations
 
 import collections
+import enum
 import hashlib
 import logging
 import mimetypes
@@ -41,7 +43,7 @@ def resolve_element_type(type_: str) -> str:
 
 
 def _format_texts(
-    type_texts: dict[str, list[str]]
+    type_texts: dict[str, list[str]],
 ) -> dict[str, dict[str, str]]:
     def _format(texts: list[str]) -> dict[str, str]:
         if len(texts) > 1:
@@ -55,6 +57,22 @@ def _format_texts(
     for typ, texts in type_texts.items():
         requirement_types[typ.lower()] = _format(texts)
     return requirement_types
+
+
+def _resolve_capella_attribute(
+    converter_data: data_session.ConverterData, attribute: str
+) -> polarion_api.TextContent | str:
+    match attribute:
+        case "layer":
+            value = converter_data.layer
+        case _:
+            value = getattr(converter_data.capella_element, attribute)
+
+    if isinstance(value, (str, enum.Enum)):
+        if isinstance(value, enum.Enum):
+            return value.name
+        return value
+    raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
 class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
@@ -438,6 +456,31 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         assert converter_data.work_item is not None
         for attachment in attachments:
             self._add_attachment(converter_data.work_item, attachment)
+
+        return converter_data.work_item
+
+    def _add_attributes(
+        self,
+        converter_data: data_session.ConverterData,
+        attributes: list[dict[str, t.Any]],
+    ):
+        assert converter_data.work_item is not None
+        for attribute in attributes:
+            try:
+                converter_data.work_item.additional_attributes[
+                    attribute["polarion_id"]
+                ] = _resolve_capella_attribute(
+                    converter_data, attribute["capella_attr"]
+                )
+            except AttributeError:
+                logger.error(
+                    "Attribute %r not found on %r",
+                    attribute["capella_attr"],
+                    converter_data.type_config.p_type,
+                )
+                continue
+            except ValueError as error:
+                logger.error(error.args[0])
 
         return converter_data.work_item
 

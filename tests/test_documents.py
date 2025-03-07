@@ -22,7 +22,7 @@ from tests.conftest import (
 )
 
 CLASSES_TEMPLATE = "test-classes.html.j2"
-JUPYTER_TEMPLATE_FOLDER = "jupyter-notebooks/document_templates"
+JUPYTER_TEMPLATE_FOLDER = "docs/source/examples/document_templates"
 DOCUMENT_SECTIONS = TEST_DOCUMENT_ROOT / "sections"
 MIXED_CONFIG = TEST_DOCUMENT_ROOT / "mixed_config.yaml"
 FULL_AUTHORITY_CONFIG = TEST_DOCUMENT_ROOT / "full_authority_config.yaml"
@@ -48,6 +48,7 @@ def existing_documents() -> polarion_repo.DocumentRepository:
                     type="text/html",
                     value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8"),
                 ),
+                outline_numbering_prefix="X",
                 rendering_layouts=[
                     polarion_api.RenderingLayout(
                         "text", "paragraph", type="text"
@@ -496,7 +497,7 @@ def test_render_all_documents_partially_successfully(
     # There are 8 documents in the config, we expect 4 rendering to fail
     assert len(caplog.records) == 4
     # The first tree documents weren't rendered due to an error, the fourth
-    # wasn't rendered because of status restrictions, which is a just warning
+    # wasn't rendered because of status restrictions, which is a warning
     assert [lr.levelno for lr in caplog.records] == [40, 40, 40, 30]
     # For one valid config we did not pass a document, so we expect a new one
     assert len(projects_data[None].new_docs) == 1
@@ -539,6 +540,20 @@ def test_render_all_documents_partially_successfully(
     )
     assert (
         projects_data[None].updated_docs[1].document.outline_numbering is None
+    )
+    assert not any(
+        doc.document.status is not None
+        for doc in (
+            projects_data[None].updated_docs
+            + projects_data["TestProject"].updated_docs
+        )
+    )
+    assert not any(
+        doc.document.outline_numbering_prefix is not None
+        for doc in (
+            projects_data[None].updated_docs
+            + projects_data["TestProject"].updated_docs
+        )
     )
 
 

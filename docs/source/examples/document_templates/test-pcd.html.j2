@@ -1,0 +1,74 @@
+{#
+    Copyright DB InfraGO AG and contributors
+    SPDX-License-Identifier: Apache-2.0
+#}
+
+{% from 'common-macros.j2' import deployed_components %}
+{% from 'polarion-props.j2' import table_attributes, th_attributes, td_attributes %}
+
+{% set physical_component = model.by_uuid(uuid) %}
+
+{# Template start #}
+{{ heading(1, title, session) }}
+{{ heading(2, "Table of Content", session) }}
+<div id="polarion_wiki macro name=toc"></div>
+<div id="polarion_wiki macro name=page_break" contentEditable="false" data-is-landscape="false"></div>
+
+
+{# Contentstart #}
+{{ heading(2, "Context", session) -}}
+    <workitem id="context">The context of {{ physical_component.name }} is summarized by the context diagram below:</workitem>
+{{- insert_work_item(physical_component, session) -}}
+
+{# Deployed Components by kind #}
+{%- for kind in kinds -%}
+    {{ deployed_components(physical_component, kind, "Deployed " + kind.capitalize(), 2, session) }}
+{%- endfor -%}
+
+{# Electrical interfaces, i.e. cables #}
+{{ heading(2, "Electrical interfaces", session) }}
+<workitem id="electrical-interfaces">All electrical interfaces of {{ physical_component.name }} are summarized by the table below:</workitem>
+<table {{ table_attributes }}>
+    <thead>
+        <tr>
+            <th {{ th_attributes }}>Port</th>
+            <th {{ th_attributes }}>Cable ID</th>
+            <th {{ th_attributes }}>Target</th>
+            <th {{ th_attributes }}>Target Port</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for port in physical_component.physical_ports %}
+            {% set cables = port.links %}
+            {% if cables %}
+                {% for cable in cables %}
+                    <tr>
+                        {% set other_port = cable.ends | reject("equalto", port) | first %}
+                        {% if loop.first %}
+                            <td rowspan="{{ cables | length }}">{{ port | link_work_item }}</td>
+                        {% endif %}
+                        <td {{ td_attributes }}>{{ cable | link_work_item }}</td>
+                        <td {{ td_attributes }}>{{ other_port.owner | link_work_item }}</td>
+                        <td {{ td_attributes }}>{{ other_port | link_work_item }}</td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td>{{ port | link_work_item }}</td>
+                    <td colspan="3">No cable connections planned</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+
+{# Allocated functions #}
+{%- if physical_component.allocated_functions -%}
+    {{- heading(2, "Allocated functions", session) -}}
+    <workitem id="allocated-functiosn">All allocated functions of {{ physical_component.name }} are identified below:</workitem>
+    {%- for fnc in physical_component.allocated_functions -%}
+        {{- insert_work_item(fnc, session) -}}
+    {%- endfor -%}
+{%- else -%}
+    <workitem id="allocated-functions" style="color: red;">{{ physical_component.name }} has no allocated functions.</workitem>
+{%- endif -%}

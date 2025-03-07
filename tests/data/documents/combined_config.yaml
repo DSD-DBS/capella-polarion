@@ -26,7 +26,7 @@ mixed_authority:
         show_title: False
         fields_at_end:
           - tree_view_diagram
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     sections:
       section1: test-icd.html.j2
       section2: test-icd.html.j2
@@ -37,7 +37,7 @@ mixed_authority:
         section_params:
           section1:
             param_1: Test
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     sections:
       section1: test-icd.html.j2
       section2: test-icd.html.j2
@@ -53,7 +53,7 @@ mixed_authority:
           section1:
             param_1: Test
 full_authority:
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     template: test-icd.html.j2
     instances:
       - polarion_space: _default
@@ -75,13 +75,13 @@ full_authority:
         show_title: False
         fields_at_end:
           - tree_view_diagram
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     template: test-no-args.html.j2
     heading_numbering: True
     instances:
       - polarion_space: _default
         polarion_name: id1238
-  - template_directory: jupyter-notebooks/document_templates
+  - template_directory: docs/source/examples/document_templates
     template: test-icd.html.j2
     project_id: TestProject
     status_allow_list:
