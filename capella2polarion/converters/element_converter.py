@@ -199,6 +199,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             object=converter_data.capella_element,
             model=self.model,
             work_item=converter_data.work_item,
+            session=self.converter_session,
         )
         _, text, _ = self._sanitize_text(
             converter_data.capella_element, rendered_jinja
@@ -644,7 +645,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         ), "Description should already be defined"
         converter_data.work_item.description.value = (
             self._render_jinja_template(
-                template_folder, template_path, converter_data
+                template_folder,
+                template_path,
+                converter_data,
             )
         )
         return converter_data.work_item
