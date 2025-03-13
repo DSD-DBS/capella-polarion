@@ -189,8 +189,10 @@ class ConverterConfig:
             self._layer_configs[layer][c_type].append(
                 CapellaTypeConfig(
                     p_type,
-                    self.__global_config.converters
-                    | (converters or closest_config.converters),
+                    merge_converters(
+                        self.__global_config.converters,
+                        (converters or closest_config.converters),
+                    ),
                     _filter_links(c_type, links) + closest_links,
                     type_config.get("is_actor", _C2P_DEFAULT),
                     type_config.get("nature", _C2P_DEFAULT),
@@ -218,7 +220,7 @@ class ConverterConfig:
         assert self.__global_config.converters is not None
         self._global_configs[c_type] = CapellaTypeConfig(
             p_type,
-            self.__global_config.converters | converters,
+            merge_converters(self.__global_config.converters, converters),
             _filter_links(c_type, link_config)
             + self._get_global_links(c_type),
             type_config.get("is_actor", _C2P_DEFAULT),
@@ -246,7 +248,9 @@ class ConverterConfig:
         )
         self.diagram_config = CapellaTypeConfig(
             p_type,
-            converters | (self.__global_config.converters or {}),
+            merge_converters(
+                converters, (self.__global_config.converters or {})
+            ),
             links + self._get_global_links(c_type),
         )
 
@@ -431,3 +435,41 @@ def _filter_links(
                     c_type,
                 )
     return available_links
+
+
+def merge_converters(
+    base_converters: dict[str, dict[str, t.Any]],
+    additional_converters: t.Dict[str, dict[str, t.Any]] | None,
+) -> dict[str, dict[str, t.Any]]:
+    """Merge converters properly handling ``add_attributes``."""
+    if (
+        additional_converters is None
+        or base_converters == additional_converters
+    ):
+        return base_converters
+
+    result = base_converters.copy()
+    for key, value in additional_converters.items():
+        if key == "add_attributes" and key in result:
+            merged_attrs = result[key].copy()
+
+            if "attributes" in value and "attributes" in merged_attrs:
+                existing_attrs = {
+                    (attr.get("capella_attr"), attr.get("polarion_id")): attr
+                    for attr in merged_attrs["attributes"]
+                }
+
+                for attr in value["attributes"]:
+                    key_tuple = (
+                        attr.get("capella_attr"),
+                        attr.get("polarion_id"),
+                    )
+                    existing_attrs.setdefault(key_tuple, attr).update(attr)
+
+                merged_attrs["attributes"] = list(existing_attrs.values())
+
+            result[key] = merged_attrs
+        else:
+            result[key] = value
+
+    return result
