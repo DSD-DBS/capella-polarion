@@ -78,6 +78,10 @@ pa:
   PhysicalComponent:
     - links:
         - allocated_functions
+      serializer:
+        add_attributes:
+          - capella_attr: nature
+            polarion_id: nature
     - is_actor: false
       nature: UNSET
       polarion_type: physicalComponent
