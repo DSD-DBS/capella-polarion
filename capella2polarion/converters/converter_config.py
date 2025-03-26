@@ -340,7 +340,7 @@ class ConverterConfig:
                             name,
                         )
                 case _:
-                    filtered_config[name] = params
+                    filtered_config[name] = params or {}
 
         return filtered_config
 
