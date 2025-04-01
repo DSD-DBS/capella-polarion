@@ -37,7 +37,7 @@ TEST_PROJECT_ID = "project_id"
 DOCUMENT_TEMPLATES = TEST_DOCUMENT_ROOT / "templates"
 DOCUMENT_TEXT_WORK_ITEMS = "document_work_items.html.j2"
 DOCUMENT_WORK_ITEMS_CROSS_PROJECT = "work_items_cross_project.html.j2"
-LINK_CONFIG = converter_config.LinkConfig(
+LINK_CONFIG = data_model.LinkConfigProcessed(
     capella_attr="attribute",
     polarion_role="attribute",
     link_field="attribute",
@@ -156,8 +156,8 @@ def base_object(
     c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
     fake = FakeModelObject("uuid1", name="Fake 1")
-    fake_model_type_config = converter_config.CapellaTypeConfig(
-        "fakeModelObject", links=[LINK_CONFIG]
+    fake_model_type_config = data_model.CapellaTypeConfigProcessed(
+        p_type="fakeModelObject", links=[LINK_CONFIG]
     )
 
     mc = model_converter.ModelConverter(

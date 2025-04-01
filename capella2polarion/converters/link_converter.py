@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for synchronization of Capella model objects to Polarion."""
+
 from __future__ import annotations
 
 import collections.abc as cabc
@@ -70,6 +71,7 @@ class LinkSerializer:
             role_id = link_config.polarion_role
             try:
                 assert work_item.id is not None
+                assert role_id is not None
                 if serializer:
                     links = serializer(obj, work_item.id, role_id, {})
                 else:
@@ -94,6 +96,7 @@ class LinkSerializer:
                     links = self._create(work_item.id, role_id, new, {})
 
                 new_links.extend(links)
+                assert link_config.link_field is not None
                 self._link_field_groups[link_config.link_field].extend(links)
             except Exception as error:
                 error_message = make_link_logging_message(
@@ -228,6 +231,7 @@ class LinkSerializer:
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
         logger.debug("Building grouped links for work item %r...", wi)
         for link_config in data.type_config.links:
+            assert link_config.link_field is not None
             grouped_links = self._link_field_groups[link_config.link_field]
 
             if back_links is not None and link_config.reverse_field:
@@ -250,7 +254,7 @@ class LinkSerializer:
         role: str,
         links: list[polarion_api.WorkItemLink],
         reverse: bool = False,
-        config: converter_config.LinkConfig | None = None,
+        config: data_model.LinkConfigProcessed | None = None,
     ):
         link_map: dict[str, dict[str, list[str]]]
         if reverse:
@@ -279,7 +283,7 @@ class LinkSerializer:
                     )
                     continue
 
-                for display_name, attr_name in config.include.items():
+                for display_name, attr_name in config.include.root.items():
                     try:
                         attr = getattr(obj, attr_name)
                     except AttributeError:
@@ -333,7 +337,7 @@ class LinkSerializer:
 
 def find_link_config(
     data: data_session.ConverterData, role: str
-) -> converter_config.LinkConfig | None:
+) -> data_model.LinkConfigProcessed | None:
     """Search for LinkConfig with matching polarion_role in ``data``."""
     for link_config in data.type_config.links:
         if link_config.polarion_role == role:
@@ -341,17 +345,6 @@ def find_link_config(
 
     logger.error("No LinkConfig found for %r", role)
     return None
-
-
-def _group_by(
-    attr: str,
-    links: cabc.Iterable[polarion_api.WorkItemLink],
-) -> dict[str, list[polarion_api.WorkItemLink]]:
-    group = defaultdict(list)
-    for link in links:
-        key = getattr(link, attr)
-        group[key].append(link)
-    return group
 
 
 def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:
