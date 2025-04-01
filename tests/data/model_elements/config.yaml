@@ -7,7 +7,7 @@
       - parent
       - description_reference
     serializer:
-      add_attributes:
+      add_attributes-general:
         - capella_attr: layer
           polarion_id: layer
   Class:
@@ -78,6 +78,11 @@ pa:
   PhysicalComponent:
     - links:
         - allocated_functions
+      serializer:
+        add_attributes-general: []
+        add_attributes:
+          - capella_attr: nature
+            polarion_id: nature
     - is_actor: false
       nature: UNSET
       polarion_type: physicalComponent

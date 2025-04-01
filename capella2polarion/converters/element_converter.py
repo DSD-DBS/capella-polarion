@@ -120,7 +120,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                     ...,
                     data_model.CapellaWorkItem,
                 ] = getattr(self, f"_{converter}")
-                serializer(converter_data, **params)
+                serializer(converter_data, **params.model_dump())
             except Exception as error:
                 converter_data.errors.add(
                     ", ".join([str(a) for a in error.args])
