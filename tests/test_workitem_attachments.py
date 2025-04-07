@@ -30,7 +30,7 @@ WI_CONTEXT_DIAGRAM_CHECKSUM = (
     "0ed1417e8e4717524bc91162dcf8633afca686e93f8b036d0bc48d81f0444f56"
 )
 CONTEXT_DIAGRAM_CHECKSUM = (
-    "73f7c01dcedba1f47889ddf20302ed371f3b5039102d26429094e5612a3e90ec"
+    "df1132ad6f0b9f843e9e582451578c7a18b042356f068e29da5b23483b60bb68"
 )
 
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
@@ -419,7 +419,7 @@ def test_update_context_diagram_no_changes(
     converter = model_converter.ModelConverter(model, "TEST")
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
-            old := data_model.CapellaWorkItem(
+            data_model.CapellaWorkItem(
                 WORKITEM_ID,
                 uuid_capella=TEST_PHYS_FNC,
                 checksum=json.dumps(
@@ -443,11 +443,8 @@ def test_update_context_diagram_no_changes(
     with mock.patch.object(context.ContextDiagram, "render") as wrapped_render:
         converter.generate_work_items(worker.polarion_data_repo, False, True)
         worker.compare_and_update_work_item(
-            new := converter.converter_session[TEST_PHYS_FNC]
+            converter.converter_session[TEST_PHYS_FNC]
         )
-
-    print(old.checksum)
-    print(new.work_item.checksum)
 
     assert worker.project_client.work_items.update.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0

@@ -185,14 +185,14 @@ def get_layer_name(diagram: m.Diagram) -> str:
     if diagram.type.name in ["EAB", "CIBD"]:
         return "epbs"
 
-    match diagram.target.layer.name:
-        case "Operational Analysis":
+    match diagram.target.layer:
+        case diagram._model.oa:
             return "oa"
-        case "System Analysis":
+        case diagram._model.sa:
             return "sa"
-        case "Logical Architecture":
+        case diagram._model.la:
             return "la"
-        case "Physical Architecture":
+        case diagram._model.pa:
             return "pa"
         case _:
             return "common"
