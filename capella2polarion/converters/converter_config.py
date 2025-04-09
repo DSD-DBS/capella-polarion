@@ -309,6 +309,7 @@ class ConverterConfig:
             "linked_text_as_description",
             "add_attributes",
             "add_context_diagram",
+            "add_requirements_text_grouped_by_type",
             "add_tree_diagram",
             "add_jinja_fields",
             "jinja_as_description",
@@ -335,6 +336,14 @@ class ConverterConfig:
                 case "add_attributes":
                     if isinstance(params, list):
                         filtered_config[name] = {"attributes": params}
+                    else:
+                        logger.error(
+                            "Converter %r must be configured with list type parameters",
+                            name,
+                        )
+                case "add_requirements_text_grouped_by_type":
+                    if isinstance(params, list):
+                        filtered_config[name] = {"types": params}
                     else:
                         logger.error(
                             "Converter %r must be configured with list type parameters",

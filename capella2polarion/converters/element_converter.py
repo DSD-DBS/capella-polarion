@@ -411,7 +411,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return match.group(default_group)
 
     def _get_requirement_types_text(
-        self, obj: m.ModelElement | m.Diagram
+        self, obj: m.ModelElement | m.Diagram, types: list[str] | None = None
     ) -> tuple[
         list[str],
         dict[str, dict[str, str]],
@@ -436,12 +436,13 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 )
                 continue
 
-            sanitized_text = self._sanitize_text(
-                obj, req.text or markupsafe.Markup("")
-            )
-            referenced_uuids.extend(sanitized_text.referenced_uuids)
-            type_texts[req.type.long_name].append(sanitized_text)
-            attachments.extend(sanitized_text.attachments)
+            if req.type.long_name in set(types or ()):
+                sanitized_text = self._sanitize_text(
+                    obj, req.text or markupsafe.Markup("")
+                )
+                referenced_uuids.extend(sanitized_text.referenced_uuids)
+                type_texts[req.type.long_name].append(sanitized_text)
+                attachments.extend(sanitized_text.attachments)
         return referenced_uuids, _format_texts(type_texts), attachments
 
     # Serializer implementation starts below
@@ -495,13 +496,15 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 logger.error(error.args[0])
 
     def _add_requirements_text_grouped_by_type(
-        self, converter_data: data_session.ConverterData
+        self,
+        converter_data: data_session.ConverterData,
+        types: list[str] | None = None,
     ):
         """Add requirements custom fields to work item."""
         obj = converter_data.capella_element
         assert converter_data.work_item is not None
         uuids, requirement_types, attachments = (
-            self._get_requirement_types_text(obj)
+            self._get_requirement_types_text(obj, types)
         )
         converter_data.work_item.additional_attributes |= requirement_types
         converter_data.requirement_references = uuids

@@ -1856,7 +1856,7 @@ class TestSerializers:
         }
         obj = model.by_uuid(TEST_ELEMENT_UUID)
         converters = converter_config.ConverterConfig()._force_dict(
-            "add_requirements_text_grouped_by_type"
+            {"add_requirements_text_grouped_by_type": ["ReqType"]}
         )
         type_config = converter_config.CapellaTypeConfig(
             "logicalComponent", converters
@@ -1888,6 +1888,53 @@ class TestSerializers:
 
         assert work_item == data_model.CapellaWorkItem(**expected)
         assert status == "open"
+
+    @staticmethod
+    def test_add_requirements_text_grouped_by_type_with_attachment(
+        model: capellambse.MelodyModel,
+    ):
+        uuid = "aa9931e3-116c-461e-8215-6b9fdbdd4a1b"
+        req_text = markupsafe.Markup(
+            "<p>Noch ein bissle text davor:</p>"
+            '<p><img src="workitemimg:5b5bdfe8be29ca756dee7c7af74bca64.png"/>'
+            "</p>\n"
+        )
+        expected = {
+            "uuid_capella": uuid,
+            "title": "kill He Who Must Not Be Named",
+            "type": "logicalFunction",
+            "description": {
+                "type": "text/html",
+                "value": markupsafe.Markup(""),
+            },
+            "with attachment": {"type": "text/html", "value": req_text},
+        }
+        obj = model.by_uuid(uuid)
+        converters = converter_config.ConverterConfig()._force_dict(
+            {"add_requirements_text_grouped_by_type": ["With attachment"]}
+        )
+        type_config = converter_config.CapellaTypeConfig(
+            "logicalFunction", converters
+        )
+        session = {uuid: data_session.ConverterData("la", type_config, obj)}
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            session,
+            True,
+        )
+
+        work_item = serializer.serialize(uuid)
+        assert work_item is not None
+        status = work_item.status
+        work_item.status = None
+        attachments = work_item.attachments
+        work_item.attachments = []
+
+        assert work_item == data_model.CapellaWorkItem(**expected)
+        assert status == "open"
+        assert attachments
+        assert attachments[0].title == "grouped_linked_work_items.png"
 
     @staticmethod
     def test_add_attributes(model: capellambse.MelodyModel):
