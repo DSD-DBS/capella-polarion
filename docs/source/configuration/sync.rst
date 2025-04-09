@@ -61,6 +61,20 @@ If a serializer supports additional parameters this will be documented in the
 supported capella serializers table in :ref:`Model synchronization
 <supported_capella_serializers>`.
 
+For example, to use the ``add_requirements_text_grouped_by_type`` serializer for
+``LogicalComponent`` elements within the ``la`` layer and only include
+requirements of type ``ReqType`` or ``Assumption``, the configuration would look
+like this:
+
+.. code-block:: yaml
+
+   la:
+     LogicalComponent:
+       serializer:
+         add_requirements_text_grouped_by_type:
+           - ReqType
+           - Assumption
+
 Different capella type and polarion type ID
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml

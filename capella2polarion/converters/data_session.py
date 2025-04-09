@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """A module to store data during the conversion process."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -20,6 +21,7 @@ class ConverterData:
     capella_element: m.ModelElement | m.Diagram
     work_item: dm.CapellaWorkItem | None = None
     description_references: list[str] = dataclasses.field(default_factory=list)
+    requirement_references: list[str] = dataclasses.field(default_factory=list)
     errors: set[str] = dataclasses.field(default_factory=set)
 
 

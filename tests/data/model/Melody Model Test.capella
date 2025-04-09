@@ -56,7 +56,7 @@
           <ownedRequirements xsi:type="Requirements:Requirement" id="3c2d312c-37c9-41b5-8c32-67578fa52dc3"
               ReqIFIdentifier="REQTYPE-1" ReqIFDescription="This is a test requirement of kind 1."
               ReqIFLongName="1" ReqIFName="" ReqIFPrefix="3" requirementType="#db47fca9-ddb6-4397-8d4b-e397e53d277e"
-              ReqIFChapterName="TestReq1" ReqIFForeignID="1" ReqIFText="&lt;p>Test requirement 1 really l o n g text that is&amp;nbsp;way too long to display here as that&lt;/p>&#xA;&#xA;&lt;p>&amp;lt; &amp;gt; &amp;quot; &amp;#39;&lt;/p>&#xA;&#xA;&lt;ul>&#xA;&#x9;&lt;li>This&amp;nbsp;is a list&lt;/li>&#xA;&#x9;&lt;li>an unordered one&lt;/li>&#xA;&lt;/ul>&#xA;&#xA;&lt;ol>&#xA;&#x9;&lt;li>Ordered list&lt;/li>&#xA;&#x9;&lt;li>Ok&lt;/li>&#xA;&lt;/ol>&#xA;"
+              ReqIFChapterName="TestReq1" ReqIFForeignID="1" ReqIFText="&lt;p>Test requirement 1 really l o n g text that is&amp;nbsp;way too long to display here as that&amp;nbsp;&lt;a href=&quot;hlink://ceffa011-7b66-4b3c-9885-8e075e312ffa&quot;>Important Function&lt;/a>&lt;/p>&#xA;&#xA;&lt;p>&amp;lt; &amp;gt; &amp;quot; &amp;#39;&lt;/p>&#xA;&#xA;&lt;ul>&#xA;&#x9;&lt;li>This&amp;nbsp;is a list&lt;/li>&#xA;&#x9;&lt;li>an unordered one&lt;/li>&#xA;&lt;/ul>&#xA;&#xA;&lt;ol>&#xA;&#x9;&lt;li>Ordered list&lt;/li>&#xA;&#x9;&lt;li>Ok&lt;/li>&#xA;&lt;/ol>&#xA;&#xA;&lt;div>&lt;a href=&quot;hlink://00e7b925-cf4c-4cb0-929e-5409a1cd872b&quot;>Sysexfunc&lt;/a>&lt;/div>&#xA;"
               requirementTypeProxy="7">
             <ownedAttributes xsi:type="Requirements:BooleanValueAttribute" id="9c692405-b8aa-4caa-b988-51d27db5cd1b"
                 definition="#682bd51d-5451-4930-a97e-8bfca6c3a127" value="true"/>
@@ -107,6 +107,9 @@
           <ownedAttributes xsi:type="Requirements:IntegerValueAttribute" id="8882f320-c887-496a-933f-29a1ca62cc44"
               definition="#0bd40628-10a5-451e-86da-187c93bc3b10"/>
         </ownedRequirements>
+        <ownedRequirements xsi:type="Requirements:Requirement" id="ef6b7fd1-9ff9-4581-8a88-7a3782c25145"
+            ReqIFLongName="Attachment in Text" requirementType="#0547fdc6-223b-4894-95d7-b363925b3cef"
+            ReqIFText="&lt;p>Noch ein bissle text davor:&lt;/p>&lt;p>&lt;img src=&quot;model/grouped_linked_work_items.png&quot; />&lt;/p>&#xA;"/>
       </ownedExtensions>
       <ownedExtensions xsi:type="CapellaRequirements:CapellaTypesFolder" id="67bba9cf-953c-4f0b-9986-41991c68d241"
           ReqIFLongName="Types">
@@ -148,6 +151,8 @@
           <ownedAttributes xsi:type="Requirements:AttributeDefinition" id="0bd40628-10a5-451e-86da-187c93bc3b10"
               ReqIFLongName="version" definitionType="#3b7ec38a-e26a-4c23-9fa3-275af3f629ee"/>
         </ownedTypes>
+        <ownedTypes xsi:type="Requirements:RequirementType" id="0547fdc6-223b-4894-95d7-b363925b3cef"
+            ReqIFLongName="With attachment"/>
       </ownedExtensions>
       <ownedExtensions xsi:type="CapellaRequirements:CapellaModule" id="637aeba7-4125-4bf4-95e4-3ce603ac3d40"
           ReqIFLongName="Module" ReqIFName="Next Module" moduleType="#3a284e44-3b63-48a7-85e9-caeb967c930c">
@@ -2249,6 +2254,9 @@ The predator is far away</bodies>
           </ownedFunctions>
           <ownedFunctions xsi:type="org.polarsys.capella.core.data.la:LogicalFunction"
               id="aa9931e3-116c-461e-8215-6b9fdbdd4a1b" name="kill He Who Must Not Be Named">
+            <ownedExtensions xsi:type="CapellaRequirements:CapellaOutgoingRelation"
+                id="c05844be-a2ce-41c1-a5b1-9a11ca94a554" relationType="#f1aceb81-5f70-4469-a127-94830eb9be04"
+                source="#aa9931e3-116c-461e-8215-6b9fdbdd4a1b" target="#ef6b7fd1-9ff9-4581-8a88-7a3782c25145"/>
             <inputs xsi:type="org.polarsys.capella.core.data.fa:FunctionInputPort"
                 id="ef435fb5-de1e-48ca-be00-40c79cc6a659" name="FIP 1"/>
             <inputs xsi:type="org.polarsys.capella.core.data.fa:FunctionInputPort"

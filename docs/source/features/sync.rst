@@ -94,6 +94,11 @@ specific serializer alone:
 |                                      | ``add_jinja_fields``, but specifically for the       |
 |                                      | description field.                                   |
 +--------------------------------------+------------------------------------------------------+
+| add_requirements_text_grouped_by_type| A serializer that adds the text attribute of Capella |
+|                                      | requirements grouped by their type (in lowercase) to |
+|                                      | the work item. Only requirement types specified in a |
+|                                      | configured list are included.                        |
++--------------------------------------+------------------------------------------------------+
 
 .. _context-diagrams documentation: https://capellambse-context-diagrams.readthedocs.io/#context-diagram-extension-for-capellambse
 .. _Tree View documentation: https://capellambse-context-diagrams.readthedocs.io/tree_view/

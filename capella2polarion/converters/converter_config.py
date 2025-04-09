@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
 DESCRIPTION_REFERENCE_SERIALIZER = "description_reference"
+REQUIREMENT_REFERENCE_SERIALIZER = "requirement_reference"
 DIAGRAM_ELEMENTS_SERIALIZER = "diagram_elements"
 ConvertersType: t.TypeAlias = dict[
     str, dict[str, t.Any] | list[dict[str, t.Any]]
@@ -308,6 +309,7 @@ class ConverterConfig:
             "linked_text_as_description",
             "add_attributes",
             "add_context_diagram",
+            "add_requirements_text_grouped_by_type",
             "add_tree_diagram",
             "add_jinja_fields",
             "jinja_as_description",
@@ -334,6 +336,14 @@ class ConverterConfig:
                 case "add_attributes":
                     if isinstance(params, list):
                         filtered_config[name] = {"attributes": params}
+                    else:
+                        logger.error(
+                            "Converter %r must be configured with list type parameters",
+                            name,
+                        )
+                case "add_requirements_text_grouped_by_type":
+                    if isinstance(params, list):
+                        filtered_config[name] = {"types": params}
                     else:
                         logger.error(
                             "Converter %r must be configured with list type parameters",
@@ -417,6 +427,7 @@ def _filter_links(
         is_diagram_elements = capella_attr == DIAGRAM_ELEMENTS_SERIALIZER
         if (
             capella_attr == DESCRIPTION_REFERENCE_SERIALIZER
+            or capella_attr == REQUIREMENT_REFERENCE_SERIALIZER
             or (is_diagram_elements and c_class == m.Diagram)
             or hasattr(c_class, capella_attr)
         ):

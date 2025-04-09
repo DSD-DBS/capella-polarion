@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for synchronization of Capella model objects to Polarion."""
+
 from __future__ import annotations
 
 import collections.abc as cabc
@@ -46,6 +47,7 @@ class LinkSerializer:
 
         self.serializers: dict[str, _Serializer] = {
             converter_config.DESCRIPTION_REFERENCE_SERIALIZER: self._handle_description_reference_links,  # pylint: disable=line-too-long
+            converter_config.REQUIREMENT_REFERENCE_SERIALIZER: self._handle_requirement_reference_links,  # pylint: disable=line-too-long
             converter_config.DIAGRAM_ELEMENTS_SERIALIZER: self._handle_diagram_reference_links,  # pylint: disable=line-too-long
         }
 
@@ -148,7 +150,28 @@ class LinkSerializer:
         role_id: str,
         links: dict[str, polarion_api.WorkItemLink],
     ) -> list[polarion_api.WorkItemLink]:
-        refs = self.converter_session[obj.uuid].description_references
+        return self._handle_reference_links(obj, work_item_id, role_id, links)
+
+    def _handle_requirement_reference_links(
+        self,
+        obj: m.ModelElement | m.Diagram,
+        work_item_id: str,
+        role_id: str,
+        links: dict[str, polarion_api.WorkItemLink],
+    ) -> list[polarion_api.WorkItemLink]:
+        return self._handle_reference_links(
+            obj, work_item_id, role_id, links, "requirement_references"
+        )
+
+    def _handle_reference_links(
+        self,
+        obj: m.ModelElement | m.Diagram,
+        work_item_id: str,
+        role_id: str,
+        links: dict[str, polarion_api.WorkItemLink],
+        reference_type: str = "description_references",
+    ) -> list[polarion_api.WorkItemLink]:
+        refs = getattr(self.converter_session[obj.uuid], reference_type)
         ref_set = set(self._get_work_item_ids(work_item_id, refs, role_id))
         return self._create(work_item_id, role_id, ref_set, links)
 

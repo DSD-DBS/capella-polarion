@@ -1,6 +1,8 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import io
+
 import pytest
 
 from capella2polarion.converters import converter_config
@@ -129,3 +131,28 @@ class TestConverterConfig:
             type_config.converters["add_attributes"]["attributes"]
             == expected_attribute_params
         )
+
+    @staticmethod
+    def test_add_requirements_text_grouped_by_type_config():
+        """Test that suffixed converters are parsed correctly."""
+        yaml_str = """\
+        "*":
+          "*":
+            serializer:
+              add_requirements_text_grouped_by_type:
+                - ReqType
+                - Assumption
+        la:
+          LogicalComponent: {}
+        """
+        converter_key = "add_requirements_text_grouped_by_type"
+        expected_attributes = {"types": ["ReqType", "Assumption"]}
+        config = converter_config.ConverterConfig()
+
+        config.read_config_file(io.StringIO(yaml_str))
+        type_config = config.get_type_config("la", "LogicalComponent")
+
+        assert type_config is not None
+        assert type_config.converters is not None
+        assert converter_key in type_config.converters
+        assert type_config.converters[converter_key] == expected_attributes
