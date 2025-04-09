@@ -1681,10 +1681,9 @@ class TestSerializers:
                 {
                     **TEST_OPERATIONAL_CAPABILITY,
                     "uuid_capella": TEST_OCAP_UUID,
-                    "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": ""},
-                        "postCondition": {"type": "text/html", "value": ""},
-                    },
+                    "preCondition": {"type": "text/html", "value": ""},
+                    "postCondition": {"type": "text/html", "value": ""},
+                    "layer": "oa",
                 },
                 id="operationalCapability",
             ),
@@ -1698,6 +1697,7 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup(TEST_WE_DESCR)
                     ),
+                    "layer": "oa",
                 },
                 id="entity",
             ),
@@ -1714,6 +1714,7 @@ class TestSerializers:
                             " wand and greatest mage of all time.</p>\n"
                         )
                     ),
+                    "layer": "la",
                 },
                 id="logicalActor",
             ),
@@ -1727,6 +1728,8 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup("")
                     ),
+                    "layer": "pa",
+                    "nature": "UNSET",
                 },
                 id="physicalComponent",
             ),
@@ -1740,6 +1743,8 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup("")
                     ),
+                    "layer": "pa",
+                    "nature": "NODE",
                 },
                 id="physicalComponentNode",
             ),
@@ -1753,16 +1758,15 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup("")
                     ),
-                    "additional_attributes": {
-                        "preCondition": {
-                            "type": "text/html",
-                            "value": (
-                                '<div style="text-align: center;">hehe'
-                                "<br/></div>"
-                            ),
-                        },
-                        "postCondition": {"type": "text/html", "value": ""},
+                    "preCondition": {
+                        "type": "text/html",
+                        "value": (
+                            '<div style="text-align: center;">hehe'
+                            "<br/></div>"
+                        ),
                     },
+                    "postCondition": {"type": "text/html", "value": ""},
+                    "layer": "oa",
                 },
                 id="scenario",
             ),
@@ -1776,10 +1780,9 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup("")
                     ),
-                    "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": ""},
-                        "postCondition": {"type": "text/html", "value": ""},
-                    },
+                    "preCondition": {"type": "text/html", "value": ""},
+                    "postCondition": {"type": "text/html", "value": ""},
+                    "layer": "la",
                 },
                 id="capabilityRealization",
             ),
@@ -1793,6 +1796,7 @@ class TestSerializers:
                     "description": polarion_api.HtmlContent(
                         markupsafe.Markup("This is a test context.Make Food")
                     ),
+                    "layer": "oa",
                 },
                 id="constraint",
             ),
@@ -1851,9 +1855,11 @@ class TestSerializers:
             },
         }
         obj = model.by_uuid(TEST_ELEMENT_UUID)
+        converters = converter_config.ConverterConfig()._force_dict(
+            "add_requirements_text_grouped_by_type"
+        )
         type_config = converter_config.CapellaTypeConfig(
-            "logicalComponent",
-            "add_requirements_text_grouped_by_type",
+            "logicalComponent", converters
         )
         session = {
             TEST_ELEMENT_UUID: data_session.ConverterData(
@@ -2107,10 +2113,9 @@ class TestSerializers:
                     **TEST_OPERATIONAL_CAPABILITY,
                     "type": "_C2P_operationalCapability",
                     "uuid_capella": TEST_OCAP_UUID,
-                    "additional_attributes": {
-                        "preCondition": {"type": "text/html", "value": ""},
-                        "postCondition": {"type": "text/html", "value": ""},
-                    },
+                    "preCondition": {"type": "text/html", "value": ""},
+                    "postCondition": {"type": "text/html", "value": ""},
+                    "layer": "oa",
                 },
                 id="operationalCapability",
             ),
@@ -2126,6 +2131,7 @@ class TestSerializers:
                             TEST_WE_DESCR.replace("TEST", "_C2P_TEST")
                         )
                     ),
+                    "layer": "oa",
                 },
                 id="entity",
             ),
