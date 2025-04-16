@@ -57,6 +57,54 @@ or ``SystemFunction`` with the ``add_context_diagram`` serializer using ``filter
    :language: yaml
    :lines: 64-67
 
+Jinja as Description
+^^^^^^^^^^^^^^^^^^^^
+
+The ``add_jinja_as_description`` serializer allows you to completely replace
+the default description content with the output of a rendered Jinja2 template.
+This provides maximum flexibility for customizing the main content area of your
+Work Items enabling HTML structures like tables, lists and more in it.
+
+You need to specify the path to the template file. Optionally, you can also
+provide the folder containing the template and any parameters required by the
+template for rendering.
+
+.. code-block:: yaml
+
+   serializer:
+     add_jinja_as_description:
+       template_folder: path/to/your/templates
+       template_path: description_template.html.j2
+       render_parameters:
+         custom_var: "some_value"
+         another_param: true
+
+Jinja Fields
+^^^^^^^^^^^^
+
+The ``add_jinja_fields`` serializer enables populating specific custom fields
+in Polarion with content generated from Jinja2 templates. This is useful for
+adding structured, dynamically generated information to Work Items beyond the
+standard description or splitting HTML structures from the description to a
+dedicated custom field.
+
+For each custom field provide its Polarion ID as a key. The value should be a
+dictionary specifying the ``template_path``, and optionally the
+``template_folder`` and any ``render_parameters`` needed by that template.
+
+.. code-block:: yaml
+
+   serializer:
+     add_jinja_fields:
+       field_id:
+         template_folder: folder/path
+         template_path: template.html.j2
+         render_parameters:
+           key: "value"
+       field_id_1:
+         template_folder: folder/path
+         template_path: template_1.html.j2
+
 If a serializer supports additional parameters this will be documented in the
 supported capella serializers table in :ref:`Model synchronization
 <supported_capella_serializers>`.
