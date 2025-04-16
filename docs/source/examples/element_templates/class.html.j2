@@ -57,6 +57,7 @@
     {% endfor %}
 {% endmacro %}
 
+{{ PARAM | safe }}
 <p>Parent: <a href="{{ object.parent | make_href }}">{{ object.parent.name }}</a></p>
 {% if object.description %}
 <p>{{ object.description }}</p>

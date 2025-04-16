@@ -192,6 +192,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
         converter_data: data_session.ConverterData,
+        render_params: dict[str, t.Any] | None = None,
     ):
         env = self._get_jinja_env(str(template_folder))
         template = env.get_template(str(template_path))
@@ -199,6 +200,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             object=converter_data.capella_element,
             model=self.model,
             work_item=converter_data.work_item,
+            **(render_params or {}),
         )
         _, text, _ = self._sanitize_text(
             converter_data.capella_element, rendered_jinja
@@ -615,17 +617,21 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     def _add_jinja_fields(
         self,
         converter_data: data_session.ConverterData,
-        fields: dict[str, dict[str, str]],
+        **fields: dict[str, str | dict[str, t.Any]],
     ) -> data_model.CapellaWorkItem:
         """Add a new custom field and fill it with rendered jinja content."""
         assert converter_data.work_item, "No work item set yet"
-        for field, jinja_properties in fields.items():
-            converter_data.work_item.additional_attributes[field] = {
+        for field_id, jinja_properties in fields.items():
+            template_folder = jinja_properties.get("template_folder", "")
+            assert isinstance(template_folder, str | pathlib.Path)
+            template_path = jinja_properties["template_path"]
+            assert isinstance(template_path, str | pathlib.Path)
+            params = jinja_properties.get("render_parameters", {})
+            assert isinstance(params, dict)
+            converter_data.work_item.additional_attributes[field_id] = {
                 "type": "text/html",
                 "value": self._render_jinja_template(
-                    jinja_properties.get("template_folder", ""),
-                    jinja_properties["template_path"],
-                    converter_data,
+                    template_folder, template_path, converter_data, params
                 ),
             }
 
@@ -636,6 +642,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         converter_data: data_session.ConverterData,
         template_path: str,
         template_folder: str = "",
+        render_parameters: dict[str, t.Any] | None = None,
     ) -> data_model.CapellaWorkItem:
         """Use a Jinja template to render the description content."""
         assert converter_data.work_item, "No work item set yet"
@@ -644,7 +651,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         ), "Description should already be defined"
         converter_data.work_item.description.value = (
             self._render_jinja_template(
-                template_folder, template_path, converter_data
+                template_folder,
+                template_path,
+                converter_data,
+                render_parameters,
             )
         )
         return converter_data.work_item
