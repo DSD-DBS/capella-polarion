@@ -470,7 +470,7 @@ def merge_converters(
 
 
 @functools.cache
-def _get_valid_converters() -> set[str]:
+def _get_valid_converters() -> frozenset[str]:
     """Return valid converters from CapellaWorkItemSerializer."""
     from . import element_converter
 
@@ -492,4 +492,4 @@ def _get_valid_converters() -> set[str]:
                     valid_converters.add(name[1:])
             except (IndexError, ValueError, TypeError):
                 continue
-    return valid_converters
+    return frozenset(valid_converters)
