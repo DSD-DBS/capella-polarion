@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import logging
 import typing as t
 from collections import abc as cabc
@@ -303,19 +304,11 @@ class ConverterConfig:
     def _filter_config(
         self, converters: dict[str, t.Any]
     ) -> dict[str, dict[str, t.Any]]:
-        custom_converters = (
-            "include_pre_and_post_condition",
-            "linked_text_as_description",
-            "add_attributes",
-            "add_context_diagram",
-            "add_tree_diagram",
-            "add_jinja_fields",
-            "jinja_as_description",
-        )
+        valid_converters = _get_valid_converters()
         filtered_config: dict[str, dict[str, t.Any]] = {}
         assert isinstance(converters, dict)
         for name, params in converters.items():
-            if name not in custom_converters:
+            if name not in valid_converters:
                 logger.error("Unknown converter in config: %r", name)
                 continue
 
@@ -473,3 +466,25 @@ def merge_converters(
             result[key] = value
 
     return result
+
+
+def _get_valid_converters() -> set[str]:
+    """Return valid converters from CapellaWorkItemSerializer."""
+    from . import element_converter
+
+    valid_converters = set()
+    serializer_cls = element_converter.CapellaWorkItemSerializer
+    for name, member in inspect.getmembers(serializer_cls):
+        if (
+            inspect.isfunction(member)
+            and name.startswith("_")
+            and not name.startswith(("__", "_CapellaWorkItemSerializer"))
+        ):
+            try:
+                signature = inspect.signature(member)
+                params = list(signature.parameters.values())
+                if params[1].name == "converter_data":
+                    valid_converters.add(name[1:])
+            except (ValueError, TypeError):
+                continue
+    return valid_converters
