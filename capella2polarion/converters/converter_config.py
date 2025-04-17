@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import inspect
 import logging
 import typing as t
@@ -468,6 +469,7 @@ def merge_converters(
     return result
 
 
+@functools.cache
 def _get_valid_converters() -> set[str]:
     """Return valid converters from CapellaWorkItemSerializer."""
     from . import element_converter
@@ -482,9 +484,12 @@ def _get_valid_converters() -> set[str]:
         ):
             try:
                 signature = inspect.signature(member)
-                params = list(signature.parameters.values())
-                if params[1].name == "converter_data":
+                first_param = list(signature.parameters.values())[1]
+                if (
+                    first_param.name == "converter_data"
+                    and first_param.annotation == "data_session.ConverterData"
+                ):
                     valid_converters.add(name[1:])
-            except (ValueError, TypeError):
+            except (IndexError, ValueError, TypeError):
                 continue
     return valid_converters
