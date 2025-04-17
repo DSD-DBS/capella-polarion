@@ -56,6 +56,7 @@ TEST_CAP_REAL = "b80b3141-a7fc-48c7-84b2-1467dcef5fce"
 TEST_CONSTRAINT = "95cbd4af-7224-43fe-98cb-f13dda540b8e"
 TEST_SYS_FNC = "ceffa011-7b66-4b3c-9885-8e075e312ffa"
 TEST_SYS_FNC_EX = "1a414995-f4cd-488c-8152-486e459fb9de"
+TEST_CLASS = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
 TEST_DIAG_DESCR = (
     '<span><img title="{title}" class="{cls}" '
     'src="workitemimg:{attachment_id}" '
@@ -2007,13 +2008,16 @@ class TestSerializers:
         assert wrapped_render.call_args_list[0][1] == {"depth": 1}
 
     def test_add_jinja_to_description(self, model: capellambse.MelodyModel):
-        uuid = "c710f1c2-ede6-444e-9e2b-0ff30d7fd040"
+        uuid = TEST_CLASS
         type_config = converter_config.CapellaTypeConfig(
             "test",
             {
                 "jinja_as_description": {
                     "template_folder": "docs/source/examples/element_templates",
                     "template_path": "class.html.j2",
+                    "render_parameters": {
+                        "PARAM": (expected_param := "SOMETHING"),
+                    },
                 }
             },
             [],
@@ -2034,6 +2038,44 @@ class TestSerializers:
         work_item = serializer.serialize(uuid)
 
         assert work_item is not None
+        assert isinstance(work_item.description["value"], markupsafe.Markup)
+        assert expected_param in work_item.description["value"]
+
+    @staticmethod
+    def test_add_jinja_fields(model: capellambse.MelodyModel):
+        uuid = TEST_CLASS
+        expected_param = "SOMETHING_NEW"
+        type_config = converter_config.CapellaTypeConfig(
+            "test",
+            {
+                "add_jinja_fields": {
+                    "field_id": {
+                        "template_folder": "docs/source/examples/element_templates",
+                        "template_path": "class.html.j2",
+                        "render_parameters": {"PARAM": expected_param},
+                    }
+                }
+            },
+            [],
+        )
+        serializer = element_converter.CapellaWorkItemSerializer(
+            model,
+            polarion_repo.PolarionDataRepository(),
+            {
+                uuid: data_session.ConverterData(
+                    "la",
+                    type_config,
+                    model.by_uuid(uuid),
+                )
+            },
+            False,
+        )
+
+        work_item = serializer.serialize(uuid)
+
+        assert work_item is not None
+        assert isinstance(work_item.field_id, dict)
+        assert expected_param in work_item.field_id["value"]
 
     @staticmethod
     @pytest.mark.parametrize("prefix", ["", "_C2P"])
@@ -2142,7 +2184,7 @@ class TestSerializers:
 
     @staticmethod
     def test_tree_view_with_params(model: capellambse.MelodyModel):
-        cap = model.by_uuid("c710f1c2-ede6-444e-9e2b-0ff30d7fd040")
+        cap = model.by_uuid(TEST_CLASS)
         config = converter_config.ConverterConfig()
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
             config.read_config_file(f)

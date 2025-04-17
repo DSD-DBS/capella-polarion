@@ -1,7 +1,10 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import io
+
 import pytest
+import yaml
 
 from capella2polarion.converters import converter_config
 
@@ -129,3 +132,36 @@ class TestConverterConfig:
             type_config.converters["add_attributes"]["attributes"]
             == expected_attribute_params
         )
+
+    @staticmethod
+    def test_add_jinja_fields_config():
+        """Test that suffixed converters are parsed correctly."""
+        converter_key = "add_jinja_fields"
+        expected_attributes = {
+            "field_id": {
+                "template_folder": "folder/path",
+                "template_path": "template.html.j2",
+                "render_parameters": {"key": "value"},
+            },
+            "field_id_1": {
+                "template_folder": "folder/path",
+                "template_path": "template_1.html.j2",
+            },
+        }
+        config = {
+            "la": {
+                "LogicalComponent": {
+                    "serializer": {converter_key: expected_attributes}
+                }
+            }
+        }
+        yaml_str = yaml.dump(config, indent=2)
+        config = converter_config.ConverterConfig()
+
+        config.read_config_file(io.StringIO(yaml_str))
+        type_config = config.get_type_config("la", "LogicalComponent")
+
+        assert type_config is not None
+        assert type_config.converters is not None
+        assert converter_key in type_config.converters
+        assert type_config.converters[converter_key] == expected_attributes
