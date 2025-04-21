@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 import typing
 
@@ -18,6 +19,8 @@ from capella2polarion.converters import (
     document_config,
     document_renderer,
     model_converter,
+    plugin_config,
+    plugin_interfaces,
 )
 
 logger = logging.getLogger(__name__)
@@ -237,6 +240,61 @@ def render_documents(
     for project, project_data in projects_document_data.items():
         polarion_worker.create_documents(project_data.new_docs, project)
         polarion_worker.update_documents(project_data.updated_docs, project)
+
+
+@cli.command()
+@click.option(
+    "--plugin-config-file",
+    type=click.File(mode="r", encoding="utf8"),
+    required=True,
+    envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
+)
+@click.option(
+    "--generate-figure-captions",
+    envvar="CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS",
+    is_flag=True,
+    default=False,
+)
+@click.pass_context
+def run_plugins(
+    ctx: click.core.Context,
+    plugin_config_file: typing.TextIO,
+    generate_figure_captions: bool,
+) -> None:
+    """Synchronise model elements."""
+    capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
+    logger.info(
+        "Synchronising model elements to Polarion project with id %s...",
+        capella_to_polarion_cli.polarion_params.project_id,
+    )
+
+    polarion_worker = pw.CapellaPolarionWorker(
+        capella_to_polarion_cli.polarion_params,
+        capella_to_polarion_cli.force_update,
+    )
+
+    config = plugin_config.read_config_file(plugin_config_file)
+
+    for conf in config:
+        module = importlib.import_module(str(conf.module))
+        plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
+            module, conf.plugin_name
+        )
+        plugin: plugin_interfaces.PluginInterface
+        if issubclass(plugin_cls, plugin_interfaces.WorkItemPluginInterface):
+            assert (
+                capella_to_polarion_cli.capella_model
+            ), "A model must be defined to use WorkItemPlugins"
+            plugin = plugin_cls(
+                capella_to_polarion_cli.capella_model,
+                generate_figure_captions,
+                True,
+                polarion_worker,
+            )
+        else:
+            plugin = plugin_cls(polarion_worker)
+
+        plugin.run(**conf.args)
 
 
 if __name__ == "__main__":

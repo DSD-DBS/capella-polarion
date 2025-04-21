@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import abc
 import collections
 import enum
 import hashlib
@@ -75,77 +76,26 @@ def _resolve_capella_attribute(
     raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
-class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
-    """The general serializer class for CapellaWorkItems."""
-
-    diagram_cache_path: pathlib.Path
-    model: capellambse.MelodyModel
+class AbstractWorkItemGenerator(
+    polarion_html_helper.JinjaRendererMixin, abc.ABC
+):
+    """An abstract class for work item generating plugins and generators."""
 
     def __init__(
         self,
         model: capellambse.MelodyModel,
-        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-        converter_session: data_session.ConverterSession,
+        generate_figure_captions: bool,
         generate_attachments: bool,
-        generate_figure_captions: bool = False,
+        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
     ):
         self.model = model
-        self.capella_polarion_mapping = capella_polarion_mapping
-        self.converter_session = converter_session
-        self.generate_attachments = generate_attachments
         self.generate_figure_captions = generate_figure_captions
-        self.jinja_envs: dict[str, jinja2.Environment] = {}
-
-    def serialize_all(self) -> list[data_model.CapellaWorkItem]:
-        """Serialize all items of the converter_session."""
-        work_items = (self.serialize(uuid) for uuid in self.converter_session)
-        return list(filter(None, work_items))
-
-    def serialize(self, uuid: str) -> data_model.CapellaWorkItem | None:
-        """Return a CapellaWorkItem for the given diagram or element."""
-        converter_data = self.converter_session[uuid]
-        work_item_id = None
-        if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
-            uuid
-        ):
-            work_item_id = old.id
-
-        self.__generic_work_item(converter_data, work_item_id)
-        assert converter_data.work_item is not None
-
-        assert isinstance(converter_data.type_config.converters, dict)
-        for converter, params in converter_data.type_config.converters.items():
-            try:
-                serializer: cabc.Callable[
-                    ...,
-                    data_model.CapellaWorkItem,
-                ] = getattr(self, f"_{converter}")
-                serializer(converter_data, **params)
-            except Exception as error:
-                converter_data.errors.add(
-                    ", ".join([str(a) for a in error.args])
-                )
-                converter_data.work_item = None
-
-        if converter_data.errors:
-            log_args = (
-                converter_data.capella_element._short_repr_(),
-                "\n\t".join(converter_data.errors),
-            )
-            if converter_data.work_item is None:
-                logger.error("Serialization of %r failed:\n\t%s", *log_args)
-            else:
-                logger.warning(
-                    "Serialization of %r successful, but with warnings:\n\t%s",
-                    *log_args,
-                )
-        return converter_data.work_item
-
-    # General helper functions
+        self.generate_attachments = generate_attachments
+        self.capella_polarion_mapping = capella_polarion_mapping
 
     def _add_attachment(
         self,
-        work_item: data_model.CapellaWorkItem,
+        work_item: polarion_api.WorkItem,
         attachment: data_model.Capella2PolarionAttachment,
     ) -> None:
         assert attachment.file_name is not None
@@ -192,6 +142,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
         converter_data: data_session.ConverterData,
+        errors: set[str],
         render_params: dict[str, t.Any] | None = None,
     ) -> markupsafe.Markup:
         env = self._get_jinja_env(str(template_folder))
@@ -203,7 +154,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             **(render_params or {}),
         )
         _, text, _ = self._sanitize_text(
-            converter_data.capella_element, rendered_jinja
+            converter_data.capella_element, rendered_jinja, errors
         )
         return text
 
@@ -219,7 +170,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def __insert_diagram(
         self,
-        work_item: data_model.CapellaWorkItem,
+        work_item: polarion_api.WorkItem,
         diagram: m.AbstractDiagram,
         file_name: str,
         render_params: dict[str, t.Any] | None = None,
@@ -258,7 +209,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _draw_additional_attributes_diagram(
         self,
-        work_item: data_model.CapellaWorkItem,
+        work_item: polarion_api.WorkItem,
         diagram: m.AbstractDiagram,
         attribute: str,
         title: str,
@@ -305,7 +256,10 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         return self._sanitize_text(obj, linked_text)
 
     def _sanitize_text(
-        self, obj: m.ModelElement | m.Diagram, text: markupsafe.Markup | str
+        self,
+        obj: m.ModelElement | m.Diagram,
+        text: markupsafe.Markup | str,
+        errors: set[str],
     ) -> tuple[
         list[str],
         markupsafe.Markup,
@@ -314,7 +268,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
             lambda match: self._replace_markup(
-                obj.uuid, match, referenced_uuids, 2
+                match, referenced_uuids, errors, 2
             ),
             text,
         )
@@ -370,9 +324,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                         )
 
             except FileNotFoundError:
-                self.converter_session[obj.uuid].errors.add(
-                    f"Inline image can't be found from {file_path!r}."
-                )
+                errors.add(f"Inline image can't be found from {file_path!r}.")
 
         repaired_markup = chelpers.process_html_fragments(
             replaced_markup, repair_images
@@ -381,9 +333,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
     def _replace_markup(
         self,
-        origin_uuid: str,
         match: re.Match,
         referenced_uuids: list[str],
+        errors: set[str],
         default_group: int = 1,
     ) -> str:
         """Replace UUID references in a ``match`` with a work item link.
@@ -395,7 +347,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         try:
             self.model.by_uuid(uuid)
         except KeyError:
-            self.converter_session[origin_uuid].errors.add(
+            errors.add(
                 f"Non-existing model element referenced in description: {uuid}"
             )
             return polarion_html_helper.strike_through(
@@ -405,10 +357,106 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             referenced_uuids.append(uuid)
             return polarion_html_helper.POLARION_WORK_ITEM_URL.format(pid=pid)
 
-        self.converter_session[origin_uuid].errors.add(
-            f"Non-existing work item referenced in description: {uuid}"
-        )
+        errors.add(f"Non-existing work item referenced in description: {uuid}")
         return match.group(default_group)
+
+
+class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
+    """The general serializer class for CapellaWorkItems."""
+
+    def __init__(
+        self,
+        model: capellambse.MelodyModel,
+        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
+        converter_session: data_session.ConverterSession,
+        generate_attachments: bool,
+        generate_figure_captions: bool = False,
+    ):
+        super().__init__(
+            model,
+            generate_figure_captions,
+            generate_attachments,
+            capella_polarion_mapping,
+        )
+        self.converter_session = converter_session
+        self.jinja_envs: dict[str, jinja2.Environment] = {}
+
+    def serialize_all(self) -> list[data_model.CapellaWorkItem]:
+        """Serialize all items of the converter_session."""
+        work_items = (self.serialize(uuid) for uuid in self.converter_session)
+        return list(filter(None, work_items))
+
+    def serialize(self, uuid: str) -> data_model.CapellaWorkItem | None:
+        """Return a CapellaWorkItem for the given diagram or element."""
+        converter_data = self.converter_session[uuid]
+        work_item_id = None
+        if old := self.capella_polarion_mapping.get_work_item_by_capella_uuid(
+            uuid
+        ):
+            work_item_id = old.id
+
+        self.__generic_work_item(converter_data, work_item_id)
+        assert converter_data.work_item is not None
+
+        assert isinstance(converter_data.type_config.converters, dict)
+        for converter, params in converter_data.type_config.converters.items():
+            try:
+                serializer: cabc.Callable[
+                    ...,
+                    data_model.CapellaWorkItem,
+                ] = getattr(self, f"_{converter}")
+                serializer(converter_data, **params)
+            except Exception as error:
+                converter_data.errors.add(
+                    ", ".join([str(a) for a in error.args])
+                )
+                converter_data.work_item = None
+
+        if converter_data.errors:
+            log_args = (
+                converter_data.capella_element._short_repr_(),
+                "\n\t".join(converter_data.errors),
+            )
+            if converter_data.work_item is None:
+                logger.error("Serialization of %r failed:\n\t%s", *log_args)
+            else:
+                logger.warning(
+                    "Serialization of %r successful, but with warnings:\n\t%s",
+                    *log_args,
+                )
+        return converter_data.work_item
+
+    # General helper functions
+
+    def _sanitize_linked_text(
+        self,
+        obj: m.ModelElement | m.Diagram,
+        original_element: m.ModelElement | m.Diagram | None = None,
+    ) -> tuple[
+        list[str],
+        markupsafe.Markup,
+        list[data_model.Capella2PolarionAttachment],
+    ]:
+        original_element = original_element or obj
+        linked_text = getattr(
+            obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
+        )["capella:linkedText"]
+        linked_text = polarion_html_helper.RE_DESCR_DELETED_PATTERN.sub(
+            lambda match: polarion_html_helper.strike_through(
+                self._replace_markup(
+                    match,
+                    [],
+                    self.converter_session[original_element.uuid].errors,
+                )
+            ),
+            linked_text,
+        )
+        linked_text = linked_text.replace("\n", "<br>")
+        return self._sanitize_text(
+            obj,
+            linked_text,
+            self.converter_session[original_element.uuid].errors,
+        )
 
     def _get_requirement_types_text(
         self, obj: m.ModelElement | m.Diagram
@@ -443,7 +491,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
         uuids, value, attachments = self._sanitize_text(
-            obj, raw_description or markupsafe.Markup("")
+            obj,
+            raw_description or markupsafe.Markup(""),
+            converter_data.errors,
         )
         converter_data.description_references = uuids
         requirement_types = self._get_requirement_types_text(obj)
@@ -538,7 +588,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         def get_condition(cap: m.ModelElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
                 return ""
-            _, value, _ = self._sanitize_linked_text(condition)
+            _, value, _ = self._sanitize_linked_text(condition, obj)
             return f'<div style="text-align: center;">{value}</div>'
 
         pre_condition = get_condition(obj, "precondition")
@@ -633,7 +683,11 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             converter_data.work_item.additional_attributes[field_id] = {
                 "type": "text/html",
                 "value": self._render_jinja_template(
-                    template_folder, template_path, converter_data, params
+                    jinja_properties.get("template_folder", ""),
+                    jinja_properties["template_path"],
+                    converter_data,
+                    converter_data.errors,
+                    params
                 ),
             }
 
@@ -656,6 +710,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
                 template_folder,
                 template_path,
                 converter_data,
+                converter_data.errors,
                 render_parameters,
             )
         )
