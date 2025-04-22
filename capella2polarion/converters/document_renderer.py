@@ -196,6 +196,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str,
         polarion_name: str,
+        polarion_type: str | None = None,
         document_title: str | None = None,
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
@@ -225,6 +226,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str | None = None,
         polarion_name: str | None = None,
+        polarion_type: str | None = None,
         document_title: str | None = None,
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
@@ -240,6 +242,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if document is not None:
             polarion_folder = document.module_folder
             polarion_name = document.module_name
+            polarion_type = document.type
 
         if polarion_name is None or polarion_folder is None:
             raise AssertionError(
@@ -262,6 +265,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 title=document_title,
                 module_folder=polarion_folder,
                 module_name=polarion_name,
+                type=polarion_type,
                 outline_numbering=heading_numbering,
             )
             if rendering_layouts is not None:
@@ -295,6 +299,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document_project_id: str | None = None,
     ) -> data_model.DocumentData:
         """Update a mixed authority document."""
+        document.type = None
         text_work_item_provider = (
             text_work_item_provider or twi.TextWorkItemProvider()
         )
@@ -385,14 +390,13 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
     def _get_and_customize_doc(
         self,
         project_id: str | None,
-        space: str,
-        name: str,
-        title: str | None,
+        section: document_config.DocumentRenderingInstance,
         rendering_layouts: list[polarion_api.RenderingLayout],
         heading_numbering: bool,
     ) -> tuple[polarion_api.Document | None, list[polarion_api.WorkItem]]:
         old_doc, text_work_items = self.existing_documents.get(
-            (project_id, space, name), (None, [])
+            (project_id, section.polarion_space, section.polarion_name),
+            (None, []),
         )
         if old_doc is not None:
             old_doc = polarion_api.Document(
@@ -403,8 +407,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 home_page_content=old_doc.home_page_content,
                 rendering_layouts=old_doc.rendering_layouts,
             )
-            if title:
-                old_doc.title = title
+            if section.polarion_title:
+                old_doc.title = section.polarion_title
+            if section.polarion_type:
+                old_doc.type = section.polarion_type
             if self.overwrite_layouts:
                 self._update_rendering_layouts(old_doc, rendering_layouts)
             if self.overwrite_heading_numbering:
@@ -468,9 +474,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             for instance in config.instances:
                 old_doc, text_work_items = self._get_and_customize_doc(
                     config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
+                    instance,
                     rendering_layouts,
                     config.heading_numbering,
                 )
@@ -529,9 +533,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             for instance in config.instances:
                 old_doc, text_work_items = self._get_and_customize_doc(
                     config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
+                    instance,
                     rendering_layouts,
                     config.heading_numbering,
                 )
@@ -572,6 +574,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             instance.polarion_space,
                             instance.polarion_name,
                             instance.polarion_title,
+                            instance.polarion_type,
                             config.heading_numbering,
                             rendering_layouts,
                             text_work_item_provider=text_work_item_provider,
