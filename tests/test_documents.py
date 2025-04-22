@@ -231,6 +231,7 @@ def test_mixed_authority_document(
     old_doc = polarion_api.Document(
         module_folder="_default",
         module_name="TEST-DOC",
+        type="genericTemplateType",
         home_page_content=polarion_api.TextContent(
             type="text/html", value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8")
         ),
@@ -266,6 +267,7 @@ def test_mixed_authority_document(
         document_data.document.home_page_content.value
     )
 
+    assert document_data.document.type is None
     assert len(document_data.text_work_item_provider.new_text_work_items) == 2
     assert (
         document_data.text_work_item_provider.new_text_work_items["id1"].id
@@ -597,7 +599,7 @@ def test_insert_work_item_cross_project(
         DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
         "test",
         "name",
-        "title",
+        document_title="title",
         document_project_id="DIFFERENT",
         element="d8655737-39ab-4482-a934-ee847c7ff6bd",
     )
@@ -607,7 +609,7 @@ def test_insert_work_item_cross_project(
         DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
         "test",
         "name",
-        "title",
+        document_title="title",
         element="d8655737-39ab-4482-a934-ee847c7ff6bd",
     )
 
@@ -669,6 +671,10 @@ def test_full_authority_document_config():
     assert conf.full_authority[0].instances[0].polarion_space == "_default"
     assert conf.full_authority[0].instances[0].polarion_name == "id123"
     assert conf.full_authority[0].instances[0].polarion_title == "Interface23"
+    assert (
+        conf.full_authority[0].instances[0].polarion_type
+        == "genericTemplateType"
+    )
     assert conf.full_authority[0].instances[0].params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }

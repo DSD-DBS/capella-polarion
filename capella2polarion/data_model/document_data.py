@@ -29,6 +29,7 @@ class DocumentInfo:
     """Class for information regarding a document which should be created."""
 
     project_id: str | None
+    doc_type: str | None
     module_folder: str
     module_name: str
     text_work_item_type: str

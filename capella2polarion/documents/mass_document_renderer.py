@@ -31,7 +31,7 @@ class ProjectData:
     )
 
 
-class MassDocumentRenderer:
+class MassDocumentRenderer(document_renderer.DocumentRenderer):
     """A class to render multiple documents based on configs."""
 
     def __init__(
@@ -42,6 +42,11 @@ class MassDocumentRenderer:
         overwrite_heading_numbering: bool = False,
         overwrite_layouts: bool = False,
     ):
+        super().__init__(
+            polarion_repository,
+            model,
+            model_work_item_project_id,
+        )
         self.renderer = document_renderer.DocumentRenderer(
             polarion_repository, model, model_work_item_project_id
         )
@@ -85,9 +90,7 @@ class MassDocumentRenderer:
             for instance in config.instances:
                 old_doc, text_work_items = self._get_and_customize_doc(
                     config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
+                    instance,
                     rendering_layouts,
                     config.heading_numbering,
                 )
@@ -109,16 +112,14 @@ class MassDocumentRenderer:
                     continue
 
                 try:
-                    document_data = (
-                        self.renderer.update_mixed_authority_document(
-                            old_doc,
-                            config.template_directory,
-                            config.sections,
-                            instance.params,
-                            instance.section_params,
-                            text_work_item_provider,
-                            config.project_id,
-                        )
+                    document_data = self.update_mixed_authority_document(
+                        old_doc,
+                        config.template_directory,
+                        config.sections,
+                        instance.params,
+                        instance.section_params,
+                        text_work_item_provider,
+                        config.project_id,
                     )
                 except Exception as e:
                     logger.error(
@@ -148,9 +149,7 @@ class MassDocumentRenderer:
             for instance in config.instances:
                 old_doc, text_work_items = self._get_and_customize_doc(
                     config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
+                    instance,
                     rendering_layouts,
                     config.heading_numbering,
                 )
@@ -164,7 +163,7 @@ class MassDocumentRenderer:
                         continue
 
                     try:
-                        document_data = self.renderer.render_document(
+                        document_data = self.render_document(
                             config.template_directory,
                             config.template,
                             document=old_doc,
@@ -185,12 +184,13 @@ class MassDocumentRenderer:
                     project_data.updated_docs.append(document_data)
                 else:
                     try:
-                        document_data = self.renderer.render_document(
+                        document_data = self.render_document(
                             config.template_directory,
                             config.template,
                             instance.polarion_space,
                             instance.polarion_name,
                             instance.polarion_title,
+                            instance.polarion_type,
                             config.heading_numbering,
                             rendering_layouts,
                             text_work_item_provider=text_work_item_provider,
@@ -226,14 +226,13 @@ class MassDocumentRenderer:
     def _get_and_customize_doc(
         self,
         project_id: str | None,
-        space: str,
-        name: str,
-        title: str | None,
+        section: document_config.DocumentRenderingInstance,
         rendering_layouts: list[polarion_api.RenderingLayout],
         heading_numbering: bool,
     ) -> tuple[polarion_api.Document | None, list[polarion_api.WorkItem]]:
         old_doc, text_work_items = self.existing_documents.get(
-            (project_id, space, name), (None, [])
+            (project_id, section.polarion_space, section.polarion_name),
+            (None, []),
         )
         if old_doc is not None:
             old_doc = polarion_api.Document(
@@ -244,8 +243,10 @@ class MassDocumentRenderer:
                 home_page_content=old_doc.home_page_content,
                 rendering_layouts=old_doc.rendering_layouts,
             )
-            if title:
-                old_doc.title = title
+            if section.polarion_title:
+                old_doc.title = section.polarion_title
+            if section.polarion_type:
+                old_doc.type = section.polarion_type
             if self.overwrite_layouts:
                 self._update_rendering_layouts(old_doc, rendering_layouts)
             if self.overwrite_heading_numbering:
