@@ -34,6 +34,7 @@ class DocumentRenderingInstance(pydantic.BaseModel):
     polarion_space: str
     polarion_name: str
     polarion_title: str | None = None
+    polarion_type: str | None = None
     params: dict[str, t.Any] = pydantic.Field(default_factory=dict)
 
 
@@ -89,6 +90,7 @@ class DocumentConfigs(pydantic.BaseModel):
             for inst in conf.instances:
                 yield data_model.DocumentInfo(
                     project_id=conf.project_id,
+                    doc_type=inst.polarion_type,
                     module_folder=inst.polarion_space,
                     module_name=inst.polarion_name,
                     text_work_item_type=conf.text_work_item_type,
