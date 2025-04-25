@@ -98,7 +98,7 @@ def _default_type_conversion(c_type: str) -> str:
 class ConverterConfig:
     """The overall Config for capella2polarion."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._layer_configs: dict[str, dict[str, list[CapellaTypeConfig]]] = {}
         self._global_configs: dict[str, CapellaTypeConfig] = {}
         self.polarion_types: set[str] = set()
@@ -110,7 +110,7 @@ class ConverterConfig:
         synchronize_config: t.TextIO | str,
         type_prefix: str = "",
         role_prefix: str = "",
-    ):
+    ) -> None:
         """Read a given yaml file as config."""
         config_dict = yaml.safe_load(synchronize_config)
         # We handle the cross layer config separately as global_configs
@@ -142,7 +142,7 @@ class ConverterConfig:
                     c_type, c_type_config, layer, type_prefix, role_prefix
                 )
 
-    def add_layer(self, layer: str):
+    def add_layer(self, layer: str) -> None:
         """Add a new layer without configuring any types."""
         self._layer_configs[layer] = {}
 
@@ -156,7 +156,7 @@ class ConverterConfig:
         layer: str,
         type_prefix: str = "",
         role_prefix: str = "",
-    ):
+    ) -> None:
         """Set one or multiple configs for a type to an existing layer."""
         type_configs = _read_capella_type_configs(c_type_config)
         self._layer_configs[layer][c_type] = []
@@ -207,7 +207,7 @@ class ConverterConfig:
         type_config: dict[str, t.Any],
         type_prefix: str = "",
         role_prefix: str = "",
-    ):
+    ) -> None:
         """Set a global config for a specific type."""
         p_type = add_prefix(
             type_config.get("polarion_type")
@@ -234,7 +234,7 @@ class ConverterConfig:
         diagram_config: dict[str, t.Any],
         type_prefix: str = "",
         role_prefix: str = "",
-    ):
+    ) -> None:
         """Set the diagram config."""
         c_type = "diagram"
         p_type = add_prefix(
@@ -415,25 +415,24 @@ def _filter_links(
             or hasattr(c_class, capella_attr)
         ):
             available_links.append(link)
+        elif is_global:
+            logger.info(
+                "Global link %s is not available on Capella type %s",
+                capella_attr,
+                c_type,
+            )
         else:
-            if is_global:
-                logger.info(
-                    "Global link %s is not available on Capella type %s",
-                    capella_attr,
-                    c_type,
-                )
-            else:
-                logger.error(
-                    "Link %s is not available on Capella type %s",
-                    capella_attr,
-                    c_type,
-                )
+            logger.error(
+                "Link %s is not available on Capella type %s",
+                capella_attr,
+                c_type,
+            )
     return available_links
 
 
 def merge_converters(
     base_converters: dict[str, dict[str, t.Any]],
-    additional_converters: t.Dict[str, dict[str, t.Any]] | None,
+    additional_converters: dict[str, dict[str, t.Any]] | None,
 ) -> dict[str, dict[str, t.Any]]:
     """Merge converters properly handling ``add_attributes``."""
     if (

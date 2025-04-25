@@ -68,7 +68,7 @@ def _resolve_capella_attribute(
         case _:
             value = getattr(converter_data.capella_element, attribute)
 
-    if isinstance(value, (str, enum.Enum)):
+    if isinstance(value, str | enum.Enum):
         if isinstance(value, enum.Enum):
             return value.name
         return value
@@ -147,7 +147,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         self,
         work_item: data_model.CapellaWorkItem,
         attachment: data_model.Capella2PolarionAttachment,
-    ):
+    ) -> None:
         assert attachment.file_name is not None
         attachment.work_item_id = work_item.id or ""
         work_item.attachments.append(attachment)
@@ -193,7 +193,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         template_path: str | pathlib.Path,
         converter_data: data_session.ConverterData,
         render_params: dict[str, t.Any] | None = None,
-    ):
+    ) -> markupsafe.Markup:
         env = self._get_jinja_env(str(template_folder))
         template = env.get_template(str(template_path))
         rendered_jinja = template.render(
@@ -207,7 +207,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         )
         return text
 
-    def setup_env(self, env: jinja2.Environment):
+    def setup_env(self, env: jinja2.Environment) -> None:
         """Add the link rendering filter."""
         env.filters["make_href"] = self.__make_href_filter
         env.globals["insert_diagram"] = self.__insert_diagram
@@ -225,7 +225,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         render_params: dict[str, t.Any] | None = None,
         max_width: int = 800,
         caption: tuple[str, str] | None = None,
-    ):
+    ) -> str:
         if attachment := next(
             (
                 att
@@ -263,7 +263,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         attribute: str,
         title: str,
         render_params: dict[str, t.Any] | None = None,
-    ):
+    ) -> None:
         diagram_html, attachment = self._draw_diagram_svg(
             diagram,
             attribute,
@@ -285,7 +285,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             "value": diagram_html,
         }
 
-    def _sanitize_linked_text(self, obj: m.ModelElement | m.Diagram) -> tuple[
+    def _sanitize_linked_text(
+        self, obj: m.ModelElement | m.Diagram
+    ) -> tuple[
         list[str],
         markupsafe.Markup,
         list[data_model.Capella2PolarionAttachment],
@@ -327,7 +329,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
             ):
                 return
 
-            file_url = pathlib.PurePosixPath(node.get("src"))
+            file_url = pathlib.PurePosixPath(node.attrib["src"])
             workspace = file_url.parts[0]
             file_path = pathlib.PurePosixPath(*file_url.parts[1:])
             mime_type, _ = mimetypes.guess_type(file_url)
@@ -465,7 +467,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
         self,
         converter_data: data_session.ConverterData,
         attributes: list[dict[str, t.Any]],
-    ):
+    ) -> data_model.CapellaWorkItem:
         assert converter_data.work_item is not None
         for attribute in attributes:
             try:
@@ -556,9 +558,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     ) -> data_model.CapellaWorkItem:
         """Return attributes for a ``Constraint``."""
         assert converter_data.work_item, "No work item set yet"
-        assert (
-            converter_data.work_item.description
-        ), "Description should already be defined"
+        assert converter_data.work_item.description, (
+            "Description should already be defined"
+        )
         (
             uuids,
             converter_data.work_item.description.value,
@@ -646,9 +648,9 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
     ) -> data_model.CapellaWorkItem:
         """Use a Jinja template to render the description content."""
         assert converter_data.work_item, "No work item set yet"
-        assert (
-            converter_data.work_item.description
-        ), "Description should already be defined"
+        assert converter_data.work_item.description, (
+            "Description should already be defined"
+        )
         converter_data.work_item.description.value = (
             self._render_jinja_template(
                 template_folder,

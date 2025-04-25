@@ -34,30 +34,15 @@ We have a dependency on [cairosvg](https://cairosvg.org/). Please check their
 
 You can install the latest released version directly from [PyPI](https://pypi.org/project/capella2polarion/).
 
-```zsh
+```sh
 pip install capella2polarion
-```
-
-To set up a development environment, clone the project and install it into a
-virtual environment.
-
-```zsh
-git clone https://github.com/DSD-DBS/capella-polarion.git
-cd capella2polarion
-python -m venv .venv
-
-source .venv/bin/activate.sh  # for Linux / Mac
-.venv\Scripts\activate  # for Windows
-
-pip install -U pip pre-commit
-pip install -e '.[docs,test]'
-pre-commit install
 ```
 
 # Contributing
 
 We'd love to see your bug reports and improvement suggestions! Please take a
-look at our [guidelines for contributors](CONTRIBUTING.md) for details.
+look at our [guidelines for contributors](CONTRIBUTING.md) for details. It also
+contains a short guide on how to set up a local development environment.
 
 # Licenses
 

@@ -196,4 +196,4 @@ def empty_polarion_worker(monkeypatch: pytest.MonkeyPatch):
         pat="PrivateAccessToken",
         delete_work_items=False,
     )
-    yield _setup_polarion_worker(monkeypatch, polarion_params)
+    return _setup_polarion_worker(monkeypatch, polarion_params)

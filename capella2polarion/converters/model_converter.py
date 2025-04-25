@@ -39,7 +39,7 @@ class ModelConverter:
     def read_model(
         self,
         config: converter_config.ConverterConfig,
-    ):
+    ) -> None:
         """Read the model using a given config and diagram_idx."""
         missing_types: set[tuple[str, str, dict[str, t.Any]]] = set()
         for layer, c_type in config.layers_and_types():
@@ -133,7 +133,7 @@ class ModelConverter:
         self,
         polarion_data_repo: polarion_repo.PolarionDataRepository,
         generate_grouped_links_custom_fields: bool,
-    ):
+    ) -> None:
         """Generate links for all work items and add custom fields for them."""
         back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         link_serializer = link_converter.LinkSerializer(

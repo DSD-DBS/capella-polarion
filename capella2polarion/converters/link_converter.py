@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Objects for synchronization of Capella model objects to Polarion."""
+
 from __future__ import annotations
 
 import collections.abc as cabc
@@ -97,7 +98,7 @@ class LinkSerializer:
                 self._link_field_groups[link_config.link_field].extend(links)
             except Exception as error:
                 error_message = make_link_logging_message(
-                    f"{type(error).__name__} {str(error)}",
+                    f"{type(error).__name__} {error!s}",
                     link_config.capella_attr,
                 )
                 link_errors.extend(error_message)
@@ -211,7 +212,7 @@ class LinkSerializer:
         back_links: (
             dict[str, dict[str, list[polarion_api.WorkItemLink]]] | None
         ) = None,
-    ):
+    ) -> None:
         """Create the grouped link fields from the primary work item.
 
         Parameters
@@ -251,7 +252,7 @@ class LinkSerializer:
         links: list[polarion_api.WorkItemLink],
         reverse: bool = False,
         config: converter_config.LinkConfig | None = None,
-    ):
+    ) -> None:
         link_map: dict[str, dict[str, list[str]]]
         if reverse:
             link_map = {link.primary_work_item_id: {} for link in links}
@@ -312,7 +313,7 @@ class LinkSerializer:
         self,
         work_item: data_model.CapellaWorkItem,
         links: dict[str, list[polarion_api.WorkItemLink]],
-    ):
+    ) -> None:
         """Create fields for the given WorkItem using a list of backlinks.
 
         Parameters

@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Tool for CLI work."""
+
 from __future__ import annotations
 
 import logging
@@ -41,33 +42,27 @@ class Capella2PolarionCli:
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
 
-    def _none_save_value_string(self, value: str | None) -> str | None:
-        return "None" if value is None else value
-
     def print_state(self) -> None:
         """Print the State of the cli tool."""
 
-        def _type(value):
+        def _type(value: type[typing.Any]) -> str:
             return f"type: {type(value)}"
-
-        def _value(value):
-            return value
 
         click.echo("---------------------------------------")
         lighted_member_vars = [
             attribute
             for attribute in dir(self)
-            if not (attribute.startswith("__") or (attribute.startswith("__")))
+            if not attribute.startswith("__")
         ]
         for lighted_member_var in lighted_member_vars:
             if lighted_member_var[0].isupper():
                 member_value = getattr(self, lighted_member_var)
                 member_type = type(member_value)
-                converters: dict[typing.Type, typing.Callable] = {
+                converters: dict[type, typing.Callable[..., str]] = {
                     bool: str,
                     int: str,
                     float: str,
-                    str: _value,
+                    str: str,
                     type: _type,
                     pathlib.PosixPath: str,
                 }
@@ -79,7 +74,7 @@ class Capella2PolarionCli:
                     )
                 else:
                     string_value = _type(member_value)
-                string_value = self._none_save_value_string(string_value)
+                string_value = str(string_value)
                 click.echo(f"{lighted_member_var}: '{string_value}'")
 
     def setup_logger(self) -> None:

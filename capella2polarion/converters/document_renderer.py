@@ -80,7 +80,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self.existing_documents: polarion_repo.DocumentRepository = {}
         self.model_work_item_project_id = model_work_item_project_id
 
-    def setup_env(self, env: jinja2.Environment):
+    def setup_env(self, env: jinja2.Environment) -> None:
         """Add globals and filters to the environment."""
         env.globals["insert_work_item"] = self.__insert_work_item
         env.globals["heading"] = self.__heading
@@ -134,10 +134,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     custom_info=custom_info,
                     project=self.model_work_item_project_id,
                 )
-            else:
-                return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
-                    pid=wi.id, lid=layout_index, custom_info=custom_info
-                )
+            return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
+                pid=wi.id, lid=layout_index, custom_info=custom_info
+            )
 
         return polarion_html_helper.RED_TEXT.format(
             text=f"Missing WorkItem for UUID {obj.uuid}"
@@ -161,7 +160,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             text=f"Missing WorkItem for {obj.xtype} {obj.name} ({obj.uuid})"
         )
 
-    def __heading(self, level: int, text: str, session: RenderingSession):
+    def __heading(
+        self, level: int, text: str, session: RenderingSession
+    ) -> str:
         if session.heading_ids:
             hid = session.heading_ids.pop(0)
             session.headings.append(polarion_api.WorkItem(id=hid, title=text))
@@ -240,10 +241,11 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             polarion_folder = document.module_folder
             polarion_name = document.module_name
 
-        assert polarion_name is not None and polarion_folder is not None, (
-            "You either need to pass a folder and a name or a document with a "
-            "module_folder and a module_name defined"
-        )
+        if polarion_name is None or polarion_folder is None:
+            raise AssertionError(
+                "You either need to pass a folder and a name or a document"
+                " with a module_folder and a module_name defined"
+            )
 
         env = self._get_jinja_env(template_folder)
         template = env.get_template(template_name)
@@ -296,9 +298,12 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         text_work_item_provider = (
             text_work_item_provider or twi.TextWorkItemProvider()
         )
-        assert (
-            document.home_page_content and document.home_page_content.value
-        ), "In mixed authority the document must have content"
+        assert document.home_page_content, (
+            "In mixed authority the document must have content"
+        )
+        assert document.home_page_content.value, (
+            "In mixed authority the document must have content"
+        )
         html_elements = lxmlhtml.fragments_fromstring(
             document.home_page_content.value
         )
@@ -367,7 +372,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         document: polarion_api.Document,
         rendering_layouts: list[polarion_api.RenderingLayout],
-    ):
+    ) -> None:
         """Keep existing work item layouts in their original order."""
         document.rendering_layouts = document.rendering_layouts or []
         for rendering_layout in rendering_layouts:
@@ -429,7 +434,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         document: polarion_api.Document,
         config: document_config.BaseDocumentRenderingConfig,
-    ):
+    ) -> bool:
         status = document.status
         document.status = None
         if (
@@ -452,7 +457,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         mixed_authority_configs: list[
             document_config.MixedAuthorityDocumentRenderingConfig
         ],
-    ):
+    ) -> None:
         for config in mixed_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
@@ -513,7 +518,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         full_authority_configs: list[
             document_config.FullAuthorityDocumentRenderingConfig
         ],
-    ):
+    ) -> None:
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
@@ -587,7 +592,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
     def _extract_section_areas(
         self, html_elements: list[etree._Element], session: RenderingSession
-    ):
+    ) -> dict[str, tuple[int, int]]:
         section_areas = {}
         current_area_id = None
         current_area_start = None
@@ -620,9 +625,9 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                     ):
                         element_id = content[0].get("id")
                         if content[0].get("class") == AREA_START_CLS:
-                            assert (
-                                element_id is not None
-                            ), "There was no id set to identify the area"
+                            assert element_id is not None, (
+                                "There was no id set to identify the area"
+                            )
                             assert current_area_id is None, (
                                 f"Started a new area {element_id} "
                                 f"while being in area {current_area_id}"
@@ -630,13 +635,14 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                             current_area_id = element_id
                             current_area_start = element_index
                         elif content[0].get("class") == AREA_END_CLS:
-                            assert (
-                                element_id is not None
-                            ), "There was no id set to identify the area"
+                            assert element_id is not None, (
+                                "There was no id set to identify the area"
+                            )
                             assert current_area_id == element_id, (
                                 f"Ended area {element_id} "
                                 f"while being in area {current_area_id}"
                             )
+                            assert current_area_start is not None
                             section_areas[current_area_id] = (
                                 current_area_start,
                                 element_index,

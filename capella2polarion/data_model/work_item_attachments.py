@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = [
-    "calculate_content_checksum",
     "Capella2PolarionAttachment",
-    "CapellaDiagramAttachment",
     "CapellaContextDiagramAttachment",
+    "CapellaDiagramAttachment",
     "PngConvertedSvgAttachment",
+    "calculate_content_checksum",
 ]
 
 
@@ -90,7 +90,7 @@ class CapellaDiagramAttachment(Capella2PolarionAttachment):
         return diagram_svg
 
     @content_bytes.setter
-    def content_bytes(self, value: bytes | None):
+    def content_bytes(self, value: bytes | None) -> None:
         self._content_bytes = value
 
 
@@ -162,9 +162,9 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
     """
 
     def __init__(self, attachment: polarion_api.WorkItemAttachment):
-        assert (
-            attachment.mime_type == SVG_MIME_TYPE
-        ), "PngConvertedSvgAttachment must be initialized using SVG attachment"
+        assert attachment.mime_type == SVG_MIME_TYPE, (
+            "PngConvertedSvgAttachment must be initialized using SVG attachment"
+        )
         assert attachment.file_name is not None, "The file_name must be filled"
         super().__init__(
             attachment.work_item_id,
@@ -188,5 +188,5 @@ class PngConvertedSvgAttachment(Capella2PolarionAttachment):
         return self._content_bytes
 
     @content_bytes.setter
-    def content_bytes(self, value: bytes | None):
+    def content_bytes(self, value: bytes | None) -> None:
         self._content_bytes = value

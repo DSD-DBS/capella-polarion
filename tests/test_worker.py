@@ -44,7 +44,6 @@ def test_polarion_worker_delete_mode():
 def test_polarion_worker_reuse_deleted_work_item(
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
 ):
-
     new_work_item = work_items.CapellaWorkItem(
         "ID", title="Test", status="open", uuid_capella="123", type="test"
     )

@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """A module to store data during the conversion process."""
+
 from __future__ import annotations
 
 import dataclasses

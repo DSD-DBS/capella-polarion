@@ -36,7 +36,7 @@ class CLIMocks(t.NamedTuple):
     update_documents: mock.MagicMock
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
     mock_api_client = mock.MagicMock(spec=polarion_api.PolarionClient)
     monkeypatch.setattr(polarion_api, "PolarionClient", mock_api_client)
@@ -73,7 +73,7 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
         mock_patch_work_items,
     )
     mock_get_document = mock.MagicMock()
-    mock_get_document.side_effect = lambda folder, name, project_id: (
+    mock_get_document.side_effect = lambda folder, name, project_id: (  # noqa: ARG005
         polarion_api.Document(
             module_folder=folder,
             module_name=name,
