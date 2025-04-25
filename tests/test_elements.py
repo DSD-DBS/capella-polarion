@@ -12,7 +12,6 @@ import capellambse
 import markupsafe
 import polarion_rest_api_client as polarion_api
 import pytest
-from capellambse import model as m
 from capellambse_context_diagrams import context, filters
 
 from capella2polarion import data_model
@@ -30,7 +29,6 @@ from .conftest import (  # type: ignore[import]
     LINK_CONFIG,
     TEST_MODEL_ELEMENTS_CONFIG,
     BaseObjectContainer,
-    FakeModelObject,
 )
 
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
@@ -172,27 +170,30 @@ class GroupedLinksBaseObject(t.TypedDict):
 # pylint: disable=redefined-outer-name
 @pytest.fixture
 def grouped_links_base_object(
+    model: capellambse.MelodyModel,
     base_object: BaseObjectContainer,
     dummy_work_items: dict[str, data_model.CapellaWorkItem],
 ) -> GroupedLinksBaseObject:
     config = converter_config.CapellaTypeConfig(
         "fakeModelObject", links=[LINK_CONFIG]
     )
-    mock_model = mock.MagicMock()
-    fake_2 = FakeModelObject("uuid2", "Fake 2")
-    fake_1 = FakeModelObject("uuid1", "Fake 1")
-    fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
+    model.la.extensions.clear()
+    fake_2 = model.la.extensions.create(
+        "FakeModelObject", uuid="uuid2", name="Fake 2"
+    )
+    fake_1 = model.la.extensions.create(
+        "FakeModelObject", uuid="uuid1", name="Fake 1"
+    )
+    fake_0 = model.la.extensions.create(
+        "FakeModelObject", uuid="uuid0", name="Fake 0"
+    )
     fake_1.attribute = [fake_0, fake_2]
-    mock_model.by_uuid.side_effect = lambda uuid: {
-        "uuid0": fake_0,
-        "uuid1": fake_1,
-        "uuid2": fake_2,
-    }[uuid]
+    fake_0.attribute = [fake_1, fake_2]
     link_serializer = link_converter.LinkSerializer(
         base_object.pw.polarion_data_repo,
         base_object.mc.converter_session,
         base_object.pw.polarion_params.project_id,
-        mock_model,
+        model,
     )
     return {
         "link_serializer": link_serializer,
@@ -470,40 +471,12 @@ class TestModelElements:
         assert links == [expected]
 
     @staticmethod
-    def test_create_links_logs_error_when_no_uuid_is_found_on_value(
-        base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
-    ):
-        expected = (
-            "Link creation for \"<FakeModelObject 'Fake 1' (uuid1)>\" failed:"
-            "\n\tRequested attribute: 'attribute'"
-            "\n\tAssertionError No 'uuid' on value"
-            "\n\t--------"
-        )
-        no_uuid = FakeModelObject("")
-        del no_uuid.uuid
-        base_object.mc.converter_session[
-            "uuid1"
-        ].capella_element.attribute = no_uuid
-
-        with caplog.at_level(logging.ERROR):
-            link_serializer = link_converter.LinkSerializer(
-                base_object.pw.polarion_data_repo,
-                base_object.mc.converter_session,
-                base_object.pw.polarion_params.project_id,
-                base_object.c2pcli.capella_model,
-            )
-            links = link_serializer.create_links_for_work_item("uuid1")
-
-        assert not links
-        assert caplog.messages[0] == expected
-
-    @staticmethod
     def test_create_links_logs_warning_model_element_behind_attribute_is_none(
         base_object: BaseObjectContainer, caplog: pytest.LogCaptureFixture
     ):
         expected = (
             "For model element \"<FakeModelObject 'Fake 1' (uuid1)>\" "
-            'attribute "attribute" is not set'
+            'attribute "singleattr" is not set'
         )
 
         with caplog.at_level(logging.INFO):
@@ -643,17 +616,21 @@ class TestModelElements:
         assert caplog.messages[0].startswith(expected)
 
     @staticmethod
-    def test_create_links_from_ElementList(base_object: BaseObjectContainer):
-        fake = FakeModelObject("uuid4", name="Fake 4")
-        fake1 = FakeModelObject("uuid5", name="Fake 5")
-        obj = FakeModelObject(
-            "uuid6",
+    def test_create_links_from_ElementList(
+        model: capellambse.MelodyModel,
+        base_object: BaseObjectContainer,
+    ):
+        fake = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid4", name="Fake 4"
+        )
+        fake1 = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid5", name="Fake 5"
+        )
+        obj = model.la.extensions.create(
+            "FakeModelObject",
+            uuid="uuid6",
             name="Fake 6",
-            attribute=m.ElementList(
-                base_object.c2pcli.capella_model,
-                [fake, fake1],
-                FakeModelObject,
-            ),
+            attribute=[fake, fake1],
         )
         fake_objects = {"uuid4": fake, "uuid5": fake1, "uuid6": obj}
 
@@ -1104,6 +1081,7 @@ class TestModelElements:
 
     @staticmethod
     def test_patch_work_item_grouped_links(
+        model: capellambse.MelodyModel,
         monkeypatch: pytest.MonkeyPatch,
         base_object: BaseObjectContainer,
         dummy_work_items: dict[str, data_model.CapellaWorkItem],
@@ -1112,10 +1090,14 @@ class TestModelElements:
             work_item.uuid_capella: data_session.ConverterData(
                 "",
                 converter_config.CapellaTypeConfig("fakeModelObject"),
-                FakeModelObject("uuid4", name="Fake 4"),
+                model.la.extensions.create(
+                    "FakeModelObject",
+                    uuid=f"fake{i}",
+                    name=f"Fake {i}",
+                ),
                 work_item,
             )
-            for work_item in dummy_work_items.values()
+            for (i, work_item) in enumerate(dummy_work_items.values(), start=4)
         }
         base_object.pw.polarion_data_repo = (
             polarion_repo.PolarionDataRepository(
@@ -1163,11 +1145,8 @@ class TestModelElements:
             "create_grouped_back_link_fields",
             mock_grouped_links_reverse,
         )
-        base_object.c2pcli.capella_model = mock_model = mock.MagicMock()
-        mock_model.by_uuid.side_effect = [
-            FakeModelObject(f"uuid{i}", name=f"Fake {i}") for i in range(3)
-        ]
-        base_object.mc.model = mock_model
+        base_object.c2pcli.capella_model = model
+        base_object.mc.model = model
         base_object.mc.generate_work_item_links(
             base_object.pw.polarion_data_repo,
             generate_grouped_links_custom_fields=True,
@@ -1206,6 +1185,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes(
+        model: capellambse.MelodyModel,
         base_object: BaseObjectContainer,
         dummy_work_items: dict[str, data_model.CapellaWorkItem],
     ):
@@ -1220,21 +1200,25 @@ class TestModelElements:
                 )
             ],
         )
-        mock_model = mock.MagicMock()
-        fake_2 = FakeModelObject("uuid2", "Fale 2")
-        fake_1 = FakeModelObject("uuid1", "Fake 1")
-        fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
+        model.la.extensions.clear()
+        fake_2 = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid2", name="Fale 2"
+        )
+        fake_1 = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid1", name="Fake 1"
+        )
+        fake_0 = model.la.extensions.create(
+            "FakeModelObject",
+            uuid="uuid0",
+            name="Fake 0",
+            attribute=[fake_1, fake_2],
+        )
         fake_1.attribute = [fake_0, fake_2]
-        mock_model.by_uuid.side_effect = lambda uuid: {
-            "uuid0": fake_0,
-            "uuid1": fake_1,
-            "uuid2": fake_2,
-        }[uuid]
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
-            mock_model,
+            model,
         )
         for work_item in dummy_work_items.values():
             converter_data = data_session.ConverterData(
@@ -1266,6 +1250,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_grouped_links_attributes_with_role_prefix(
+        model: capellambse.MelodyModel,
         base_object: BaseObjectContainer,
         dummy_work_items: dict[str, data_model.CapellaWorkItem],
     ):
@@ -1280,23 +1265,27 @@ class TestModelElements:
                 )
             ],
         )
-        mock_model = mock.MagicMock()
-        fake_2 = FakeModelObject("uuid2", "Fale 2")
-        fake_1 = FakeModelObject("uuid1", "Fake 1")
-        fake_0 = FakeModelObject("uuid0", "Fake 0", attribute=[fake_1, fake_2])
+        model.la.extensions.clear()
+        fake_2 = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid2", name="Fale 2"
+        )
+        fake_1 = model.la.extensions.create(
+            "FakeModelObject", uuid="uuid1", name="Fake 1"
+        )
+        fake_0 = model.la.extensions.create(
+            "FakeModelObject",
+            uuid="uuid0",
+            name="Fake 0",
+            attribute=[fake_1, fake_2],
+        )
         fake_1.attribute = [fake_0, fake_2]
-        mock_model.by_uuid.side_effect = lambda uuid: {
-            "uuid0": fake_0,
-            "uuid1": fake_1,
-            "uuid2": fake_2,
-        }[uuid]
         for link in dummy_work_items["uuid0"].linked_work_items:
             link.role = f"_C2P_{link.role}"
         link_serializer = link_converter.LinkSerializer(
             base_object.pw.polarion_data_repo,
             base_object.mc.converter_session,
             base_object.pw.polarion_params.project_id,
-            mock_model,
+            model,
         )
 
         for work_item in dummy_work_items.values():
@@ -1339,7 +1328,7 @@ class TestModelElements:
         converter_data_1.capella_element.attribute = (
             converter_data_2.capella_element
         )
-        converter_data_1.capella_element.attribute1 = (
+        converter_data_1.capella_element.singleattr = (
             converter_data_2.capella_element
         )
         expected_html = (
@@ -1355,7 +1344,7 @@ class TestModelElements:
         )
 
         assert (link_group := converter_data_1.work_item.attribute)
-        assert (link_group1 := converter_data_1.work_item.attribute1)
+        assert (link_group1 := converter_data_1.work_item.singleattr)
         assert link_group["value"] == link_group1["value"] == expected_html
 
     @staticmethod
@@ -1493,6 +1482,7 @@ class TestModelElements:
 
     @staticmethod
     def test_maintain_reverse_grouped_links_unidirectional_config(
+        model: capellambse.MelodyModel,
         grouped_links_base_object: GroupedLinksBaseObject,
     ):
         link_serializer = grouped_links_base_object["link_serializer"]
@@ -1501,11 +1491,14 @@ class TestModelElements:
         back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = {}
         data = {}
 
+        model.la.extensions.clear()
         for work_item in dummy_work_items.values():
             data[work_item.id] = converter_data = data_session.ConverterData(
                 "test",
                 config,
-                FakeModelObject(work_item.uuid_capella),
+                model.la.extensions.create(
+                    "FakeModelObject", uuid=work_item.uuid_capella
+                ),
                 work_item,
             )
             link_serializer._link_field_groups["attribute"] = (
@@ -1572,6 +1565,7 @@ class TestModelElements:
 
 
 def test_grouped_linked_work_items_order_consistency(
+    model: capellambse.MelodyModel,
     base_object: BaseObjectContainer,
 ):
     link_serializer = link_converter.LinkSerializer(
@@ -1583,7 +1577,10 @@ def test_grouped_linked_work_items_order_consistency(
     config = converter_config.CapellaTypeConfig("fakeModelObject", {})
     work_item = data_model.CapellaWorkItem("id", title="Dummy")
     converter_data = data_session.ConverterData(
-        "test", config, FakeModelObject(""), work_item
+        "test",
+        config,
+        model.la.extensions.create("FakeModelObject"),
+        work_item,
     )
     links = {
         "attribute_reverse": [

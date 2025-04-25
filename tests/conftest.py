@@ -43,6 +43,12 @@ LINK_CONFIG = converter_config.LinkConfig(
     link_field="attribute",
     reverse_field="attribute_reverse",
 )
+LINK_CONFIG2 = converter_config.LinkConfig(
+    capella_attr="singleattr",
+    polarion_role="singleattr",
+    link_field="singleattr",
+    reverse_field="singleattr_reverse",
+)
 
 
 @pytest.fixture
@@ -80,32 +86,34 @@ def dummy_work_items() -> dict[str, data_model.CapellaWorkItem]:
     }
 
 
-class FakeModelObject(mock.MagicMock):
-    """Mimicks a capellambse model objectyping."""
+class FakeModelObject(m.ModelElement):
+    name = m.StringPOD("name")
+    attribute: m.Association[FakeModelObject]
+    singleattr: m.Association[FakeModelObject]
 
-    def __init__(
-        self,
-        uuid: str,
-        name: str = "",
-        attribute: t.Any | None = None,
-    ):
-        super().__init__(spec=m.ModelElement)
-        self.uuid = uuid
-        self.name = name
-        self.attribute = attribute
 
-    @classmethod
-    def from_model(
-        cls, _: capellambse.MelodyModel, element: FakeModelObject
-    ) -> FakeModelObject:
-        return element
-
-    def _short_repr_(self) -> str:
-        return f"<{type(self).__name__} {self.name!r} ({self.uuid})>"
+m.set_accessor(
+    FakeModelObject,
+    "attribute",
+    m.Association(FakeModelObject, "attribute", aslist=m.ElementList),
+)
+m.set_accessor(
+    FakeModelObject,
+    "singleattr",
+    m.Association(FakeModelObject, "singleattr"),
+)
 
 
 class UnsupportedFakeModelObject(FakeModelObject):
     """A ``FakeModelObject`` which shouldn't be migrated."""
+
+
+@pytest.fixture(autouse=True)
+def inject_test_classes(monkeypatch):
+    monkeypatch.setitem(m.XTYPE_ANCHORS, "conftest", "capella2polarion")
+    monkeypatch.setitem(
+        m.XTYPE_HANDLERS[None], FakeModelObject.__name__, FakeModelObject
+    )
 
 
 class BaseObjectContainer(t.NamedTuple):
@@ -155,9 +163,11 @@ def base_object(
     c2p_cli.setup_logger()
     c2p_cli.config = mock.Mock(converter_config.ConverterConfig)
 
-    fake = FakeModelObject("uuid1", name="Fake 1")
+    fake = model.la.extensions.create(
+        "FakeModelObject", uuid="uuid1", name="Fake 1"
+    )
     fake_model_type_config = converter_config.CapellaTypeConfig(
-        "fakeModelObject", links=[LINK_CONFIG]
+        "fakeModelObject", links=[LINK_CONFIG, LINK_CONFIG2]
     )
 
     mc = model_converter.ModelConverter(
@@ -179,7 +189,9 @@ def base_object(
         "uuid2": data_session.ConverterData(
             "oa",
             fake_model_type_config,
-            FakeModelObject("uuid2", name="Fake 2", attribute=fake),
+            model.la.extensions.create(
+                "FakeModelObject", uuid="uuid2", name="Fake 2", attribute=fake
+            ),
         ),
     }
 

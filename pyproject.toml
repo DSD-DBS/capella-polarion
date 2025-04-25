@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
   "bidict",
   "cairosvg",
-  "capellambse>=0.6.6,<0.7",
+  "capellambse>=0.6.17,<0.7",
   "capellambse_context_diagrams>=0.7.0,<0.8",
   "click",
   "jinja2",
