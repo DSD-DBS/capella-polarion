@@ -421,7 +421,7 @@ class CapellaWorkItemSerializer(polarion_html_helper.JinjaRendererMixin):
 
             if not (req.type and req.text):
                 identifier = (
-                    req.long_name or req.name or req.summary or req.uuid
+                    req.long_name or req.name or req.identifier or req.uuid
                 )
                 self.converter_session[obj.uuid].errors.add(
                     f"Found Requirement without text or type on {identifier!r}"
