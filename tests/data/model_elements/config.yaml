@@ -71,7 +71,7 @@ sa:
           - EX_ITEMS_OR_EXCH # functional exchange or exchange item name
   FunctionalExchange:
     links:
-      - exchanged_items
+      - broken_attribute_name
   ExchangeItem:
 
 pa:

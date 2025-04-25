@@ -57,7 +57,7 @@ class TestConverterConfig:
             "Global link parent is not available on Capella type diagram",
             "capella2polarion.converters.converter_config",
             40,
-            "Link exchanged_items is not available on Capella type "
+            "Link broken_attribute_name is not available on Capella type "
             "FunctionalExchange",
         )
         with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
