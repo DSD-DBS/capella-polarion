@@ -77,7 +77,7 @@ def generate_image_html(
     return description
 
 
-def camel_case_to_words(camel_case_str: str):
+def camel_case_to_words(camel_case_str: str) -> str:
     """Split camel or dromedary case and return it as a space separated str.
 
     Handle prefixed underscores as well.
@@ -107,7 +107,9 @@ class JinjaRendererMixin:
 
     jinja_envs: dict[str, jinja2.Environment]
 
-    def _get_jinja_env(self, template_folder: str | pathlib.Path):
+    def _get_jinja_env(
+        self, template_folder: str | pathlib.Path
+    ) -> jinja2.Environment:
         template_folder = str(template_folder)
         if env := self.jinja_envs.get(template_folder):
             return env
@@ -134,11 +136,11 @@ class JinjaRendererMixin:
 
         if isinstance(obj, m.ElementList):
             raise TypeError("Cannot make an href to a list of elements")
-        if not isinstance(obj, (m.ModelElement, m.AbstractDiagram)):
+        if not isinstance(obj, m.ModelElement | m.AbstractDiagram):
             raise TypeError(f"Expected a model object, got {obj!r}")
         return obj
 
-    def setup_env(self, env: jinja2.Environment):
+    def setup_env(self, env: jinja2.Environment) -> None:
         """Implement this method to adjust a newly created environment."""
 
 

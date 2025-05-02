@@ -20,7 +20,7 @@ class TestConverterConfig:
             "filter"
         )
         config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("sa", "SystemFunction")
@@ -35,7 +35,7 @@ class TestConverterConfig:
     @staticmethod
     def test_read_config_tree_view_with_params():
         config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("la", "Class")
@@ -60,7 +60,7 @@ class TestConverterConfig:
             "Link broken_attribute_name is not available on Capella type "
             "FunctionalExchange",
         )
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         assert config.diagram_config
@@ -96,7 +96,7 @@ class TestConverterConfig:
             "polarion_id": "layer",
         }
         expected_tree_view_params = {"render_params": {"depth": 1}}
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("la", "Class")
@@ -120,7 +120,7 @@ class TestConverterConfig:
             {"capella_attr": "layer", "polarion_id": "layer"},
             {"capella_attr": "nature", "polarion_id": "nature"},
         ]
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("pa", "PhysicalComponent")

@@ -276,7 +276,8 @@ def test_mixed_authority_document(
     )
     assert len(content) == 17
     assert [c.tag for c in content[:3]] == ["h1", "p", "p"]
-    assert (c4 := content[4]).tag == "h3" and c4.text == "New Heading"
+    assert content[4].tag == "h3"
+    assert content[4].text == "New Heading"
     assert content[5].text == "Global Test"
     assert content[6].text == "Local Test section 1"
     assert content[9].text == "This will be kept."
@@ -485,7 +486,7 @@ def test_render_all_documents_partially_successfully(
             ),
         ]
     )
-    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
@@ -611,7 +612,7 @@ def test_render_all_documents_overwrite_headings_layouts(
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
     model: capellambse.MelodyModel,
 ):
-    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     renderer = document_renderer.DocumentRenderer(
@@ -640,7 +641,7 @@ def test_render_all_documents_overwrite_headings_layouts(
 
 
 def test_full_authority_document_config():
-    with open(FULL_AUTHORITY_CONFIG, "r", encoding="utf-8") as f:
+    with open(FULL_AUTHORITY_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 2
@@ -661,7 +662,7 @@ def test_full_authority_document_config():
 
 
 def test_mixed_authority_document_config():
-    with open(MIXED_CONFIG, "r", encoding="utf-8") as f:
+    with open(MIXED_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 0
@@ -695,7 +696,7 @@ def test_mixed_authority_document_config():
 
 
 def test_combined_config():
-    with open(TEST_COMBINED_DOCUMENT_CONFIG, "r", encoding="utf-8") as f:
+    with open(TEST_COMBINED_DOCUMENT_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     assert len(conf.full_authority) == 3
@@ -703,11 +704,7 @@ def test_combined_config():
 
 
 def test_rendering_config():
-    with open(
-        FULL_AUTHORITY_CONFIG,
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with open(FULL_AUTHORITY_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
     no_rendering_layouts = document_config.generate_work_item_layouts(
@@ -734,11 +731,7 @@ def test_rendering_config():
 
 
 def test_rendering_config_jinja(model: capellambse.MelodyModel):
-    with open(
-        DOCUMENTS_CONFIG_JINJA,
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with open(DOCUMENTS_CONFIG_JINJA, encoding="utf-8") as f:
         conf = document_config.read_config_file(f, model)
 
     assert len(conf.full_authority) == 1

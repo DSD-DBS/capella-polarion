@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing the CapellaWorkItem class."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -29,13 +30,11 @@ class CapellaWorkItem(polarion_api.WorkItem):
     _content_checksum: str | None = None
     _attachment_checksums: dict[str, str] | None = None
 
-    def clear_attributes(self):
+    def clear_attributes(self) -> None:
         """Clear all additional attributes except the checksum."""
-        # pylint: disable=attribute-defined-outside-init
         self.additional_attributes = {"checksum": self.checksum}
-        # pylint: enable=attribute-defined-outside-init
 
-    def _read_check_sum(self):
+    def _read_check_sum(self) -> None:
         checksum_dict = json.loads(self.checksum or "{}")
         self._content_checksum = checksum_dict.pop(WORK_ITEM_CHECKSUM_KEY, "")
         self._attachment_checksums = checksum_dict
@@ -65,12 +64,12 @@ class CapellaWorkItem(polarion_api.WorkItem):
         # we don't expect multiple files with the same file name. In addition,
         # we don't expect multiple files with the same file name & mime type.
         for attachment in self.attachments:
-            assert (
-                attachment.file_name is not None
-            ), "The file_name must be filled"
-            assert (
-                attachment.mime_type is not None
-            ), "The mime_type must be filled"
+            assert attachment.file_name is not None, (
+                "The file_name must be filled"
+            )
+            assert attachment.mime_type is not None, (
+                "The mime_type must be filled"
+            )
             base_file_name = attachment.file_name.rsplit(".", 1)[0]
             attachment_groups.setdefault(base_file_name, {})[
                 attachment.mime_type

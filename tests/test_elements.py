@@ -170,7 +170,7 @@ class GroupedLinksBaseObject(t.TypedDict):
 
 
 # pylint: disable=redefined-outer-name
-@pytest.fixture()
+@pytest.fixture
 def grouped_links_base_object(
     base_object: BaseObjectContainer,
     dummy_work_items: dict[str, data_model.CapellaWorkItem],
@@ -325,7 +325,7 @@ class TestModelElements:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "uuid,_type,attrs",
+        ("uuid", "_type", "attrs"),
         [
             pytest.param(
                 "55b90f9a-c5af-47fc-9c1c-48090414d1f1",
@@ -339,7 +339,7 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        _type: str,
+        _type: str,  # noqa: PT019 # false-positive
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
@@ -481,9 +481,9 @@ class TestModelElements:
         )
         no_uuid = FakeModelObject("")
         del no_uuid.uuid
-        base_object.mc.converter_session["uuid1"].capella_element.attribute = (
-            no_uuid
-        )
+        base_object.mc.converter_session[
+            "uuid1"
+        ].capella_element.attribute = no_uuid
 
         with caplog.at_level(logging.ERROR):
             link_serializer = link_converter.LinkSerializer(
@@ -555,10 +555,10 @@ class TestModelElements:
         )
 
         def error():
-            assert False
+            raise AssertionError()
 
         link_serializer.serializers["invalid_role"] = (
-            lambda obj, work_item_id, role_id, links: error()
+            lambda obj, work_item_id, role_id, links: error()  # noqa: ARG005
         )
 
         with caplog.at_level(logging.ERROR):
@@ -629,10 +629,10 @@ class TestModelElements:
         )
 
         def error():
-            assert False
+            raise AssertionError()
 
         link_serializer.serializers["invalid_role"] = (
-            lambda obj, work_item_id, role_id, links: error()
+            lambda obj, work_item_id, role_id, links: error()  # noqa: ARG005
         )
 
         with caplog.at_level(logging.WARNING):
@@ -795,14 +795,14 @@ class TestModelElements:
 
         base_object.pw.load_polarion_work_item_map()
 
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_model.CapellaWorkItem(
-                id="Obj-1",
-                uuid_capella="uuid1",
-                title="Fake 1",
-                type="type",
-                description=polarion_api.HtmlContent(markupsafe.Markup("")),
-            )
+        base_object.mc.converter_session[
+            "uuid1"
+        ].work_item = data_model.CapellaWorkItem(
+            id="Obj-1",
+            uuid_capella="uuid1",
+            title="Fake 1",
+            type="type",
+            description=polarion_api.HtmlContent(markupsafe.Markup("")),
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -871,17 +871,15 @@ class TestModelElements:
 
         base_object.pw.load_polarion_work_item_map()
 
-        base_object.mc.converter_session["uuid1"].work_item = (
-            data_model.CapellaWorkItem(
-                id="Obj-1",
-                type="type",
-                uuid_capella="uuid1",
-                status="open",
-                title="Something",
-                description=polarion_api.HtmlContent(
-                    markupsafe.Markup("Test")
-                ),
-            )
+        base_object.mc.converter_session[
+            "uuid1"
+        ].work_item = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="type",
+            uuid_capella="uuid1",
+            status="open",
+            title="Something",
+            description=polarion_api.HtmlContent(markupsafe.Markup("Test")),
         )
 
         del base_object.mc.converter_session["uuid2"]
@@ -1034,13 +1032,13 @@ class TestModelElements:
                 )
             ]
         )
-        base_object.mc.converter_session["uuid2"].work_item = (
-            data_model.CapellaWorkItem(
-                id="Obj-2",
-                uuid_capella="uuid2",
-                status="open",
-                type="fakeModelObject",
-            )
+        base_object.mc.converter_session[
+            "uuid2"
+        ].work_item = data_model.CapellaWorkItem(
+            id="Obj-2",
+            uuid_capella="uuid2",
+            status="open",
+            type="fakeModelObject",
         )
         for data in base_object.mc.converter_session.values():
             data.type_config.links[0].polarion_role = "attribute"
@@ -1140,7 +1138,7 @@ class TestModelElements:
             "create_links_for_work_item",
             mock_create_links,
         )
-        mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[
+        mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[  # noqa: ARG005
             uuid
         ].linked_work_items
 
@@ -1356,10 +1354,8 @@ class TestModelElements:
             generate_grouped_links_custom_fields=True,
         )
 
-        assert (link_group := getattr(converter_data_1.work_item, "attribute"))
-        assert (
-            link_group1 := getattr(converter_data_1.work_item, "attribute1")
-        )
+        assert (link_group := converter_data_1.work_item.attribute)
+        assert (link_group1 := converter_data_1.work_item.attribute1)
         assert link_group["value"] == link_group1["value"] == expected_html
 
     @staticmethod
@@ -1472,7 +1468,8 @@ class TestModelElements:
                 converter_data, back_links
             )
         for work_item_id, links in back_links.items():
-            assert (wi := data[work_item_id].work_item) is not None
+            wi = data[work_item_id].work_item
+            assert wi is not None
             link_serializer.create_grouped_back_link_fields(wi, links)
 
         assert (
@@ -1520,7 +1517,8 @@ class TestModelElements:
             # Only the first work item needs the link config
             config.links = []
         for work_item_id, links in back_links.items():
-            assert (wi := data[work_item_id].work_item) is not None
+            wi = data[work_item_id].work_item
+            assert wi is not None
             link_serializer.create_grouped_back_link_fields(wi, links)
 
         assert (
@@ -1559,7 +1557,8 @@ class TestModelElements:
             )
 
         for work_item_id, links in back_links.items():
-            assert (wi := data[work_item_id].work_item) is not None
+            wi = data[work_item_id].work_item
+            assert wi is not None
             link_serializer.create_grouped_back_link_fields(wi, links)
 
         assert (
@@ -1592,7 +1591,8 @@ def test_grouped_linked_work_items_order_consistency(
             polarion_api.WorkItemLink("prim2", "id", "role1"),
         ]
     }
-    assert (wi := converter_data.work_item) is not None
+    wi = converter_data.work_item
+    assert wi is not None
     link_serializer.create_grouped_back_link_fields(wi, links)
 
     check_sum = work_item.calculate_checksum()
@@ -1668,7 +1668,7 @@ class TestSerializers:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "layer,uuid,expected",
+        ("layer", "uuid", "expected"),
         [
             pytest.param(
                 "la",
@@ -1823,7 +1823,7 @@ class TestSerializers:
     ):
         obj = model.by_uuid(uuid)
         config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         c_type = type(obj).__name__
@@ -2116,7 +2116,7 @@ class TestSerializers:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "layer,uuid,expected",
+        ("layer", "uuid", "expected"),
         [
             pytest.param(
                 "la",
@@ -2157,7 +2157,7 @@ class TestSerializers:
         prefix = "_C2P"
         obj = model.by_uuid(uuid)
         config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         c_type = type(obj).__name__
@@ -2186,7 +2186,7 @@ class TestSerializers:
     def test_tree_view_with_params(model: capellambse.MelodyModel):
         cap = model.by_uuid(TEST_CLASS)
         config = converter_config.ConverterConfig()
-        with open(TEST_MODEL_ELEMENTS_CONFIG, "r", encoding="utf8") as f:
+        with open(TEST_MODEL_ELEMENTS_CONFIG, encoding="utf8") as f:
             config.read_config_file(f)
 
         type_config = config.get_type_config("la", "Class")

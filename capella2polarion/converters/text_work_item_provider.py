@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Provides a class to generate and inset text work items in documents."""
+
 import polarion_rest_api_client as polarion_api
 from lxml import html
 
@@ -38,7 +39,7 @@ class TextWorkItemProvider:
         self,
         content: list[html.HtmlElement] | str,
         work_item_id_filter: list[str] | None = None,
-    ):
+    ) -> None:
         """Generate text work items from the provided html."""
         content = html_helper.ensure_fragments(content)
         for element in content:
@@ -83,7 +84,7 @@ class TextWorkItemProvider:
     def insert_text_work_items(
         self,
         document: polarion_api.Document,
-    ):
+    ) -> None:
         """Insert text work items into the given document."""
         if not self.new_text_work_items:
             return

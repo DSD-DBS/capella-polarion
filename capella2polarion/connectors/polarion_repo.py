@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module providing a universal PolarionDataRepository class."""
+
 from __future__ import annotations
 
 import collections.abc as cabc
@@ -85,7 +86,9 @@ class PolarionDataRepository:
             self.get_capella_uuid(work_item_id)  # type: ignore
         )
 
-    def update_work_items(self, work_items: list[data_model.CapellaWorkItem]):
+    def update_work_items(
+        self, work_items: list[data_model.CapellaWorkItem]
+    ) -> None:
         """Update all mappings for the given Work Items."""
         for work_item in work_items:
             assert work_item.id is not None
@@ -95,16 +98,15 @@ class PolarionDataRepository:
 
         check_work_items(work_items)
         self._id_mapping.update(
-            {
-                work_item.uuid_capella: work_item.id
-                for work_item in work_items
-            }  # type: ignore[arg-type]
+            {work_item.uuid_capella: work_item.id for work_item in work_items}  # type: ignore[arg-type]
         )
         self._work_items.update(
             {work_item.uuid_capella: work_item for work_item in work_items}
         )
 
-    def remove_work_items_by_capella_uuid(self, uuids: cabc.Iterable[str]):
+    def remove_work_items_by_capella_uuid(
+        self, uuids: cabc.Iterable[str]
+    ) -> None:
         """Remove entries for the given Capella UUIDs."""
         for uuid in uuids:
             del self._work_items[uuid]
@@ -123,7 +125,9 @@ that the document is in the same project as the model sync work items.
 """
 
 
-def check_work_items(work_items: cabc.Iterable[data_model.CapellaWorkItem]):
+def check_work_items(
+    work_items: cabc.Iterable[data_model.CapellaWorkItem],
+) -> None:
     """Raise a ``ValueError`` if any work item has no ID."""
     if work_item_without_id := next(
         (wi for wi in work_items if wi.id is None), None

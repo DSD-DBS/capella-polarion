@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm[toml]>=3.4", "wheel"]
+requires = ["setuptools>=77", "setuptools_scm[toml]>=3.4", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,79 +11,89 @@ dynamic = ["version"]
 name = "capella2polarion"
 description = "Synchronise Capella models with Polarion projects"
 readme = "README.md"
-requires-python = ">=3.10, <3.13"
-license = { text = "Apache-2.0" }
+requires-python = ">=3.10, <3.14"
+license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "DB InfraGO AG" }]
 keywords = []
 classifiers = [
   "Development Status :: 1 - Planning",
-  "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
 ]
 dependencies = [
+  "bidict",
+  "cairosvg",
   "capellambse>=0.6.6,<0.7",
   "capellambse_context_diagrams>=0.7.0,<0.8",
   "click",
-  "PyYAML",
-  "polarion-rest-api-client==1.2.2",
-  "bidict",
-  "cairosvg",
   "jinja2",
+  "polarion-rest-api-client==1.2.2",
   "pydantic",
+  "pyyaml",
 ]
 
 [project.urls]
 Homepage = "https://github.com/DSD-DBS/capella2polarion"
 Documentation = "https://dsd-dbs.github.io/capella2polarion"
 
-[project.optional-dependencies]
-dev = ["python-dotenv"]
-
-docs = [
-  "furo",
-  "ipython>=8.30.0",
-  "nbsphinx>=0.9.5",
-  "sphinx>=8.1.3,<8.2.0", # Fixated until https://github.com/spatialaudio/nbsphinx/issues/825 is solved
-  "nbsphinx>=0.9.5",
-  "sphinx-copybutton",
-  "python-dotenv",
-  "tomli",
-]
-
-test = ["pytest", "pytest-cov"]
-
 [project.scripts]
 capella2polarion = "capella2polarion.__main__:cli"
 
-[tool.black]
-line-length = 79
-target-version = ["py312"]
+[dependency-groups]
+dev = [
+  "coverage>=7.6.9",
+  "pre-commit>=4.0.1",
+  "pre-commit-uv>=4.1.4",
+  "pytest>=8.3.4",
+  "python-dotenv",
+  "ruff>=0.8.2",
+  "types-lxml>=2025.3.30",
+]
+
+docs = [
+  "furo>=2024.8.6",
+  "ipython>=8.30.0",
+  "nbsphinx>=0.9.5",
+  "python-dotenv",
+  "sphinx-copybutton>=0.5.2",
+  "sphinx>=8.1.3,<8.2.0", # Fixated until https://github.com/spatialaudio/nbsphinx/issues/825 is solved
+  "tomli>=2.2.1; python_version<'3.11'",
+]
+
+[tool.coverage.run]
+branch = true
+command_line = "-m pytest"
+source = ["capella2polarion"]
+
+[tool.coverage.report]
+exclude_also = [
+  'if t\.TYPE_CHECKING:',
+  'class .*\bt\.Protocol\):',
+  '@abc\.abstractmethod',
+  '@t\.overload',
+]
+skip_covered = true
 
 [tool.docformatter]
 wrap-descriptions = 72
 wrap-summaries = 79
 
-[tool.isort]
-profile = 'black'
-line_length = 79
-
 [tool.mypy]
 check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
 no_implicit_optional = true
 show_error_codes = true
 warn_redundant_casts = true
 warn_unreachable = true
-python_version = "3.12"
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-allow_incomplete_defs = true
-allow_untyped_defs = true
+python_version = "3.10"
 
 [[tool.mypy.overrides]]
 # Untyped third party libraries
@@ -91,91 +101,6 @@ module = [
   # ...
 ]
 ignore_missing_imports = true
-
-[tool.pydocstyle]
-convention = "numpy"
-add-select = [
-  "D212", # Multi-line docstring summary should start at the first line
-  "D402", # First line should not be the function’s “signature”
-  "D417", # Missing argument descriptions in the docstring
-]
-add-ignore = [
-  "D201", # No blank lines allowed before function docstring  # auto-formatting
-  "D202", # No blank lines allowed after function docstring  # auto-formatting
-  "D203", # 1 blank line required before class docstring  # auto-formatting
-  "D204", # 1 blank line required after class docstring  # auto-formatting
-  "D211", # No blank lines allowed before class docstring  # auto-formatting
-  "D213", # Multi-line docstring summary should start at the second line
-]
-
-[tool.pylint.master]
-extension-pkg-allow-list = ["lxml.etree"]
-max-line-length = 79
-
-[tool.pylint.messages_control]
-disable = [
-  "broad-except",
-  "global-statement",
-  "import-outside-toplevel",
-  "invalid-name",
-  "missing-class-docstring",
-  "missing-function-docstring",
-  "missing-module-docstring",
-  "no-else-break",
-  "no-else-continue",
-  "no-else-raise",
-  "no-else-return",
-  "protected-access",
-  "redefined-builtin",
-  "too-few-public-methods",
-  "too-many-ancestors",
-  "too-many-arguments",
-  "too-many-boolean-expressions",
-  "too-many-branches",
-  "too-many-instance-attributes",
-  "too-many-lines",
-  "too-many-locals",
-  "too-many-public-methods",
-  "too-many-return-statements",
-  "too-many-statements",
-  "too-many-positional-arguments",
-
-  # Auto-formatting
-  "bad-indentation",
-  "inconsistent-quotes",
-  "missing-final-newline",
-  "mixed-line-endings",
-  "multiple-imports",
-  "multiple-statements",
-  "trailing-newlines",
-  "trailing-whitespace",
-  "unexpected-line-ending-format",
-  "ungrouped-imports",
-  "wrong-import-order",
-  "wrong-import-position",
-
-  # Handled by mypy
-  "arguments-differ",
-  "assignment-from-no-return",
-  "import-error",
-  "missing-kwoa",
-  "no-member",
-  "no-value-for-parameter",
-  "redundant-keyword-arg",
-  "signature-differs",
-  "syntax-error",
-  "too-many-function-args",
-  "unbalanced-tuple-unpacking",
-  "undefined-variable",
-  "unexpected-keyword-arg",
-  "unsubscriptable-object",
-]
-enable = [
-  "c-extension-no-member",
-  "deprecated-pragma",
-  "use-symbolic-message-instead",
-  "useless-suppression",
-]
 
 [tool.pytest.ini_options]
 addopts = """
@@ -186,6 +111,79 @@ addopts = """
 testpaths = ["tests"]
 xfail_strict = true
 
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = [
+  "ARG",    # flake8-unused-arguments
+  "B",      # flake8-bugbear
+  "C4",     # flake8-comprehensions
+  "D",      # pydocstyle
+  "D212",   # "Multi-line docstring summary should start at the first line"
+  "D402",   # "First line should not be the function’s 'signature'"
+  "D417",   # "Missing argument descriptions in the docstring"
+  "DTZ",    # flake8-datetimez
+  "ERA",    # eradicate
+  "FA",     # flake8-future-annotations
+  "FIX",    # flake8-fixme
+  "FURB",   # refurb
+  "G",      # flake8-logging-format
+  "I",      # isort
+  "ICN",    # flake8-import-conventions
+  "ISC001", # "Implicitly concatenated string literals on one line"
+  "ISC003", # "Explicitly concatenated string should be implicitly concatenated"
+  "LOG",    # flake8-logging
+  "PIE",    # flake8-pie
+  "PL",     # pylint
+  "PT",     # flake8-pytest-style
+  "RET",    # flake8-return
+  "RUF",    # ruff
+  "SIM",    # flake8-simplify
+  "TC005",  # "Found empty type-checking block"
+  "T1",     # flake8-debugger
+  "UP",     # pyupgrade
+  "YTT",    # flake8-2020
+]
+extend-ignore = [
+  "D1",      # Missing docstring in _
+  "D201",    # No blank lines allowed before function docstring  # auto-formatting
+  "D202",    # No blank lines allowed after function docstring  # auto-formatting
+  "D203",    # 1 blank line required before class docstring  # auto-formatting
+  "D204",    # 1 blank line required after class docstring  # auto-formatting
+  "D211",    # No blank lines allowed before class docstring  # auto-formatting
+  "D213",    # Multi-line docstring summary should start at the second line
+  "DTZ001",  # `tzinfo=None` passed to `datetime.datetime()`
+  "DTZ005",  # `tz=None` passed to `datetime.datetime.now()`
+  "E402",    # Module level import not at top of file
+  "F403",    # `from _ import *` used; unable to detect undefined names
+  "F405",    # `_` may be undefined, or defined from star imports
+  "PLC0414", # Import alias does not rename original package # used for explicit reexports
+  "PLR0904", # Too many public methods
+  "PLR0911", # Too many return statements
+  "PLR0912", # Too many branches
+  "PLR0913", # Too many arguments in function definition
+  "PLR0914", # Too many local variables
+  "PLR0915", # Too many statements
+  "PLR0916", # Too many Boolean expressions
+  "PLR0917", # Too many positional arguments
+  "PLW2901", # Loop variable overwritten by assignment target
+  "SIM108",  # Use ternary operator instead of `if`-`else`-block
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = [
+  "PLE0604", # Invalid object in `__all__`, must contain only strings  # false-positive when unpacking imported submodule __all__
+]
+"tests/test_*.py" = [
+  "F811",    # Redefinition of unused `_` from line _
+  "PLR2004", # Magic value used in comparison, consider replacing `_` with a constant variable
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+ignore-decorators = ["typing.overload"]
+
 [tool.setuptools]
 platforms = ["any"]
 zip-safe = false
@@ -194,7 +192,8 @@ zip-safe = false
 "*" = ["py.typed"]
 
 [tool.setuptools.packages.find]
-exclude = ["LICENSES"]
+include = ["capella2polarion", "capella2polarion.*"]
 
 [tool.setuptools_scm]
 # This section must exist for setuptools_scm to work
+local_scheme = "no-local-version"

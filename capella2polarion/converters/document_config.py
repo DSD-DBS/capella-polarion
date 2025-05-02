@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Module with classes and a loader for document rendering configs."""
+
 import collections.abc as cabc
 import logging
 import pathlib

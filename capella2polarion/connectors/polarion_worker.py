@@ -9,6 +9,7 @@ import logging
 import typing as t
 from urllib import parse
 
+import httpx
 import polarion_rest_api_client as polarion_api
 from capellambse import helpers as chelpers
 from lxml import etree
@@ -117,7 +118,7 @@ class CapellaPolarionWorker:
                 f"{self.polarion_params.project_id}"
             )
 
-    def load_polarion_work_item_map(self):
+    def load_polarion_work_item_map(self) -> None:
         """Return a map from Capella UUIDs to Polarion work items."""
         work_items = self.project_client.work_items.get_all(
             "HAS_VALUE:uuid_capella",
@@ -179,7 +180,7 @@ class CapellaPolarionWorker:
 
     def compare_and_update_work_item(
         self, converter_data: data_session.ConverterData
-    ):
+    ) -> None:
         """Patch a given WorkItem."""
         new = converter_data.work_item
         assert new is not None
@@ -316,22 +317,24 @@ class CapellaPolarionWorker:
             )
             raise error
 
-    def _refactor_attached_images(self, new: data_model.CapellaWorkItem):
+    def _refactor_attached_images(
+        self, new: data_model.CapellaWorkItem
+    ) -> None:
         def set_attachment_id(node: etree._Element) -> None:
             if node.tag != "img":
                 return
-            if img_src := node.attrib.get("src"):
-                if img_src.startswith("workitemimg:"):
-                    file_name = img_src[12:]
-                    for attachment in new.attachments:
-                        if attachment.file_name == file_name:
-                            node.attrib["src"] = f"workitemimg:{attachment.id}"
-                            return
+            img_src = node.attrib.get("src")
+            if img_src and img_src.startswith("workitemimg:"):
+                file_name = img_src[12:]
+                for attachment in new.attachments:
+                    if attachment.file_name == file_name:
+                        node.attrib["src"] = f"workitemimg:{attachment.id}"
+                        return
 
-                    logger.error(
-                        "Did not find attachment ID for file name %s",
-                        file_name,
-                    )
+                logger.error(
+                    "Did not find attachment ID for file name %s",
+                    file_name,
+                )
 
         if new.description:
             new.description.value = chelpers.process_html_fragments(
@@ -467,7 +470,7 @@ class CapellaPolarionWorker:
         self,
         document_datas: list[data_model.DocumentData],
         document_project: str | None = None,
-    ):
+    ) -> None:
         """Create new documents.
 
         Notes
@@ -484,7 +487,7 @@ class CapellaPolarionWorker:
         self,
         document_datas: list[data_model.DocumentData],
         document_project: str | None = None,
-    ):
+    ) -> None:
         """Update existing documents.
 
         Notes
@@ -504,7 +507,10 @@ class CapellaPolarionWorker:
         self,
         client: polarion_api.ProjectClient,
         document_datas: list[data_model.DocumentData],
-    ):
+    ) -> tuple[
+        list[polarion_api.data_models.Document],
+        list[polarion_api.data_models.WorkItem],
+    ]:
         documents: list[polarion_api.Document] = []
         headings: list[polarion_api.WorkItem] = []
         for document_data in document_datas:
@@ -541,7 +547,7 @@ class CapellaPolarionWorker:
                 },
             )
         except polarion_api.PolarionApiBaseException as e:
-            if e.args[0] == 404:
+            if e.args[0] == httpx.codes.NOT_FOUND:
                 return None
             raise e
 
@@ -573,7 +579,7 @@ class CapellaPolarionWorker:
         self,
         work_items: dict[str, polarion_api.WorkItem],
         client: polarion_api.ProjectClient,
-    ):
+    ) -> None:
         client.work_items.update(
             [work_item for work_item in work_items.values() if work_item.id]
         )

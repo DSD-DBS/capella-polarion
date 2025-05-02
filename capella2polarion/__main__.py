@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Main entry point into capella2polarion."""
+
 from __future__ import annotations
 
 import logging
@@ -10,6 +11,7 @@ import capellambse
 import click
 from capellambse import cli_helpers
 
+import capella2polarion
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.converters import (
@@ -50,9 +52,15 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--debug", is_flag=True, envvar="CAPELLA2POLARION_DEBUG", default=False
 )
+@click.version_option(
+    version=capella2polarion.__version__,
+    prog_name="capella2polarion",
+    message="%(prog)s %(version)s",
+)
 @click.pass_context
 def cli(
     ctx: click.core.Context,
+    *,
     capella_model: capellambse.MelodyModel | None,
     polarion_project_id: str,
     polarion_url: str,
@@ -124,6 +132,7 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
+    *,
     synchronize_config: typing.TextIO,
     force_update: bool,
     type_prefix: str,
@@ -194,6 +203,7 @@ def synchronize(
 @click.pass_context
 def render_documents(
     ctx: click.core.Context,
+    *,
     document_rendering_config: typing.TextIO,
     overwrite_layouts: bool,
     overwrite_numbering: bool,

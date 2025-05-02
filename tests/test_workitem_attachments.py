@@ -36,9 +36,7 @@ CONTEXT_DIAGRAM_CHECKSUM = (
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 WORKITEM_ID = "TEST-ID"
 
-with open(
-    TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", "r", encoding="utf8"
-) as f:
+with open(TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", encoding="utf8") as f:
     diagram_svg = f.read()
 
 wia_dict = {
@@ -105,11 +103,9 @@ def read_content(
 
 
 def set_attachment_ids(attachments: list[polarion_api.WorkItemAttachment]):
-    counter = 0
     attachments = sorted(attachments, key=lambda a: a.file_name)
-    for attachment in attachments:
+    for counter, attachment in enumerate(attachments):
         attachment.id = f"{counter}-{attachment.file_name}"
-        counter += 1
 
 
 def test_diagram_no_attachments(converter: model_converter.ModelConverter):
@@ -633,7 +629,7 @@ def test_attached_image_in_description_with_caption(
 
 
 @pytest.mark.parametrize(
-    "uuid,diagram_attr",
+    ("uuid", "diagram_attr"),
     [
         pytest.param(
             "c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
