@@ -31,10 +31,10 @@ class WorkItemLayout(pydantic.BaseModel):
 class DocumentRenderingInstance(pydantic.BaseModel):
     """An instance of a document that should be created in Polarion."""
 
+    polarion_type: str | None = None
     polarion_space: str
     polarion_name: str
     polarion_title: str | None = None
-    polarion_type: str | None = None
     params: dict[str, t.Any] = pydantic.Field(default_factory=dict)
 
 
