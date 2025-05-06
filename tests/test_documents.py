@@ -361,6 +361,54 @@ def test_mixed_authority_with_work_item(
     assert len(wi_links) == 2
 
 
+@pytest.mark.parametrize("polarion_type", ["initialTestType", None])
+def test_render_document_with_polarion_type(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+    polarion_type: str,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+
+    document_data_new_with_type = renderer.render_document(
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
+        "_default",
+        "NEW-DOC-TYPE-TEST-1",
+        polarion_type,
+        cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+    )
+
+    assert document_data_new_with_type.document.type == polarion_type
+
+
+def test_update_document_with_polarion_type(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+    new_doc = polarion_api.Document(
+        module_folder="_default",
+        module_name="EXISTING-DOC-TYPE-TEST",
+        type=(new_type := "UpdatedType"),
+        home_page_content=polarion_api.TextContent(
+            type="text/html", value="<p>Test Content</p>"
+        ),
+    )
+
+    document_data_update_with_new_type = renderer.render_document(
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
+        document=new_doc,
+        cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+    )
+
+    assert document_data_update_with_new_type.document.type == new_type
+
+
 def test_create_full_authority_document_text_work_items(
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
     model: capellambse.MelodyModel,
