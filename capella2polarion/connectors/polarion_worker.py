@@ -102,7 +102,7 @@ class CapellaPolarionWorker:
         client = self.polarion_client.generate_project_client(
             project_id=project_id,
             delete_status=(
-                "deleted" if self.polarion_params.delete_work_items else None
+                None if self.polarion_params.delete_work_items else "deleted"
             ),
         )
         if not client.exists():

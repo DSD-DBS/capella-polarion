@@ -264,7 +264,7 @@ def run_plugins(
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
     logger.info(
-        "Synchronising model elements to Polarion project with id %s...",
+        "Running Plugins on Polarion project with id %s...",
         capella_to_polarion_cli.polarion_params.project_id,
     )
 
@@ -273,18 +273,18 @@ def run_plugins(
         capella_to_polarion_cli.force_update,
     )
 
-    config = plugin_config.read_config_file(plugin_config_file)
+    configs = plugin_config.read_config_file(plugin_config_file)
 
-    for conf in config:
+    for conf in configs:
         module = importlib.import_module(str(conf.module))
         plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
             module, conf.plugin_name
         )
         plugin: plugin_interfaces.PluginInterface
+        assert (
+            capella_to_polarion_cli.capella_model
+        ), "A model must be defined to use WorkItemPlugins"
         if issubclass(plugin_cls, plugin_interfaces.WorkItemPluginInterface):
-            assert (
-                capella_to_polarion_cli.capella_model
-            ), "A model must be defined to use WorkItemPlugins"
             plugin = plugin_cls(
                 capella_to_polarion_cli.capella_model,
                 generate_figure_captions,
@@ -292,7 +292,9 @@ def run_plugins(
                 polarion_worker,
             )
         else:
-            plugin = plugin_cls(polarion_worker)
+            plugin = plugin_cls(
+                polarion_worker, capella_to_polarion_cli.capella_model
+            )
 
         plugin.run(**conf.args)
 
