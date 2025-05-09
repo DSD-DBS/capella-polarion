@@ -13,9 +13,12 @@ class PluginInterface(abc.ABC):
     """A general PluginInterface to be implemented by plugins."""
 
     def __init__(
-        self, capella_polarion_worker: polarion_worker.CapellaPolarionWorker
+        self,
+        capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
+        model: capellambse.MelodyModel,
     ):
         self.capella_polarion_worker = capella_polarion_worker
+        self.model = model
 
     @abc.abstractmethod
     def run(self, **kwargs):
@@ -35,7 +38,7 @@ class WorkItemPluginInterface(
         generate_attachments: bool,
         capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
     ):
-        super().__init__(capella_polarion_worker)
+        super().__init__(capella_polarion_worker, model)
         self.capella_polarion_worker.load_polarion_work_item_map()
         element_converter.AbstractWorkItemGenerator.__init__(
             self,
