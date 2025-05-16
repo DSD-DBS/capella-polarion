@@ -36,7 +36,7 @@ CONTEXT_DIAGRAM_CHECKSUM = (
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 WORKITEM_ID = "TEST-ID"
 
-with open(TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", encoding="utf8") as f:
+with open(TEST_DIAGRAM_CACHE / f"{TEST_DIAG_UUID}.svg", "rb") as f:
     diagram_svg = f.read()
 
 wia_dict = {

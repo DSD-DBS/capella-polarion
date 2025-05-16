@@ -3,12 +3,11 @@
 
 from unittest import mock
 
+import capellambse
+
 from capella2polarion.connectors import polarion_worker
 from capella2polarion.converters import converter_config, data_session
 from capella2polarion.data_model import work_items
-
-# pylint: disable-next=relative-beyond-top-level, useless-suppression
-from .conftest import FakeModelObject  # type: ignore[import]
 
 
 def test_polarion_worker_non_delete_mode():
@@ -42,6 +41,7 @@ def test_polarion_worker_delete_mode():
 
 
 def test_polarion_worker_reuse_deleted_work_item(
+    model: capellambse.MelodyModel,
     empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
 ):
     new_work_item = work_items.CapellaWorkItem(
@@ -60,7 +60,7 @@ def test_polarion_worker_reuse_deleted_work_item(
             "123": data_session.ConverterData(
                 "la",
                 converter_config.CapellaTypeConfig("test"),
-                FakeModelObject("123"),
+                model.la.extensions.create("FakeModelObject", uuid="123"),
                 new_work_item,
             )
         }
