@@ -254,9 +254,16 @@ class CapellaPolarionWorker:
                     self.project_client.work_items.links.get_all(old.id)
                 )
 
-            # Type will only be updated, if set and should be used carefully
-            if new.type == old.type:
-                new.type = None
+            # Type will be updated immediatly, if changed b/c Polarion
+            # does not allow to change the type of a work item and fields in
+            # the same request.
+            new.type = None
+            if new.type != old.type:
+                new_with_only_type = data_model.CapellaWorkItem(
+                    id=old.id, type=new.type
+                )
+                self.project_client.work_items.update(new_with_only_type)
+
             new.status = "open"
 
             # If additional fields were present, but aren't anymore,
