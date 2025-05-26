@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import dataclasses
 import enum
 import hashlib
 import logging
@@ -43,23 +44,6 @@ def resolve_element_type(type_: str) -> str:
     return type_[0].lower() + type_[1:]
 
 
-def _format_texts(
-    type_texts: dict[str, list[str]],
-) -> dict[str, dict[str, str]]:
-    def _format(texts: list[str]) -> dict[str, str]:
-        if len(texts) > 1:
-            items = "".join(f"<li>{text}</li>" for text in texts)
-            text = f"<ul>{items}</ul>"
-        else:
-            text = texts[0]
-        return {"type": "text/html", "value": text}
-
-    requirement_types = {}
-    for typ, texts in type_texts.items():
-        requirement_types[typ.lower()] = _format(texts)
-    return requirement_types
-
-
 def _resolve_capella_attribute(
     converter_data: data_session.ConverterData, attribute: str
 ) -> polarion_api.TextContent | str:
@@ -76,98 +60,56 @@ def _resolve_capella_attribute(
     raise ValueError(f"Unsupported attribute type: {value!r}")
 
 
+def add_attachment_to_workitem(
+    work_item: polarion_api.WorkItem,
+    attachment: data_model.Capella2PolarionAttachment,
+) -> None:
+    """Add the attachment to the workitem and add a PNG version if needed."""
+    assert attachment.file_name is not None
+    attachment.work_item_id = work_item.id or ""
+    work_item.attachments.append(attachment)
+    if attachment.mime_type == "image/svg+xml":
+        work_item.attachments.append(
+            data_model.PngConvertedSvgAttachment(attachment)
+        )
+
+
+def draw_diagram_svg(
+    diagram: m.AbstractDiagram,
+    file_name: str,
+    title: str,
+    max_width: int,
+    cls: str,
+    generate_attachment: bool,
+    render_params: dict[str, t.Any] | None = None,
+    caption: tuple[str, str] | None = None,
+) -> tuple[str, data_model.CapellaDiagramAttachment | None]:
+    """Return the provided diagram as attachment and HTML."""
+    file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
+
+    if generate_attachment:
+        if not isinstance(diagram, context.ContextDiagram):
+            attachment = data_model.CapellaDiagramAttachment(
+                diagram, file_name, render_params, title
+            )
+        else:
+            attachment = data_model.CapellaContextDiagramAttachment(
+                diagram, file_name, render_params, title
+            )
+    else:
+        attachment = None
+
+    return (
+        polarion_html_helper.generate_image_html(
+            title, file_name, max_width, cls, caption
+        ),
+        attachment,
+    )
+
 class AbstractWorkItemGenerator(
-    polarion_html_helper.JinjaRendererMixin, abc.ABC
+    abc.ABC, polarion_html_helper.JinjaRendererMixin
 ):
     """An abstract class for work item generating plugins and generators."""
-
-    def __init__(
-        self,
-        model: capellambse.MelodyModel,
-        generate_figure_captions: bool,
-        generate_attachments: bool,
-        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
-    ):
-        self.model = model
-        self.generate_figure_captions = generate_figure_captions
-        self.generate_attachments = generate_attachments
-        self.capella_polarion_mapping = capella_polarion_mapping
-
-    def _add_attachment(
-        self,
-        work_item: polarion_api.WorkItem,
-        attachment: data_model.Capella2PolarionAttachment,
-    ) -> None:
-        assert attachment.file_name is not None
-        attachment.work_item_id = work_item.id or ""
-        work_item.attachments.append(attachment)
-        if attachment.mime_type == "image/svg+xml":
-            work_item.attachments.append(
-                data_model.PngConvertedSvgAttachment(attachment)
-            )
-
-    def _draw_diagram_svg(
-        self,
-        diagram: m.AbstractDiagram,
-        file_name: str,
-        title: str,
-        max_width: int,
-        cls: str,
-        render_params: dict[str, t.Any] | None = None,
-        caption: tuple[str, str] | None = None,
-    ) -> tuple[str, data_model.CapellaDiagramAttachment | None]:
-        file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
-
-        if self.generate_attachments:
-            if not isinstance(diagram, context.ContextDiagram):
-                attachment = data_model.CapellaDiagramAttachment(
-                    diagram, file_name, render_params, title
-                )
-            else:
-                attachment = data_model.CapellaContextDiagramAttachment(
-                    diagram, file_name, render_params, title
-                )
-        else:
-            attachment = None
-
-        return (
-            polarion_html_helper.generate_image_html(
-                title, file_name, max_width, cls, caption
-            ),
-            attachment,
-        )
-
-    def _render_jinja_template(
-        self,
-        template_folder: str | pathlib.Path,
-        template_path: str | pathlib.Path,
-        converter_data: data_session.ConverterData,
-        errors: set[str],
-        render_params: dict[str, t.Any] | None = None,
-    ) -> markupsafe.Markup:
-        env = self._get_jinja_env(str(template_folder))
-        template = env.get_template(str(template_path))
-        rendered_jinja = template.render(
-            object=converter_data.capella_element,
-            model=self.model,
-            work_item=converter_data.work_item,
-            **(render_params or {}),
-        )
-        _, text, _ = self._sanitize_text(
-            converter_data.capella_element, rendered_jinja, errors
-        )
-        return text
-
-    def setup_env(self, env: jinja2.Environment) -> None:
-        """Add the link rendering filter."""
-        env.filters["make_href"] = self.__make_href_filter
-        env.globals["insert_diagram"] = self.__insert_diagram
-
-    def __make_href_filter(self, obj: object) -> str | None:
-        if (obj := self.check_model_element(obj)) is None:
-            return "#"
-        return f"hlink://{obj.uuid}"
-
     def __insert_diagram(
         self,
         work_item: polarion_api.WorkItem,
@@ -194,68 +136,19 @@ class AbstractWorkItemGenerator(
                 caption,
             )
 
-        diagram_html, attachment = self._draw_diagram_svg(
-            diagram,
-            file_name,
-            diagram.name,
-            max_width,
-            JINJA_RENDERED_IMG_CLS,
-            render_params,
-        )
-        if attachment:
-            self._add_attachment(work_item, attachment)
-
-        return diagram_html
-
-    def _draw_additional_attributes_diagram(
+    def __init__(
         self,
-        work_item: polarion_api.WorkItem,
-        diagram: m.AbstractDiagram,
-        attribute: str,
-        title: str,
-        render_params: dict[str, t.Any] | None = None,
+        model: capellambse.MelodyModel,
+        generate_figure_captions: bool,
+        generate_attachments: bool,
+        capella_polarion_mapping: polarion_repo.PolarionDataRepository,
     ) -> None:
-        diagram_html, attachment = self._draw_diagram_svg(
-            diagram,
-            attribute,
-            title,
-            650,
-            "additional-attributes-diagram",
-            render_params,
-            (
-                ("Figure", f"{title} of {work_item.title}")
-                if self.generate_figure_captions
-                else None
-            ),
-        )
-        if attachment:
-            self._add_attachment(work_item, attachment)
+        self.model = model
+        self.generate_figure_captions = generate_figure_captions
+        self.generate_attachments = generate_attachments
+        self.capella_polarion_mapping = capella_polarion_mapping
 
-        work_item.additional_attributes[attribute] = {
-            "type": "text/html",
-            "value": diagram_html,
-        }
-
-    def _sanitize_linked_text(
-        self, obj: m.ModelElement | m.Diagram
-    ) -> tuple[
-        list[str],
-        markupsafe.Markup,
-        list[data_model.Capella2PolarionAttachment],
-    ]:
-        linked_text = getattr(
-            obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
-        )["capella:linkedText"]
-        linked_text = polarion_html_helper.RE_DESCR_DELETED_PATTERN.sub(
-            lambda match: polarion_html_helper.strike_through(
-                self._replace_markup(obj.uuid, match, [])
-            ),
-            linked_text,
-        )
-        linked_text = linked_text.replace("\n", "<br>")
-        return self._sanitize_text(obj, linked_text)
-
-    def _sanitize_text(
+    def sanitize_text(
         self,
         obj: m.ModelElement | m.Diagram,
         text: markupsafe.Markup | str,
@@ -265,9 +158,10 @@ class AbstractWorkItemGenerator(
         markupsafe.Markup,
         list[data_model.Capella2PolarionAttachment],
     ]:
+        """Convert Capella texts to Polarion HTML with links and images."""
         referenced_uuids: list[str] = []
         replaced_markup = RE_DESCR_LINK_PATTERN.sub(
-            lambda match: self._replace_markup(
+            lambda match: self.replace_markup(
                 match, referenced_uuids, errors, 2
             ),
             text,
@@ -331,7 +225,7 @@ class AbstractWorkItemGenerator(
         )
         return referenced_uuids, repaired_markup, attachments
 
-    def _replace_markup(
+    def replace_markup(
         self,
         match: re.Match,
         referenced_uuids: list[str],
@@ -359,6 +253,139 @@ class AbstractWorkItemGenerator(
 
         errors.add(f"Non-existing work item referenced in description: {uuid}")
         return match.group(default_group)
+
+    def sanitize_linked_text(
+        self,
+        obj: m.ModelElement | m.Diagram,
+        errors: set[str],
+    ) -> tuple[
+        list[str],
+        markupsafe.Markup,
+        list[data_model.Capella2PolarionAttachment],
+    ]:
+        """Get the linked text and return it sanitized."""
+        linked_text = getattr(
+            obj, "specification", {"capella:linkedText": markupsafe.Markup("")}
+        )["capella:linkedText"]
+        linked_text = polarion_html_helper.RE_DESCR_DELETED_PATTERN.sub(
+            lambda match: polarion_html_helper.strike_through(
+                self.replace_markup(match, [], errors)
+            ),
+            linked_text,
+        )
+        linked_text = linked_text.replace("\n", "<br>")
+        return self.sanitize_text(obj, linked_text, errors)
+
+    @staticmethod
+    def get_requirement_types_text(
+        obj: m.ModelElement | m.Diagram, errors: set[str]
+    ) -> dict[str, polarion_api.HtmlContent]:
+        """Get the requirement texts and return them."""
+        type_texts = collections.defaultdict(list)
+        for req in getattr(obj, "requirements", []):
+            if req is None:
+                errors.add("Found RequirementsRelation with broken target")
+                continue
+
+            if not (req.type and req.text):
+                identifier = (
+                    req.long_name or req.name or req.summary or req.uuid
+                )
+                errors.add(
+                    f"Found Requirement without text or type on {identifier!r}"
+                )
+                continue
+
+            type_texts[req.type.long_name].append(req.text)
+
+        def _format(texts: list[str]) -> polarion_api.HtmlContent:
+            if len(texts) > 1:
+                items = "".join(f"<li>{text}</li>" for text in texts)
+                text = f"<ul>{items}</ul>"
+            else:
+                text = texts[0]
+            return polarion_api.HtmlContent(text)
+
+        requirement_types: dict[str, polarion_api.HtmlContent] = {}
+        for typ, texts in type_texts.items():
+            requirement_types[typ.lower()] = _format(texts)
+        return requirement_types
+
+    def render_jinja_template(
+        self,
+        template_folder: str | pathlib.Path,
+        template_path: str | pathlib.Path,
+        capella_element: m.ModelElement | m.Diagram,
+        errors: set[str],
+        work_item: data_model.CapellaWorkItem | None = None,
+        render_params: dict[str, t.Any] | None = None,
+    ) -> tuple[
+        list[str],
+        markupsafe.Markup,
+        list[data_model.Capella2PolarionAttachment],
+    ]:
+        """Render jinja template for model element and return polarion text."""
+        env = self._get_jinja_env(str(template_folder))
+        template = env.get_template(str(template_path))
+        rendered_jinja = template.render(
+            object=capella_element,
+            model=self.model,
+            work_item=work_item,
+            **(render_params or {}),
+        )
+        return self.sanitize_text(capella_element, rendered_jinja, errors)
+
+    def setup_env(self, env: jinja2.Environment):
+        """Add the link rendering filter."""
+        env.filters["make_href"] = self.__make_href_filter
+        env.globals["insert_diagram"] = self.__insert_diagram
+
+    def __make_href_filter(self, obj: object) -> str | None:
+        if (obj := self.check_model_element(obj)) is None:
+            return "#"
+        return f"hlink://{obj.uuid}"
+
+    def __insert_diagram(
+        self,
+        work_item: polarion_api.WorkItem | None,
+        diagram: m.AbstractDiagram,
+        file_name: str,
+        render_params: dict[str, t.Any] | None = None,
+        max_width: int = 800,
+        caption: tuple[str, str] | None = None,
+    ):
+        if work_item is None:
+            raise ValueError("To render a diagram the work item ")
+        if attachment := next(
+            (
+                att
+                for att in work_item.attachments
+                if att.file_name == f"{C2P_IMAGE_PREFIX}{file_name}.svg"
+            ),
+            None,
+        ):
+            assert attachment.file_name is not None
+            return polarion_html_helper.generate_image_html(
+                diagram.name,
+                attachment.file_name,
+                max_width,
+                JINJA_RENDERED_IMG_CLS,
+                caption,
+            )
+
+        diagram_html, attachment = draw_diagram_svg(
+            diagram,
+            file_name,
+            diagram.name,
+            max_width,
+            JINJA_RENDERED_IMG_CLS,
+            self.generate_attachments,
+            render_params,
+        )
+        if attachment:
+            add_attachment_to_workitem(work_item, attachment)
+
+        return diagram_html
 
 
 class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
@@ -458,29 +485,6 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
             self.converter_session[original_element.uuid].errors,
         )
 
-    def _get_requirement_types_text(
-        self, obj: m.ModelElement | m.Diagram
-    ) -> dict[str, dict[str, str]]:
-        type_texts = collections.defaultdict(list)
-        for req in getattr(obj, "requirements", []):
-            if req is None:
-                self.converter_session[obj.uuid].errors.add(
-                    "Found RequirementsRelation with broken target"
-                )
-                continue
-
-            if not (req.type and req.text):
-                identifier = (
-                    req.long_name or req.name or req.identifier or req.uuid
-                )
-                self.converter_session[obj.uuid].errors.add(
-                    f"Found Requirement without text or type on {identifier!r}"
-                )
-                continue
-
-            type_texts[req.type.long_name].append(req.text)
-        return _format_texts(type_texts)
-
     # Serializer implementation starts below
 
     def __generic_work_item(
@@ -490,13 +494,15 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
     ) -> data_model.CapellaWorkItem:
         obj = converter_data.capella_element
         raw_description = getattr(obj, "description", None)
-        uuids, value, attachments = self._sanitize_text(
+        uuids, value, attachments = self.sanitize_text(
             obj,
             raw_description or markupsafe.Markup(""),
             converter_data.errors,
         )
         converter_data.description_references = uuids
-        requirement_types = self._get_requirement_types_text(obj)
+        requirement_types = self.get_requirement_types_text(
+            obj, converter_data.errors
+        )
 
         converter_data.work_item = data_model.CapellaWorkItem(
             id=work_item_id,
@@ -509,7 +515,7 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
         )
         assert converter_data.work_item is not None
         for attachment in attachments:
-            self._add_attachment(converter_data.work_item, attachment)
+            add_attachment_to_workitem(converter_data.work_item, attachment)
 
         return converter_data.work_item
 
@@ -549,12 +555,13 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
         assert isinstance(diagram, m.Diagram)
         work_item_id = converter_data.work_item.id
 
-        diagram_html, attachment = self._draw_diagram_svg(
+        diagram_html, attachment = draw_diagram_svg(
             diagram,
             "diagram",
             "Diagram",
             750,
             "diagram",
+            self.generate_attachments,
             render_params,
             (
                 ("Figure", f"Diagram {diagram.name}")
@@ -572,7 +579,7 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
             status="open",
         )
         if attachment:
-            self._add_attachment(converter_data.work_item, attachment)
+            add_attachment_to_workitem(converter_data.work_item, attachment)
 
         return converter_data.work_item
 
@@ -588,7 +595,9 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
         def get_condition(cap: m.ModelElement, name: str) -> str:
             if not (condition := getattr(cap, name)):
                 return ""
-            _, value, _ = self._sanitize_linked_text(condition, obj)
+            _, value, _ = self.sanitize_linked_text(
+                condition, converter_data.errors
+            )
             return f'<div style="text-align: center;">{value}</div>'
 
         pre_condition = get_condition(obj, "precondition")
@@ -615,7 +624,9 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
             uuids,
             converter_data.work_item.description.value,
             attachments,
-        ) = self._sanitize_linked_text(converter_data.capella_element)
+        ) = self.sanitize_linked_text(
+            converter_data.capella_element, converter_data.errors
+        )
         if uuids:
             converter_data.description_references = uuids
 
@@ -680,16 +691,23 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
             assert isinstance(template_path, str | pathlib.Path)
             params = jinja_properties.get("render_parameters", {})
             assert isinstance(params, dict)
-            converter_data.work_item.additional_attributes[field_id] = {
-                "type": "text/html",
-                "value": self._render_jinja_template(
-                    jinja_properties.get("template_folder", ""),
-                    jinja_properties["template_path"],
-                    converter_data,
-                    converter_data.errors,
-                    params
-                ),
-            }
+            # referenced UUIDs are ignored here as they are not in description
+            _, value, attachments = self.render_jinja_template(
+                jinja_properties.get("template_folder", ""),
+                jinja_properties["template_path"],
+                converter_data.capella_element,
+                converter_data.errors,
+                converter_data.work_item,
+            )
+
+            for attachment in attachments:
+                add_attachment_to_workitem(
+                    converter_data.work_item, attachment
+                )
+
+            converter_data.work_item.additional_attributes[field_id] = (
+                polarion_api.HtmlContent(value)
+            )
 
         return converter_data.work_item
 
@@ -705,13 +723,47 @@ class CapellaWorkItemSerializer(AbstractWorkItemGenerator):
         assert converter_data.work_item.description, (
             "Description should already be defined"
         )
-        converter_data.work_item.description.value = (
-            self._render_jinja_template(
-                template_folder,
-                template_path,
-                converter_data,
-                converter_data.errors,
-                render_parameters,
-            )
+
+        uuids, value, attachments = self.render_jinja_template(
+            template_folder,
+            template_path,
+            converter_data.capella_element,
+            converter_data.errors,
+            converter_data.work_item,
+            render_parameters
         )
+        for attachment in attachments:
+            add_attachment_to_workitem(converter_data.work_item, attachment)
+
+        converter_data.description_references = uuids
+        converter_data.work_item.description.value = value
         return converter_data.work_item
+
+    def _draw_additional_attributes_diagram(
+        self,
+        work_item: polarion_api.WorkItem,
+        diagram: m.AbstractDiagram,
+        attribute: str,
+        title: str,
+        render_params: dict[str, t.Any] | None = None,
+    ):
+        diagram_html, attachment = draw_diagram_svg(
+            diagram,
+            attribute,
+            title,
+            650,
+            "additional-attributes-diagram",
+            self.generate_attachments,
+            render_params,
+            (
+                ("Figure", f"{title} of {work_item.title}")
+                if self.generate_figure_captions
+                else None
+            ),
+        )
+        if attachment:
+            add_attachment_to_workitem(work_item, attachment)
+
+        work_item.additional_attributes[attribute] = polarion_api.HtmlContent(
+            diagram_html
+        )
