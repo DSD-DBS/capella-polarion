@@ -13,6 +13,8 @@ from capellambse import helpers as chelpers
 from capellambse import model as m
 from lxml import html
 
+from capella2polarion import data_model
+
 WI_ID_PREFIX = "polarion_wiki macro name=module-workitem;params=id="
 H_REGEX = re.compile("h[0-9]")
 WI_ID_REGEX = re.compile(f"{WI_ID_PREFIX}([A-Z|a-z|0-9]*-[0-9]+)")
@@ -225,3 +227,17 @@ def get_layout_index(
             )
         )
     return layout_index
+
+
+def add_attachment_to_workitem(
+    work_item: polarion_api.WorkItem,
+    attachment: data_model.Capella2PolarionAttachment,
+):
+    """Add the attachment to the workitem and add a PNG version if needed."""
+    assert attachment.file_name is not None
+    attachment.work_item_id = work_item.id or ""
+    work_item.attachments.append(attachment)
+    if attachment.mime_type == "image/svg+xml":
+        work_item.attachments.append(
+            data_model.PngConvertedSvgAttachment(attachment)
+        )

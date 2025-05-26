@@ -5,6 +5,7 @@ import abc
 
 import capellambse
 
+import capella2polarion.converters.capella_object_renderer
 from capella2polarion.connectors import polarion_worker
 from capella2polarion.converters import element_converter
 
@@ -26,9 +27,7 @@ class PluginInterface(abc.ABC):
         pass
 
 
-class WorkItemPluginInterface(
-    PluginInterface, element_converter.AbstractWorkItemGenerator, abc.ABC
-):
+class WorkItemPluginInterface(PluginInterface, abc.ABC):
     """An interface providing functionality from the WorkItemSerializer."""
 
     def __init__(
@@ -40,8 +39,7 @@ class WorkItemPluginInterface(
     ):
         super().__init__(capella_polarion_worker, model)
         self.capella_polarion_worker.load_polarion_work_item_map()
-        element_converter.AbstractWorkItemGenerator.__init__(
-            self,
+        self.capella_object_renderer = capella2polarion.converters.capella_object_renderer.CapellaObjectRenderer(
             model,
             generate_figure_captions,
             generate_attachments,
