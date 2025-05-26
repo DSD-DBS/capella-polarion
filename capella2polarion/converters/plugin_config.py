@@ -12,6 +12,7 @@ class PluginConfig(pydantic.BaseModel):
 
     module: str
     plugin_name: str
+    init_args: dict[str, t.Any]
     args: dict[str, t.Any]
 
 

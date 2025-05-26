@@ -2,12 +2,27 @@
 # SPDX-License-Identifier: Apache-2.0
 """Interfaces to implement custom plugins."""
 import abc
+import dataclasses
+import typing as t
 
 import capellambse
 
-import capella2polarion.converters.capella_object_renderer
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import element_converter
+
+
+@dataclasses.dataclass
+class AdditionalAttributes:
+    """Click args not directly related to the plugin, but maybe of interest."""
+
+    document_rendering_config: t.TextIO | None
+    overwrite_layouts: bool
+    overwrite_numbering: bool
+    synchronize_config: t.TextIO | None
+    force_update: bool
+    type_prefix: str
+    role_prefix: str
+    grouped_links_custom_fields: bool
+    generate_figure_captions: bool
 
 
 class PluginInterface(abc.ABC):
@@ -17,31 +32,14 @@ class PluginInterface(abc.ABC):
         self,
         capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
         model: capellambse.MelodyModel,
+        additional_configuration: AdditionalAttributes,
+        **kwargs,
     ):
         self.capella_polarion_worker = capella_polarion_worker
         self.model = model
+        self.additional_configuration = additional_configuration
 
     @abc.abstractmethod
     def run(self, **kwargs):
         """Run your custom code and send the results to polarion."""
         pass
-
-
-class WorkItemPluginInterface(PluginInterface, abc.ABC):
-    """An interface providing functionality from the WorkItemSerializer."""
-
-    def __init__(
-        self,
-        model: capellambse.MelodyModel,
-        generate_figure_captions: bool,
-        generate_attachments: bool,
-        capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
-    ):
-        super().__init__(capella_polarion_worker, model)
-        self.capella_polarion_worker.load_polarion_work_item_map()
-        self.capella_object_renderer = capella2polarion.converters.capella_object_renderer.CapellaObjectRenderer(
-            model,
-            generate_figure_captions,
-            generate_attachments,
-            self.capella_polarion_worker.polarion_data_repo,
-        )

@@ -250,6 +250,52 @@ def render_documents(
     envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
 )
 @click.option(
+    "--document-rendering-config",
+    type=click.File(mode="r", encoding="utf8"),
+    envvar="CAPELLA2POLARION_DOCUMENT_CONFIG",
+)
+@click.option(
+    "--overwrite-layouts",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_LAYOUTS",
+)
+@click.option(
+    "--overwrite-numbering",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_NUMBERING",
+)
+@click.option(
+    "--synchronize-config",
+    type=click.File(mode="r", encoding="utf8"),
+    envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
+)
+@click.option(
+    "--force-update",
+    is_flag=True,
+    envvar="CAPELLA2POLARION_FORCE_UPDATE",
+    default=False,
+)
+@click.option(
+    "--type-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_TYPE_PREFIX",
+    default="",
+)
+@click.option(
+    "--role-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_ROLE_PREFIX",
+    default="",
+)
+@click.option(
+    "--grouped-links-custom-fields / --no-grouped-links-custom-fields",
+    envvar="CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS",
+    is_flag=True,
+    default=True,
+)
+@click.option(
     "--generate-figure-captions",
     envvar="CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS",
     is_flag=True,
@@ -259,6 +305,14 @@ def render_documents(
 def run_plugins(
     ctx: click.core.Context,
     plugin_config_file: typing.TextIO,
+    document_rendering_config: typing.TextIO | None,
+    overwrite_layouts: bool,
+    overwrite_numbering: bool,
+    synchronize_config: typing.TextIO | None,
+    force_update: bool,
+    type_prefix: str,
+    role_prefix: str,
+    grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
 ) -> None:
     """Synchronise model elements."""
@@ -274,27 +328,33 @@ def run_plugins(
     )
 
     configs = plugin_config.read_config_file(plugin_config_file)
+    additional_config = plugin_interfaces.AdditionalAttributes(
+        document_rendering_config,
+        overwrite_layouts,
+        overwrite_numbering,
+        synchronize_config,
+        force_update,
+        type_prefix,
+        role_prefix,
+        grouped_links_custom_fields,
+        generate_figure_captions,
+    )
 
     for conf in configs:
         module = importlib.import_module(str(conf.module))
         plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
             module, conf.plugin_name
         )
-        plugin: plugin_interfaces.PluginInterface
         assert (
             capella_to_polarion_cli.capella_model
-        ), "A model must be defined to use WorkItemPlugins"
-        if issubclass(plugin_cls, plugin_interfaces.WorkItemPluginInterface):
-            plugin = plugin_cls(
-                capella_to_polarion_cli.capella_model,
-                generate_figure_captions,
-                True,
-                polarion_worker,
-            )
-        else:
-            plugin = plugin_cls(
-                polarion_worker, capella_to_polarion_cli.capella_model
-            )
+        ), "A model must be defined to use plugins"
+
+        plugin = plugin_cls(
+            polarion_worker,
+            capella_to_polarion_cli.capella_model,
+            additional_config,
+            **conf.init_args,
+        )
 
         plugin.run(**conf.args)
 
