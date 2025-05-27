@@ -5,7 +5,7 @@
 import polarion_rest_api_client as polarion_api
 from lxml import html
 
-from capella2polarion.converters import polarion_html_helper as html_helper
+from capella2polarion import polarion_html_helper as html_helper
 
 
 class TextWorkItemProvider:

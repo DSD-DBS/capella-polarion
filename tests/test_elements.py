@@ -16,7 +16,7 @@ from capellambse_context_diagrams import context, filters
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import (
+from capella2polarion.elements import (
     converter_config,
     data_session,
     element_converter,

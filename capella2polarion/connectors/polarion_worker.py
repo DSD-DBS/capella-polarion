@@ -16,7 +16,7 @@ from lxml import etree
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session
+from capella2polarion.elements import data_session
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class CapellaPolarionWorker:
         client = self.polarion_client.generate_project_client(
             project_id=project_id,
             delete_status=(
-                "deleted" if self.polarion_params.delete_work_items else None
+                None if self.polarion_params.delete_work_items else "deleted"
             ),
         )
         if not client.exists():

@@ -6,7 +6,7 @@ import io
 import pytest
 import yaml
 
-from capella2polarion.converters import converter_config
+from capella2polarion.elements import converter_config
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import TEST_MODEL_ELEMENTS_CONFIG  # type: ignore[import]
@@ -52,10 +52,10 @@ class TestConverterConfig:
         caplog.set_level("DEBUG")
         config = converter_config.ConverterConfig()
         expected = (
-            "capella2polarion.converters.converter_config",
+            "capella2polarion.elements.converter_config",
             20,
             "Global link parent is not available on Capella type diagram",
-            "capella2polarion.converters.converter_config",
+            "capella2polarion.elements.converter_config",
             40,
             "Link broken_attribute_name is not available on Capella type "
             "FunctionalExchange",

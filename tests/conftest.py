@@ -16,7 +16,7 @@ from capellambse import model as m
 
 from capella2polarion import cli, data_model
 from capella2polarion.connectors import polarion_repo, polarion_worker
-from capella2polarion.converters import (
+from capella2polarion.elements import (
     converter_config,
     data_session,
     model_converter,

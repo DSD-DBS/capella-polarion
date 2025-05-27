@@ -13,8 +13,7 @@ import polarion_rest_api_client as polarion_api
 import pydantic
 import yaml
 
-from capella2polarion import data_model
-from capella2polarion.converters import polarion_html_helper
+from capella2polarion import data_model, polarion_html_helper
 
 logger = logging.getLogger(__name__)
 
