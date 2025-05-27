@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Interfaces to implement custom plugins."""
+
 import abc
 import dataclasses
 import typing as t
@@ -33,12 +34,12 @@ class PluginInterface(abc.ABC):
         capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
         model: capellambse.MelodyModel,
         additional_configuration: AdditionalAttributes,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs: t.Any,  # pylint: disable=unused-argument # noqa: ARG002
     ):
         self.capella_polarion_worker = capella_polarion_worker
         self.model = model
         self.additional_configuration = additional_configuration
 
     @abc.abstractmethod
-    def run(self, **kwargs):
+    def run(self, **kwargs: t.Any) -> None:
         """Run your custom code and send the results to polarion."""

@@ -18,6 +18,8 @@ from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.documents import text_work_item_provider as twi
 
+PROJ_WI_PAIR_LEN = 2
+
 AREA_END_CLS = "c2pAreaEnd"
 """This class is expected for a div in a wiki macro to start a rendering area
 in mixed authority documents."""
@@ -128,7 +130,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
     def _get_work_item(
         self, obj: object
     ) -> tuple[str, str | None, polarion_api.WorkItem | None]:
-        if isinstance(obj, tuple) and len(obj) == 2:
+        if isinstance(obj, tuple) and len(obj) == PROJ_WI_PAIR_LEN:
             proj_id, work_item = obj
             if isinstance(proj_id, str) and isinstance(
                 work_item, polarion_api.WorkItem

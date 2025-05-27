@@ -341,9 +341,9 @@ def run_plugins(
         plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
             module, conf.plugin_name
         )
-        assert (
-            capella_to_polarion_cli.capella_model
-        ), "A model must be defined to use plugins"
+        assert capella_to_polarion_cli.capella_model, (
+            "A model must be defined to use plugins"
+        )
 
         plugin = plugin_cls(
             polarion_worker,

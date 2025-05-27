@@ -234,7 +234,7 @@ def get_layout_index(
 def add_attachment_to_workitem(
     work_item: polarion_api.WorkItem,
     attachment: data_model.Capella2PolarionAttachment,
-):
+) -> None:
     """Add the attachment to the workitem and add a PNG version if needed."""
     assert attachment.file_name is not None
     attachment.work_item_id = work_item.id or ""

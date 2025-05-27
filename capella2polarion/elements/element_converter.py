@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import enum
-import pathlib
 import logging
+import pathlib
 import re
 import typing as t
 from collections import abc as cabc
@@ -304,7 +304,7 @@ class CapellaWorkItemSerializer:
     def _add_jinja_fields(
         self,
         converter_data: data_session.ConverterData,
-        **fields: dict[str, str | dict[str, t.Any]],
+        **fields: dict[str, str | pathlib.Path | dict[str, t.Any]],
     ) -> data_model.CapellaWorkItem:
         """Add a new custom field and fill it with rendered jinja content."""
         assert converter_data.work_item, "No work item set yet"
@@ -317,11 +317,12 @@ class CapellaWorkItemSerializer:
             assert isinstance(params, dict)
             # referenced UUIDs are ignored here as they are not in description
             _, value, attachments = self.renderer.render_jinja_template(
-                jinja_properties.get("template_folder", ""),
-                jinja_properties["template_path"],
+                template_folder,
+                template_path,
                 converter_data.capella_element,
                 converter_data.errors,
                 converter_data.work_item,
+                params,
             )
 
             for attachment in attachments:
@@ -354,7 +355,7 @@ class CapellaWorkItemSerializer:
             converter_data.capella_element,
             converter_data.errors,
             converter_data.work_item,
-            render_parameters
+            render_parameters,
         )
         for attachment in attachments:
             polarion_html_helper.add_attachment_to_workitem(
@@ -372,7 +373,7 @@ class CapellaWorkItemSerializer:
         attribute: str,
         title: str,
         render_params: dict[str, t.Any] | None = None,
-    ):
+    ) -> None:
         diagram_html, attachment = self.renderer.draw_diagram_svg(
             diagram,
             attribute,

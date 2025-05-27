@@ -73,7 +73,7 @@ class MassDocumentRenderer:
         mixed_authority_configs: list[
             document_config.MixedAuthorityDocumentRenderingConfig
         ],
-    ):
+    ) -> None:
         for config in mixed_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
@@ -136,7 +136,7 @@ class MassDocumentRenderer:
         full_authority_configs: list[
             document_config.FullAuthorityDocumentRenderingConfig
         ],
-    ):
+    ) -> None:
         for config in full_authority_configs:
             rendering_layouts = document_config.generate_work_item_layouts(
                 config.work_item_layouts
@@ -212,7 +212,7 @@ class MassDocumentRenderer:
         self,
         document: polarion_api.Document,
         rendering_layouts: list[polarion_api.RenderingLayout],
-    ):
+    ) -> None:
         """Keep existing work item layouts in their original order."""
         document.rendering_layouts = document.rendering_layouts or []
         for rendering_layout in rendering_layouts:
@@ -256,7 +256,7 @@ class MassDocumentRenderer:
         self,
         document: polarion_api.Document,
         config: document_config.BaseDocumentRenderingConfig,
-    ):
+    ) -> bool:
         status = document.status
         document.status = None
         if (

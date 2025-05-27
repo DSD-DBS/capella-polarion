@@ -1,6 +1,7 @@
 # Copyright DB InfraGO AG and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Provides Capella object specific rendering functionalities."""
+
 from __future__ import annotations
 
 import collections
@@ -232,7 +233,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         )
         return self.sanitize_text(capella_element, rendered_jinja, errors)
 
-    def setup_env(self, env: jinja2.Environment):
+    def setup_env(self, env: jinja2.Environment) -> None:
         """Add the link rendering filter."""
         env.filters["make_href"] = self.__make_href_filter
         env.globals["insert_diagram"] = self.__insert_diagram
@@ -250,7 +251,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         render_params: dict[str, t.Any] | None = None,
         max_width: int = 800,
         caption: tuple[str, str] | None = None,
-    ):
+    ) -> str:
         if work_item is None:
             raise ValueError("To render a diagram the work item ")
         if attachment := next(
