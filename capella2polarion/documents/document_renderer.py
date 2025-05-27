@@ -14,11 +14,9 @@ import polarion_rest_api_client as polarion_api
 from lxml import etree
 from lxml import html as lxmlhtml
 
+from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
-
-from .. import data_model
-from . import document_config, polarion_html_helper
-from . import text_work_item_provider as twi
+from capella2polarion.documents import text_work_item_provider as twi
 
 AREA_END_CLS = "c2pAreaEnd"
 """This class is expected for a div in a wiki macro to start a rendering area
@@ -34,6 +32,8 @@ logger = logging.getLogger(__name__)
 class RenderingSession:
     """A data class for parameters handled during a rendering session."""
 
+    document_project_id: str
+
     headings: list[polarion_api.WorkItem] = dataclasses.field(
         default_factory=list
     )
@@ -41,22 +41,11 @@ class RenderingSession:
     rendering_layouts: list[polarion_api.RenderingLayout] = dataclasses.field(
         default_factory=list
     )
-    inserted_work_item_ids: list[str] = dataclasses.field(default_factory=list)
+    inserted_work_item_ids: list[tuple[str, str]] = dataclasses.field(
+        default_factory=list
+    )
     text_work_items: dict[str, polarion_api.WorkItem] = dataclasses.field(
         default_factory=dict
-    )
-    document_project_id: str | None = None
-
-
-@dataclasses.dataclass
-class ProjectData:
-    """A class holding data of a project which documents are rendered for."""
-
-    new_docs: list[data_model.DocumentData] = dataclasses.field(
-        default_factory=list
-    )
-    updated_docs: list[data_model.DocumentData] = dataclasses.field(
-        default_factory=list
     )
 
 
@@ -68,16 +57,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         polarion_repository: polarion_repo.PolarionDataRepository,
         model: capellambse.MelodyModel,
         model_work_item_project_id: str,
-        overwrite_heading_numbering: bool = False,
-        overwrite_layouts: bool = False,
     ):
         self.polarion_repository = polarion_repository
         self.model = model
         self.jinja_envs: dict[str, jinja2.Environment] = {}
-        self.overwrite_heading_numbering = overwrite_heading_numbering
-        self.overwrite_layouts = overwrite_layouts
-        self.projects: dict[str | None, ProjectData] = {}
-        self.existing_documents: polarion_repo.DocumentRepository = {}
         self.model_work_item_project_id = model_work_item_project_id
 
     def setup_env(self, env: jinja2.Environment) -> None:
@@ -87,77 +70,83 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env.globals["work_item_field"] = self.__work_item_field
         env.filters["link_work_item"] = self.__link_work_item
 
-    def _is_external_document(self, session: RenderingSession) -> bool:
-        """Check if the document is in a different project than the model."""
-        if session.document_project_id is None:
-            return False
-        return session.document_project_id != self.model_work_item_project_id
-
     def __insert_work_item(
         self, obj: object, session: RenderingSession, level: int | None = None
     ) -> str:
-        if (obj := self.check_model_element(obj)) is None:
-            logger.error(
-                "A non-model object was passed to insert a work item."
-            )
-            return polarion_html_helper.RED_TEXT.format(
-                text="A non-model object was passed to insert a work item."
-            )
+        error_msg, proj_id, work_item = self._get_work_item(obj)
 
-        if wi := self.polarion_repository.get_work_item_by_capella_uuid(
-            obj.uuid
-        ):
-            assert wi.id
-            if wi.id in session.inserted_work_item_ids:
+        if proj_id and work_item:
+            assert work_item.id
+            if (proj_id, work_item.id) in session.inserted_work_item_ids:
                 logger.info(
                     "WorkItem %s is already in the document."
                     "A link will be added instead of inserting it.",
-                    wi.id,
+                    work_item.id,
                 )
                 return f"<p>{self.__link_work_item(obj)}</p>"
 
-            assert wi.type
+            assert work_item.type
             layout_index = polarion_html_helper.get_layout_index(
-                "section", session.rendering_layouts, wi.type
+                "section", session.rendering_layouts, work_item.type
             )
 
             custom_info = ""
             if level is not None:
                 custom_info = f"level={level}|"
 
-            session.inserted_work_item_ids.append(wi.id)
-            if self._is_external_document(session):
+            session.inserted_work_item_ids.append((proj_id, work_item.id))
+            if proj_id != session.document_project_id:
                 # pylint: disable-next=line-too-long
                 return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT_PROJECT.format(
-                    pid=wi.id,
+                    pid=work_item.id,
                     lid=layout_index,
                     custom_info=custom_info,
-                    project=self.model_work_item_project_id,
+                    project=proj_id,
                 )
             return polarion_html_helper.POLARION_WORK_ITEM_DOCUMENT.format(
-                pid=wi.id, lid=layout_index, custom_info=custom_info
+                pid=work_item.id, lid=layout_index, custom_info=custom_info
             )
 
+        logger.warning(f"Error inserting work item: {error_msg}")
         return polarion_html_helper.RED_TEXT.format(
-            text=f"Missing WorkItem for UUID {obj.uuid}"
+            text=f"Error inserting work item: {error_msg}"
         )
 
     def __link_work_item(self, obj: object) -> str:
-        if (obj := self.check_model_element(obj)) is None:
-            logger.error("A non-model object was passed to link a work item.")
-            return polarion_html_helper.RED_TEXT.format(
-                text="A non-model object was passed to link a work item."
+        error_msg, proj_id, work_item = self._get_work_item(obj)
+
+        if work_item and proj_id:
+            return polarion_html_helper.POLARION_WORK_ITEM_URL_PROJECT.format(
+                pid=work_item.id, project=proj_id
             )
+
+        logger.warning(f"Error linking work item: {error_msg}")
+        return polarion_html_helper.RED_TEXT.format(
+            text=f"Error linking work item: {error_msg}"
+        )
+
+    def _get_work_item(
+        self, obj: object
+    ) -> tuple[str, str | None, polarion_api.WorkItem | None]:
+        if isinstance(obj, tuple) and len(obj) == 2:
+            proj_id, work_item = obj
+            if isinstance(proj_id, str) and isinstance(
+                work_item, polarion_api.WorkItem
+            ):
+                return "", proj_id, work_item
+
+        if (obj := self.check_model_element(obj)) is None:
+            return "A non-model object was passed.", None, None
 
         if wi := self.polarion_repository.get_work_item_by_capella_uuid(
             obj.uuid
         ):
-            return polarion_html_helper.POLARION_WORK_ITEM_URL_PROJECT.format(
-                pid=wi.id, project=self.model_work_item_project_id
-            )
+            return "", self.model_work_item_project_id, wi
 
-        return polarion_html_helper.RED_TEXT.format(
-            text=f"Missing WorkItem for {obj.xtype} {obj.name} ({obj.uuid})"
+        return (
+            f"Missing WorkItem for {obj.xtype} {obj.name} ({obj.uuid})",
+            None,
+            None,
         )
 
     def __heading(
@@ -250,7 +239,10 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         env = self._get_jinja_env(template_folder)
         template = env.get_template(template_name)
 
-        session = RenderingSession(document_project_id=document_project_id)
+        session = RenderingSession(
+            document_project_id=document_project_id
+            or self.model_work_item_project_id
+        )
         if document is not None:
             session.rendering_layouts = document.rendering_layouts or []
             if document.home_page_content and document.home_page_content.value:
@@ -310,7 +302,8 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
 
         session = RenderingSession(
             rendering_layouts=document.rendering_layouts or [],
-            document_project_id=document_project_id,
+            document_project_id=document_project_id
+            or self.model_work_item_project_id,
         )
         section_areas = self._extract_section_areas(html_elements, session)
         env = self._get_jinja_env(template_folder)
@@ -368,228 +361,6 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
             document, session.headings, text_work_item_provider
         )
 
-    def _update_rendering_layouts(
-        self,
-        document: polarion_api.Document,
-        rendering_layouts: list[polarion_api.RenderingLayout],
-    ) -> None:
-        """Keep existing work item layouts in their original order."""
-        document.rendering_layouts = document.rendering_layouts or []
-        for rendering_layout in rendering_layouts:
-            assert rendering_layout.type is not None
-            index = polarion_html_helper.get_layout_index(
-                "section", document.rendering_layouts, rendering_layout.type
-            )
-            document.rendering_layouts[index] = rendering_layout
-
-    def _get_and_customize_doc(
-        self,
-        project_id: str | None,
-        space: str,
-        name: str,
-        title: str | None,
-        rendering_layouts: list[polarion_api.RenderingLayout],
-        heading_numbering: bool,
-    ) -> tuple[polarion_api.Document | None, list[polarion_api.WorkItem]]:
-        old_doc, text_work_items = self.existing_documents.get(
-            (project_id, space, name), (None, [])
-        )
-        if old_doc is not None:
-            old_doc = polarion_api.Document(
-                id=old_doc.id,
-                module_folder=old_doc.module_folder,
-                module_name=old_doc.module_name,
-                status=old_doc.status,
-                home_page_content=old_doc.home_page_content,
-                rendering_layouts=old_doc.rendering_layouts,
-            )
-            if title:
-                old_doc.title = title
-            if self.overwrite_layouts:
-                self._update_rendering_layouts(old_doc, rendering_layouts)
-            if self.overwrite_heading_numbering:
-                old_doc.outline_numbering = heading_numbering
-
-        return old_doc, text_work_items
-
-    def render_documents(
-        self,
-        configs: document_config.DocumentConfigs,
-        existing_documents: polarion_repo.DocumentRepository,
-    ) -> dict[str | None, ProjectData]:
-        """Render all documents defined in the given config.
-
-        Returns a list new documents followed by updated documents and
-        work items, which need to be updated
-        """
-        self.existing_documents = existing_documents
-        self.projects = {}
-
-        self._render_full_authority_documents(configs.full_authority)
-        self._render_mixed_authority_documents(configs.mixed_authority)
-
-        return self.projects
-
-    def _check_document_status(
-        self,
-        document: polarion_api.Document,
-        config: document_config.BaseDocumentRenderingConfig,
-    ) -> bool:
-        status = document.status
-        document.status = None
-        if (
-            config.status_allow_list is not None
-            and status not in config.status_allow_list
-        ):
-            logger.warning(
-                "Won't update document %s/%s due to status "
-                "restrictions. Status is %s and should be in %r.",
-                document.module_folder,
-                document.module_name,
-                status,
-                config.status_allow_list,
-            )
-            return False
-        return True
-
-    def _render_mixed_authority_documents(
-        self,
-        mixed_authority_configs: list[
-            document_config.MixedAuthorityDocumentRenderingConfig
-        ],
-    ) -> None:
-        for config in mixed_authority_configs:
-            rendering_layouts = document_config.generate_work_item_layouts(
-                config.work_item_layouts
-            )
-            project_data = self.projects.setdefault(
-                config.project_id, ProjectData()
-            )
-            for instance in config.instances:
-                old_doc, text_work_items = self._get_and_customize_doc(
-                    config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
-                    rendering_layouts,
-                    config.heading_numbering,
-                )
-                text_work_item_provider = twi.TextWorkItemProvider(
-                    config.text_work_item_id_field,
-                    config.text_work_item_type,
-                    text_work_items,
-                )
-                if old_doc is None:
-                    logger.error(
-                        "For document %s/%s no document was found, but it's "
-                        "mandatory to have one in mixed authority mode",
-                        instance.polarion_space,
-                        instance.polarion_name,
-                    )
-                    continue
-
-                if not self._check_document_status(old_doc, config):
-                    continue
-
-                try:
-                    document_data = self.update_mixed_authority_document(
-                        old_doc,
-                        config.template_directory,
-                        config.sections,
-                        instance.params,
-                        instance.section_params,
-                        text_work_item_provider,
-                        config.project_id,
-                    )
-                except Exception as e:
-                    logger.error(
-                        "Rendering for document %s/%s failed with the "
-                        "following error",
-                        instance.polarion_space,
-                        instance.polarion_name,
-                        exc_info=e,
-                    )
-                    continue
-
-                project_data.updated_docs.append(document_data)
-
-    def _render_full_authority_documents(
-        self,
-        full_authority_configs: list[
-            document_config.FullAuthorityDocumentRenderingConfig
-        ],
-    ) -> None:
-        for config in full_authority_configs:
-            rendering_layouts = document_config.generate_work_item_layouts(
-                config.work_item_layouts
-            )
-            project_data = self.projects.setdefault(
-                config.project_id, ProjectData()
-            )
-            for instance in config.instances:
-                old_doc, text_work_items = self._get_and_customize_doc(
-                    config.project_id,
-                    instance.polarion_space,
-                    instance.polarion_name,
-                    instance.polarion_title,
-                    rendering_layouts,
-                    config.heading_numbering,
-                )
-                text_work_item_provider = twi.TextWorkItemProvider(
-                    config.text_work_item_id_field,
-                    config.text_work_item_type,
-                    text_work_items,
-                )
-                if old_doc:
-                    if not self._check_document_status(old_doc, config):
-                        continue
-
-                    try:
-                        document_data = self.render_document(
-                            config.template_directory,
-                            config.template,
-                            document=old_doc,
-                            text_work_item_provider=text_work_item_provider,
-                            document_project_id=config.project_id,
-                            **instance.params,
-                        )
-                    except Exception as e:
-                        logger.error(
-                            "Rendering for document %s/%s failed with the "
-                            "following error",
-                            instance.polarion_space,
-                            instance.polarion_name,
-                            exc_info=e,
-                        )
-                        continue
-
-                    project_data.updated_docs.append(document_data)
-                else:
-                    try:
-                        document_data = self.render_document(
-                            config.template_directory,
-                            config.template,
-                            instance.polarion_space,
-                            instance.polarion_name,
-                            instance.polarion_title,
-                            config.heading_numbering,
-                            rendering_layouts,
-                            text_work_item_provider=text_work_item_provider,
-                            document_project_id=config.project_id,
-                            **instance.params,
-                        )
-                    except Exception as e:
-                        logger.error(
-                            "Rendering for document %s/%s failed with the "
-                            "following error",
-                            instance.polarion_space,
-                            instance.polarion_name,
-                            exc_info=e,
-                        )
-                        continue
-
-                    project_data.new_docs.append(document_data)
-
     def _extract_section_areas(
         self, html_elements: list[etree._Element], session: RenderingSession
     ) -> dict[str, tuple[int, int]]:
@@ -601,12 +372,22 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 current_area_id is None
                 and element.tag == "div"
                 and (
-                    matches := polarion_html_helper.WI_ID_REGEX.match(
+                    wid_match := polarion_html_helper.WI_ID_REGEX.match(
                         element.get("id", "")
                     )
                 )
             ):
-                session.inserted_work_item_ids.append(matches.group(1))
+                proj_id = (
+                    session.document_project_id
+                    or self.model_work_item_project_id
+                )
+                if proj_match := polarion_html_helper.WI_PROJECT_REGEX.match(
+                    element.get("id", "")
+                ):
+                    proj_id = proj_match.group(1)
+                session.inserted_work_item_ids.append(
+                    (proj_id, wid_match.group(1))
+                )
                 continue
 
             if (

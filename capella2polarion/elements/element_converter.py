@@ -16,12 +16,9 @@ import markupsafe
 import polarion_rest_api_client as polarion_api
 from capellambse import model as m
 
-from capella2polarion import data_model
+from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import capella_object_renderer, data_session
-from capella2polarion.converters.polarion_html_helper import (
-    add_attachment_to_workitem,
-)
+from capella2polarion.elements import capella_object_renderer, data_session
 
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 
@@ -144,7 +141,9 @@ class CapellaWorkItemSerializer:
         )
         assert converter_data.work_item is not None
         for attachment in attachments:
-            add_attachment_to_workitem(converter_data.work_item, attachment)
+            polarion_html_helper.add_attachment_to_workitem(
+                converter_data.work_item, attachment
+            )
 
         return converter_data.work_item
 
@@ -202,7 +201,9 @@ class CapellaWorkItemSerializer:
             status="open",
         )
         if attachment:
-            add_attachment_to_workitem(converter_data.work_item, attachment)
+            polarion_html_helper.add_attachment_to_workitem(
+                converter_data.work_item, attachment
+            )
 
         return converter_data.work_item
 
@@ -324,7 +325,7 @@ class CapellaWorkItemSerializer:
             )
 
             for attachment in attachments:
-                add_attachment_to_workitem(
+                polarion_html_helper.add_attachment_to_workitem(
                     converter_data.work_item, attachment
                 )
 
@@ -356,7 +357,9 @@ class CapellaWorkItemSerializer:
             render_parameters
         )
         for attachment in attachments:
-            add_attachment_to_workitem(converter_data.work_item, attachment)
+            polarion_html_helper.add_attachment_to_workitem(
+                converter_data.work_item, attachment
+            )
 
         converter_data.description_references = uuids
         converter_data.work_item.description.value = value
@@ -380,7 +383,9 @@ class CapellaWorkItemSerializer:
             f"{title} of {work_item.title}",
         )
         if attachment:
-            add_attachment_to_workitem(work_item, attachment)
+            polarion_html_helper.add_attachment_to_workitem(
+                work_item, attachment
+            )
 
         work_item.additional_attributes[attribute] = polarion_api.HtmlContent(
             diagram_html

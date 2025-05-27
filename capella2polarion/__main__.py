@@ -15,13 +15,9 @@ from capellambse import cli_helpers
 import capella2polarion
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
-from capella2polarion.converters import (
-    document_config,
-    document_renderer,
-    model_converter,
-    plugin_config,
-    plugin_interfaces,
-)
+from capella2polarion.documents import document_config, mass_document_renderer
+from capella2polarion.elements import model_converter
+from capella2polarion.plugins import plugin_config, plugin_interfaces
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +224,7 @@ def render_documents(
     )
 
     assert capella_to_polarion_cli.capella_model is not None
-    renderer = document_renderer.DocumentRenderer(
+    renderer = mass_document_renderer.MassDocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,

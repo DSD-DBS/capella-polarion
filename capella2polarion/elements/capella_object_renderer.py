@@ -19,12 +19,8 @@ from capellambse import model as m
 from capellambse_context_diagrams import context
 from lxml import etree, html
 
-from capella2polarion import data_model
+from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import polarion_html_helper
-from capella2polarion.converters.polarion_html_helper import (
-    add_attachment_to_workitem,
-)
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -283,7 +279,9 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
             render_params,
         )
         if attachment:
-            add_attachment_to_workitem(work_item, attachment)
+            polarion_html_helper.add_attachment_to_workitem(
+                work_item, attachment
+            )
 
         return diagram_html
 

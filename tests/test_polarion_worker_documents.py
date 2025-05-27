@@ -6,7 +6,7 @@ import polarion_rest_api_client as polarion_api
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import text_work_item_provider
+from capella2polarion.documents import text_work_item_provider
 
 from .conftest import DOCUMENT_TEMPLATES, DOCUMENT_TEXT_WORK_ITEMS
 

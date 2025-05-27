@@ -16,8 +16,10 @@ from lxml import html
 from capella2polarion import data_model
 
 WI_ID_PREFIX = "polarion_wiki macro name=module-workitem;params=id="
+WI_PROJECT_PREFIX = "polarion_wiki macro name=module-workitem;.*project="
 H_REGEX = re.compile("h[0-9]")
-WI_ID_REGEX = re.compile(f"{WI_ID_PREFIX}([A-Z|a-z|0-9]*-[0-9]+)")
+WI_ID_REGEX = re.compile(WI_ID_PREFIX + r"([A-Za-z0-9]*-[0-9]+)")
+WI_PROJECT_REGEX = re.compile(WI_PROJECT_PREFIX + r"([A-Za-z0-9\-_]+)")
 
 TEXT_WORK_ITEM_ID_FIELD = "__C2P__id"
 TEXT_WORK_ITEM_TYPE = "text"

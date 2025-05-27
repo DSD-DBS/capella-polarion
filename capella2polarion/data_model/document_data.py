@@ -8,7 +8,7 @@ import dataclasses
 
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion.converters import text_work_item_provider
+from capella2polarion.documents import text_work_item_provider
 
 __all__ = ["DocumentData", "DocumentInfo"]
 

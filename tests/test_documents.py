@@ -7,9 +7,10 @@ from lxml import etree, html
 
 from capella2polarion import data_model as dm
 from capella2polarion.connectors import polarion_repo, polarion_worker
-from capella2polarion.converters import (
+from capella2polarion.documents import (
     document_config,
     document_renderer,
+    mass_document_renderer,
     text_work_item_provider,
 )
 from tests.conftest import (
@@ -489,17 +490,49 @@ def test_render_all_documents_partially_successfully(
     with open(TEST_COMBINED_DOCUMENT_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
-    renderer = document_renderer.DocumentRenderer(
+    renderer = mass_document_renderer.MassDocumentRenderer(
         empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
     )
 
     projects_data = renderer.render_documents(conf, existing_documents())
 
-    # There are 8 documents in the config, we expect 4 rendering to fail
-    assert len(caplog.records) == 4
-    # The first tree documents weren't rendered due to an error, the fourth
+    errors = [r for r in caplog.records if r.levelno == 40]
+    warnings = [r for r in caplog.records if r.levelno == 30]
+    # There are 8 documents in the config, we expect 3 rendering to fail
+    assert len(errors) == 3
+    # The first tree documents weren't rendered due to an error, a fourth
     # wasn't rendered because of status restrictions, which is a warning
-    assert [lr.levelno for lr in caplog.records] == [40, 40, 40, 30]
+    assert (
+        len(
+            [
+                r
+                for r in warnings
+                if r.message.startswith("Won't update document")
+            ]
+        )
+        == 1
+    )
+    # We expect in addition 8 inserting and 10 linking work item warnings
+    assert (
+        len(
+            [
+                r
+                for r in warnings
+                if r.message.startswith("Error inserting work item:")
+            ]
+        )
+        == 8
+    )
+    assert (
+        len(
+            [
+                r
+                for r in warnings
+                if r.message.startswith("Error linking work item:")
+            ]
+        )
+        == 10
+    )
     # For one valid config we did not pass a document, so we expect a new one
     assert len(projects_data[None].new_docs) == 1
     # And three updated documents
@@ -615,7 +648,7 @@ def test_render_all_documents_overwrite_headings_layouts(
     with open(TEST_COMBINED_DOCUMENT_CONFIG, encoding="utf-8") as f:
         conf = document_config.read_config_file(f)
 
-    renderer = document_renderer.DocumentRenderer(
+    renderer = mass_document_renderer.MassDocumentRenderer(
         empty_polarion_worker.polarion_data_repo,
         model,
         TEST_PROJECT_ID,

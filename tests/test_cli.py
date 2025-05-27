@@ -13,7 +13,7 @@ from click import testing
 
 import capella2polarion.__main__ as main
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import model_converter
+from capella2polarion.elements import model_converter
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]

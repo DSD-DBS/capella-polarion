@@ -6,8 +6,8 @@ from unittest import mock
 import capellambse
 
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import converter_config, data_session
 from capella2polarion.data_model import work_items
+from capella2polarion.elements import converter_config, data_session
 
 
 def test_polarion_worker_non_delete_mode():
