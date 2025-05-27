@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import dataclasses
+import typing as t
 
 import polarion_rest_api_client as polarion_api
 
-from capella2polarion.documents import text_work_item_provider
+if t.TYPE_CHECKING:
+    from capella2polarion.documents import text_work_item_provider
 
 __all__ = ["DocumentData", "DocumentInfo"]
 

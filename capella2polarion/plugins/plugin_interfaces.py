@@ -33,7 +33,7 @@ class PluginInterface(abc.ABC):
         capella_polarion_worker: polarion_worker.CapellaPolarionWorker,
         model: capellambse.MelodyModel,
         additional_configuration: AdditionalAttributes,
-        **kwargs,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         self.capella_polarion_worker = capella_polarion_worker
         self.model = model
@@ -42,4 +42,3 @@ class PluginInterface(abc.ABC):
     @abc.abstractmethod
     def run(self, **kwargs):
         """Run your custom code and send the results to polarion."""
-        pass

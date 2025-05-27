@@ -107,7 +107,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 pid=work_item.id, lid=layout_index, custom_info=custom_info
             )
 
-        logger.warning(f"Error inserting work item: {error_msg}")
+        logger.warning("Error inserting work item: %s", error_msg)
         return polarion_html_helper.RED_TEXT.format(
             text=f"Error inserting work item: {error_msg}"
         )
@@ -120,7 +120,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 pid=work_item.id, project=proj_id
             )
 
-        logger.warning(f"Error linking work item: {error_msg}")
+        logger.warning("Error linking work item: %s", error_msg)
         return polarion_html_helper.RED_TEXT.format(
             text=f"Error linking work item: {error_msg}"
         )
