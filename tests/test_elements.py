@@ -340,7 +340,7 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        _type: str,  # noqa: PT019 # false-positive
+        _type: str,  # false-positive
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
@@ -964,7 +964,13 @@ class TestModelElements:
                 )
             ]
         )
-
+        base_object.pw.project_client.work_items.get.return_value = (
+            data_model.CapellaWorkItem(
+                id="Obj-1",
+                type="fakeModelObject",
+                uuid_capella="uuid1",
+            )
+        )
         del base_object.mc.converter_session["uuid2"]
 
         base_object.pw.compare_and_update_work_items(
@@ -1099,20 +1105,17 @@ class TestModelElements:
             )
             for (i, work_item) in enumerate(dummy_work_items.values(), start=4)
         }
-        base_object.pw.polarion_data_repo = (
-            polarion_repo.PolarionDataRepository(
-                [
-                    data_model.CapellaWorkItem(
-                        id="Obj-0", uuid_capella="uuid0", status="open"
-                    ),
-                    data_model.CapellaWorkItem(
-                        id="Obj-1", uuid_capella="uuid1", status="open"
-                    ),
-                    data_model.CapellaWorkItem(
-                        id="Obj-2", uuid_capella="uuid2", status="open"
-                    ),
-                ]
+        work_items = [
+            data_model.CapellaWorkItem(
+                id=f"Obj-{i}",
+                type="fakeModelObject",
+                uuid_capella=f"uuid{i}",
+                status="open",
             )
+            for i in range(3)
+        ]
+        base_object.pw.polarion_data_repo = (
+            polarion_repo.PolarionDataRepository(work_items)
         )
         mock_create_links = mock.MagicMock()
         monkeypatch.setattr(
@@ -1123,6 +1126,7 @@ class TestModelElements:
         mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[  # noqa: ARG005
             uuid
         ].linked_work_items
+        base_object.pw.project_client.work_items.get.side_effect = work_items
 
         def mock_back_link(converter_data, back_links):
             work_item = converter_data.work_item
