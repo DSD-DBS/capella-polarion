@@ -827,6 +827,63 @@ class TestModelElements:
         assert work_item.uuid_capella is None
 
     @staticmethod
+    def test_update_type_and_attributes_change(
+        base_object: BaseObjectContainer,
+    ):
+        old_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="oldType",
+            status="closed",
+        )
+        old_wi.additional_attributes = {
+            "uuid_capella": "uuid1",
+            "foo": "bar",
+            "keep": "yes",
+        }
+        old_wi.attachments = []
+        old_wi._content_checksum = "old-content"
+        old_wi.checksum = "old-checksum"
+        old_wi.linked_work_items = []
+        old_wi.linked_work_items_truncated = False
+        base_object.pw.polarion_data_repo.update_work_items([old_wi])
+        base_object.pw.project_client.work_items.get.return_value = old_wi
+        base_object.pw.project_client.work_items.attachments.get_all.return_value = []
+        base_object.pw.project_client.work_items.links.get_all.return_value = []
+        new_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="newType",
+            status="open",
+        )
+        new_wi.additional_attributes = {"uuid_capella": "uuid1", "foo": "baz"}
+        new_wi.calculate_checksum()
+        base_object.mc.converter_session.clear()
+        base_object.mc.converter_session["uuid1"] = data_session.ConverterData(
+            "",
+            converter_config.CapellaTypeConfig("oldType"),
+            None,  # type: ignore
+            new_wi,
+        )
+
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
+
+        calls = base_object.pw.project_client.work_items.update.call_args_list
+        assert len(calls) == 2, (
+            "Expected exactly two update() calls for type + attributes"
+        )
+        first_arg = calls[0][0][0]
+        assert isinstance(first_arg, data_model.CapellaWorkItem)
+        assert first_arg.id == "Obj-1"
+        assert first_arg.type == "newType"
+        second_arg = calls[1][0][0]
+        assert second_arg.id == "Obj-1"
+        assert second_arg.type is None
+        assert second_arg.status == "open"
+        assert "foo" in second_arg.additional_attributes
+        assert "keep" in second_arg.additional_attributes
+
+    @staticmethod
     def test_update_deleted_work_item(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
