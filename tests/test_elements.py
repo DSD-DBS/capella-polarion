@@ -326,7 +326,7 @@ class TestModelElements:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("uuid", "_type", "attrs"),
+        ("uuid", "type_", "attrs"),
         [
             pytest.param(
                 "55b90f9a-c5af-47fc-9c1c-48090414d1f1",
@@ -340,14 +340,14 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        _type: str,  # false-positive
+        type_: str,  # false-positive
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
-                    _type[0].lower() + _type[1:], {}
+                    type_[0].lower() + type_[1:], {}
                 ),
                 model.by_uuid(uuid),
             )
@@ -356,7 +356,7 @@ class TestModelElements:
 
         expected = data_model.CapellaWorkItem(
             uuid_capella=uuid,
-            type=_type[0].lower() + _type[1:],
+            type=type_[0].lower() + type_[1:],
             description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
             **attrs,
