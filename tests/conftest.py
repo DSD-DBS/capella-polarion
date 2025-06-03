@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata as imm
 import json
 import pathlib
 import typing as t
@@ -51,6 +52,11 @@ LINK_CONFIG2 = converter_config.LinkConfig(
 )
 
 
+TEST_NAMESPACE = m.Namespace(
+    m.VIRTUAL_NAMESPACE_PREFIX + "capella2polarion_tests", "capella2polarion"
+)
+
+
 @pytest.fixture
 def diagram_cache_index() -> list[dict[str, t.Any]]:
     """Return the test diagram cache index."""
@@ -86,34 +92,39 @@ def dummy_work_items() -> dict[str, data_model.CapellaWorkItem]:
     }
 
 
-class FakeModelObject(m.ModelElement):
+class FakeModelObject(m.ModelElement, ns=TEST_NAMESPACE):
     name = m.StringPOD("name")
-    attribute: m.Association[FakeModelObject]
-    singleattr: m.Association[FakeModelObject]
+    attribute = m.Association["FakeModelObject"](
+        (TEST_NAMESPACE, "FakeModelObject"), "attribute"
+    )
+    singleattr = m.Single["FakeModelObject"](
+        m.Association((TEST_NAMESPACE, "FakeModelObject"), "singleattr")
+    )
 
 
-m.set_accessor(
-    FakeModelObject,
-    "attribute",
-    m.Association(FakeModelObject, "attribute", aslist=m.ElementList),
-)
-m.set_accessor(
-    FakeModelObject,
-    "singleattr",
-    m.Association(FakeModelObject, "singleattr"),
-)
-
-
-class UnsupportedFakeModelObject(FakeModelObject):
+class UnsupportedFakeModelObject(FakeModelObject, ns=TEST_NAMESPACE):
     """A ``FakeModelObject`` which shouldn't be migrated."""
 
 
 @pytest.fixture(autouse=True)
 def inject_test_classes(monkeypatch):
-    monkeypatch.setitem(m.XTYPE_ANCHORS, "conftest", "capella2polarion")
-    monkeypatch.setitem(
-        m.XTYPE_HANDLERS[None], FakeModelObject.__name__, FakeModelObject
-    )
+    class FakeEntryPoint:
+        name: t.Final = "capella2polarion"
+        group: t.Final = "capellambse.namespaces"
+        value: t.Final = "conftest"
+
+        def load(self) -> m.Namespace:
+            return TEST_NAMESPACE
+
+    def fake_entry_points(**kw):
+        result = real_entry_points(**kw)
+        if kw.get("group") == FakeEntryPoint.group:
+            return (*result, FakeEntryPoint())
+        return result
+
+    real_entry_points = imm.entry_points
+    monkeypatch.setattr(imm, "entry_points", fake_entry_points)
+    capellambse.model.reset_entrypoint_caches()
 
 
 class BaseObjectContainer(t.NamedTuple):
