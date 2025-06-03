@@ -43,7 +43,10 @@ class LinkConfig:
     migrated for working references.
     """
     link_field: str | None = None
+    """The identifier of the custom field in Polarion for linked work items."""
     reverse_field: str | None = None
+    """The identifier of the custom field in Polarion for reverse linked work
+    items."""
 
     @staticmethod
     def generate_links_configs(
