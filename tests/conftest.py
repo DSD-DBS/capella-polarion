@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import pathlib
 import typing as t
@@ -167,7 +168,8 @@ def base_object(
         "FakeModelObject", uuid="uuid1", name="Fake 1"
     )
     fake_model_type_config = converter_config.CapellaTypeConfig(
-        "fakeModelObject", links=[LINK_CONFIG, LINK_CONFIG2]
+        "fakeModelObject",
+        links=[copy.deepcopy(LINK_CONFIG), copy.deepcopy(LINK_CONFIG2)],
     )
 
     mc = model_converter.ModelConverter(

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 import typing as t
 from collections import defaultdict
@@ -175,7 +176,7 @@ def grouped_links_base_object(
     dummy_work_items: dict[str, data_model.CapellaWorkItem],
 ) -> GroupedLinksBaseObject:
     config = converter_config.CapellaTypeConfig(
-        "fakeModelObject", links=[LINK_CONFIG]
+        "fakeModelObject", links=[copy.deepcopy(LINK_CONFIG)]
     )
     model.la.extensions.clear()
     fake_2 = model.la.extensions.create(
@@ -189,6 +190,7 @@ def grouped_links_base_object(
     )
     fake_1.attribute = [fake_0, fake_2]
     fake_0.attribute = [fake_1, fake_2]
+
     link_serializer = link_converter.LinkSerializer(
         base_object.pw.polarion_data_repo,
         base_object.mc.converter_session,
