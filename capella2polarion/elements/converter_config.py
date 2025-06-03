@@ -42,8 +42,8 @@ class LinkConfig:
     grouped link custom field as nested lists. They also need be
     migrated for working references.
     """
-    link_field: str = ""
-    reverse_field: str = ""
+    link_field: str | None = None
+    reverse_field: str | None = None
 
     @staticmethod
     def generate_links_configs(
@@ -56,19 +56,19 @@ class LinkConfig:
                 config = LinkConfig(
                     capella_attr=link,
                     polarion_role=add_prefix(link, role_prefix),
-                    link_field=link,
-                    reverse_field=f"{link}_reverse",
+                    link_field=None,
+                    reverse_field=None,
                 )
             elif isinstance(link, dict):
                 config = LinkConfig(
                     capella_attr=(lid := link["capella_attr"]),
                     polarion_role=add_prefix(
-                        (pid := link.get("polarion_role", lid)),
+                        link.get("polarion_role", lid),
                         role_prefix,
                     ),
                     include=link.get("include", {}),
-                    link_field=(lf := link.get("link_field", pid)),
-                    reverse_field=link.get("reverse_field", f"{lf}_reverse"),
+                    link_field=link.get("link_field"),
+                    reverse_field=link.get("reverse_field"),
                 )
             else:
                 logger.error(  # type: ignore[unreachable]
@@ -396,7 +396,7 @@ def _filter_context_diagram_config(
 def _filter_links(
     c_type: str, links: list[LinkConfig], is_global: bool = False
 ) -> list[LinkConfig]:
-    c_class: type[m.ModelObject]
+    c_class: type[m.ModelObject] | type[m.Diagram]
     if c_type == "diagram":
         c_class = m.Diagram
     else:
