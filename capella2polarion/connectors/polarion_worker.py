@@ -26,7 +26,7 @@ DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
     int: 0,
     bool: False,
 }
-WORK_ITEMS_IN_PROJECT_QUERY = (
+WORK_ITEMS_IN_DOCUMENT_QUERY = (
     "SQL:(SELECT item.* FROM POLARION.WORKITEM item, POLARION.MODULE doc, "
     "POLARION.PROJECT proj WHERE proj.C_ID = '{project}' AND "
     "doc.FK_PROJECT = proj.C_PK AND doc.C_ID = '{doc_name}' AND "
@@ -562,7 +562,7 @@ class CapellaPolarionWorker:
                     di.module_folder, di.module_name, di.project_id
                 ),
                 self._get_client(di.project_id).work_items.get_all(
-                    WORK_ITEMS_IN_PROJECT_QUERY.format(
+                    WORK_ITEMS_IN_DOCUMENT_QUERY.format(
                         project=di.project_id
                         or self.polarion_params.project_id,
                         doc_folder=di.module_folder,

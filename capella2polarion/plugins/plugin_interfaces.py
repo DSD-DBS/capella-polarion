@@ -9,6 +9,8 @@ import typing as t
 import capellambse
 
 from capella2polarion.connectors import polarion_worker
+from capella2polarion.documents import document_config
+from capella2polarion.elements import converter_config
 
 
 @dataclasses.dataclass
@@ -39,7 +41,39 @@ class PluginInterface(abc.ABC):
         self.capella_polarion_worker = capella_polarion_worker
         self.model = model
         self.additional_configuration = additional_configuration
+        self._document_configs: None | document_config.DocumentConfigs = None
+        self._synchronize_config: None | converter_config.ConverterConfig = (
+            None
+        )
 
     @abc.abstractmethod
     def run(self, **kwargs: t.Any) -> None:
         """Run your custom code and send the results to polarion."""
+
+    @property
+    def document_config(self) -> document_config.DocumentConfigs:
+        if self._document_configs is None:
+            assert self.additional_configuration.document_rendering_config, (
+                "You must define the document rendering config file path"
+            )
+            self._document_configs = document_config.read_config_file(
+                self.additional_configuration.document_rendering_config,
+                self.model,
+            )
+
+        return self._document_configs
+
+    @property
+    def element_config(self) -> converter_config.ConverterConfig:
+        if self._synchronize_config is None:
+            assert self.additional_configuration.synchronize_config, (
+                "You must define the synchronize config file path"
+            )
+            self._synchronize_config = converter_config.ConverterConfig()
+            self._synchronize_config.read_config_file(
+                self.additional_configuration.synchronize_config,
+                self.additional_configuration.type_prefix,
+                self.additional_configuration.role_prefix,
+            )
+
+        return self._synchronize_config
