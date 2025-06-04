@@ -20,6 +20,10 @@ from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.elements import capella_object_renderer, data_session
 
+DIAGRAM_WIDTH = 750
+
+ADDITIONAL_DIAGRAM_WIDTH = 650
+
 RE_CAMEL_CASE_2ND_WORD_PATTERN = re.compile(r"([a-z]+)([A-Z][a-z]+)")
 
 logger = logging.getLogger(__name__)
@@ -190,7 +194,7 @@ class CapellaWorkItemSerializer:
             diagram,
             "diagram",
             "Diagram",
-            750,
+            DIAGRAM_WIDTH,
             "diagram",
             render_params,
         )
@@ -381,7 +385,7 @@ class CapellaWorkItemSerializer:
             diagram,
             attribute,
             title,
-            650,
+            ADDITIONAL_DIAGRAM_WIDTH,
             "additional-attributes-diagram",
             render_params,
             f"{title} of {work_item.title}",
