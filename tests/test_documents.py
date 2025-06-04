@@ -498,41 +498,25 @@ def test_render_all_documents_partially_successfully(
 
     errors = [r for r in caplog.records if r.levelno == 40]
     warnings = [r for r in caplog.records if r.levelno == 30]
+    no_update_messages = [
+        r for r in warnings if r.message.startswith("Won't update document")
+    ]
+    insert_error_messages = [
+        r
+        for r in warnings
+        if r.message.startswith("Error inserting work item:")
+    ]
+    link_error_messages = [
+        r for r in warnings if r.message.startswith("Error linking work item:")
+    ]
     # There are 8 documents in the config, we expect 3 rendering to fail
     assert len(errors) == 3
     # The first tree documents weren't rendered due to an error, a fourth
     # wasn't rendered because of status restrictions, which is a warning
-    assert (
-        len(
-            [
-                r
-                for r in warnings
-                if r.message.startswith("Won't update document")
-            ]
-        )
-        == 1
-    )
+    assert len(no_update_messages) == 1
     # We expect in addition 8 inserting and 10 linking work item warnings
-    assert (
-        len(
-            [
-                r
-                for r in warnings
-                if r.message.startswith("Error inserting work item:")
-            ]
-        )
-        == 8
-    )
-    assert (
-        len(
-            [
-                r
-                for r in warnings
-                if r.message.startswith("Error linking work item:")
-            ]
-        )
-        == 10
-    )
+    assert len(insert_error_messages) == 8
+    assert len(link_error_messages) == 10
     # For one valid config we did not pass a document, so we expect a new one
     assert len(projects_data[None].new_docs) == 1
     # And three updated documents

@@ -243,7 +243,7 @@ def render_documents(
     "--plugin-config-file",
     type=click.File(mode="r", encoding="utf8"),
     required=True,
-    envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
+    envvar="CAPELLA2POLARION_PLUGIN_CONFIG",
 )
 @click.option(
     "--document-rendering-config",
@@ -341,9 +341,8 @@ def run_plugins(
         plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
             module, conf.plugin_name
         )
-        assert capella_to_polarion_cli.capella_model, (
-            "A model must be defined to use plugins"
-        )
+        if capella_to_polarion_cli.capella_model is None:
+            raise ValueError("A model must be defined to use plugins")
 
         plugin = plugin_cls(
             polarion_worker,

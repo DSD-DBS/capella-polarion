@@ -90,7 +90,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
                 ["\x00", workspace][workspace in resources]
             ]
             try:
-                with filehandler.open(file_path, "r") as img:
+                with filehandler.open(file_path, "rb") as img:
                     content = img.read()
                     file_name = (
                         hashlib.md5(str(file_path).encode("utf8")).hexdigest()
@@ -210,10 +210,9 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
                 text = texts[0]
             return polarion_api.HtmlContent(text)
 
-        requirement_types: dict[str, polarion_api.HtmlContent] = {}
-        for typ, texts in type_texts.items():
-            requirement_types[typ.lower()] = _format(texts)
-        return requirement_types
+        return {
+            typ.lower(): _format(texts) for typ, texts in type_texts.items()
+        }
 
     def render_jinja_template(
         self,
@@ -244,7 +243,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         env.filters["make_href"] = self.__make_href_filter
         env.globals["insert_diagram"] = self.__insert_diagram
 
-    def __make_href_filter(self, obj: object) -> str | None:
+    def __make_href_filter(self, obj: object) -> str:
         if (obj := self.check_model_element(obj)) is None:
             return "#"
         return f"hlink://{obj.uuid}"
@@ -259,7 +258,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         caption: tuple[str, str] | None = None,
     ) -> str:
         if work_item is None:
-            raise ValueError("To render a diagram the work item ")
+            raise ValueError("To render a diagram the work item must be set.")
         if attachment := next(
             (
                 att

@@ -39,9 +39,9 @@ def _resolve_capella_attribute(
         case _:
             value = getattr(converter_data.capella_element, attribute)
 
-    if isinstance(value, str | enum.Enum):
-        if isinstance(value, enum.Enum):
-            return value.name
+    if isinstance(value, enum.Enum):
+        return value.name
+    if isinstance(value, str):
         return value
     raise ValueError(f"Unsupported attribute type: {value!r}")
 
@@ -68,8 +68,11 @@ class CapellaWorkItemSerializer:
 
     def serialize_all(self) -> list[data_model.CapellaWorkItem]:
         """Serialize all items of the converter_session."""
-        work_items = (self.serialize(uuid) for uuid in self.converter_session)
-        return list(filter(None, work_items))
+        return [
+            item
+            for uuid in self.converter_session
+            if (item := self.serialize(uuid)) is not None
+        ]
 
     def serialize(self, uuid: str) -> data_model.CapellaWorkItem | None:
         """Return a CapellaWorkItem for the given diagram or element."""

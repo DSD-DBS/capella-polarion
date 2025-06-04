@@ -57,15 +57,16 @@ class MassDocumentRenderer:
     ) -> dict[str | None, ProjectData]:
         """Render all documents defined in the given config.
 
-        Returns a list new documents followed by updated documents and
-        work items, which need to be updated
+        Returns
+        -------
+        documents
+            A dict mapping project ID to new and updated documents.
         """
         self.existing_documents = existing_documents
         self.projects = {}
 
         self._render_full_authority_documents(configs.full_authority)
         self._render_mixed_authority_documents(configs.mixed_authority)
-
         return self.projects
 
     def _render_mixed_authority_documents(
