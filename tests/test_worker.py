@@ -55,6 +55,12 @@ def test_polarion_worker_reuse_deleted_work_item(
         checksum=new_work_item.calculate_checksum(),
     )
     empty_polarion_worker.polarion_data_repo.update_work_items([old_work_item])
+    empty_polarion_worker.project_client.work_items.get.return_value = (
+        old_work_item
+    )
+    empty_polarion_worker.project_client.work_items.delete_status = "deleted"
+    empty_polarion_worker.project_client.work_items.attachments.get_all.return_value = []
+
     empty_polarion_worker.compare_and_update_work_items(
         {
             "123": data_session.ConverterData(
