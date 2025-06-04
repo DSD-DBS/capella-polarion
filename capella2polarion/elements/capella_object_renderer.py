@@ -46,6 +46,12 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.jinja_envs: dict[str, jinja2.Environment] = {}
 
+        self._attachment_creators: dict[
+            type[m.AbstractDiagram], type[data_model.CapellaDiagramAttachment]
+        ] = {
+            context.ContextDiagram: data_model.CapellaContextDiagramAttachment,
+        }
+
     def sanitize_text(
         self,
         obj: m.ModelElement | m.Diagram,
@@ -286,6 +292,18 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
 
         return diagram_html
 
+    def _create_diagram_attachment(
+        self,
+        diagram: m.AbstractDiagram,
+        file_name: str,
+        render_params: dict[str, t.Any] | None,
+        title: str,
+    ) -> data_model.CapellaDiagramAttachment:
+        attachment_class = self._attachment_creators.get(
+            type(diagram), data_model.CapellaDiagramAttachment
+        )
+        return attachment_class(diagram, file_name, render_params, title)
+
     def draw_diagram_svg(
         self,
         diagram: m.AbstractDiagram,
@@ -300,14 +318,9 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         file_name = f"{C2P_IMAGE_PREFIX}{file_name}.svg"
 
         if self.generate_attachments:
-            if not isinstance(diagram, context.ContextDiagram):
-                attachment = data_model.CapellaDiagramAttachment(
-                    diagram, file_name, render_params, title
-                )
-            else:
-                attachment = data_model.CapellaContextDiagramAttachment(
-                    diagram, file_name, render_params, title
-                )
+            attachment = self._create_diagram_attachment(
+                diagram, file_name, render_params, title
+            )
         else:
             attachment = None
 
