@@ -1,0 +1,13 @@
+# Copyright DB InfraGO AG and contributors
+# SPDX-License-Identifier: Apache-2.0
+
+- plugin_name: dummy_plugin_1
+  init_args:
+    a: 12
+  args:
+    b: abc
+- plugin_name: dummy_plugin_1
+  init_args:
+    a: 98
+  args:
+    b: xyz
