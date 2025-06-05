@@ -11,7 +11,6 @@ import yaml
 class PluginConfig(pydantic.BaseModel):
     """Configuration for a plugin config."""
 
-    module: str
     plugin_name: str
     init_args: dict[str, t.Any]
     args: dict[str, t.Any]

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import importlib
 import logging
 import typing
 
@@ -13,6 +12,7 @@ import click
 from capellambse import cli_helpers
 
 import capella2polarion
+from capella2polarion import plugins
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.documents import document_config, mass_document_renderer
@@ -318,6 +318,9 @@ def run_plugins(
         capella_to_polarion_cli.polarion_params.project_id,
     )
 
+    if capella_to_polarion_cli.capella_model is None:
+        raise ValueError("A model must be defined to use plugins")
+
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.force_update,
@@ -336,13 +339,17 @@ def run_plugins(
         generate_figure_captions,
     )
 
+    plugin_repo = plugins.load_plugins()
+
     for conf in configs:
-        module = importlib.import_module(str(conf.module))
-        plugin_cls: type[plugin_interfaces.PluginInterface] = getattr(
-            module, conf.plugin_name
-        )
-        if capella_to_polarion_cli.capella_model is None:
-            raise ValueError("A model must be defined to use plugins")
+        plugin_cls = plugin_repo.get(conf.plugin_name)
+        if plugin_cls is None:
+            logger.error("Plugin %s wasn't loaded.", conf.plugin_name)
+            continue
+
+        if not issubclass(plugin_cls, plugin_interfaces.PluginInterface):
+            logger.error("Plugin %s is not a valid plugin.", conf.plugin_name)
+            continue
 
         plugin = plugin_cls(
             polarion_worker,
