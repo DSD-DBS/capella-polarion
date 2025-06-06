@@ -260,5 +260,4 @@ def test_run_plugins(cli_mocks: CLIMocks):
     assert cli_mocks.dummy_plugin_1.run.call_args_list[1].kwargs == {
         "b": "xyz"
     }
-
     assert len(cli_mocks.dummy_plugin_2.method_calls) == 0
