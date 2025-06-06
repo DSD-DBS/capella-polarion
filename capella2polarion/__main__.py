@@ -12,13 +12,12 @@ import click
 from capellambse import cli_helpers
 
 import capella2polarion
+from capella2polarion import plugins
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
-from capella2polarion.converters import (
-    document_config,
-    document_renderer,
-    model_converter,
-)
+from capella2polarion.documents import document_config, mass_document_renderer
+from capella2polarion.elements import model_converter
+from capella2polarion.plugins import plugin_config, plugin_interfaces
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +224,7 @@ def render_documents(
     )
 
     assert capella_to_polarion_cli.capella_model is not None
-    renderer = document_renderer.DocumentRenderer(
+    renderer = mass_document_renderer.MassDocumentRenderer(
         polarion_worker.polarion_data_repo,
         capella_to_polarion_cli.capella_model,
         capella_to_polarion_cli.polarion_params.project_id,
@@ -237,6 +236,129 @@ def render_documents(
     for project, project_data in projects_document_data.items():
         polarion_worker.create_documents(project_data.new_docs, project)
         polarion_worker.update_documents(project_data.updated_docs, project)
+
+
+@cli.command()
+@click.option(
+    "--plugin-config-file",
+    type=click.File(mode="r", encoding="utf8"),
+    required=True,
+    envvar="CAPELLA2POLARION_PLUGIN_CONFIG",
+)
+@click.option(
+    "--document-rendering-config",
+    type=click.File(mode="r", encoding="utf8"),
+    envvar="CAPELLA2POLARION_DOCUMENT_CONFIG",
+)
+@click.option(
+    "--overwrite-layouts",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_LAYOUTS",
+)
+@click.option(
+    "--overwrite-numbering",
+    is_flag=True,
+    default=False,
+    envvar="CAPELLA2POLARION_OVERWRITE_NUMBERING",
+)
+@click.option(
+    "--synchronize-config",
+    type=click.File(mode="r", encoding="utf8"),
+    envvar="CAPELLA2POLARION_SYNCHRONIZE_CONFIG",
+)
+@click.option(
+    "--force-update",
+    is_flag=True,
+    envvar="CAPELLA2POLARION_FORCE_UPDATE",
+    default=False,
+)
+@click.option(
+    "--type-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_TYPE_PREFIX",
+    default="",
+)
+@click.option(
+    "--role-prefix",
+    type=str,
+    envvar="CAPELLA2POLARION_ROLE_PREFIX",
+    default="",
+)
+@click.option(
+    "--grouped-links-custom-fields / --no-grouped-links-custom-fields",
+    envvar="CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS",
+    is_flag=True,
+    default=True,
+)
+@click.option(
+    "--generate-figure-captions",
+    envvar="CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS",
+    is_flag=True,
+    default=False,
+)
+@click.pass_context
+def run_plugins(
+    ctx: click.core.Context,
+    plugin_config_file: typing.TextIO,
+    document_rendering_config: typing.TextIO | None,
+    overwrite_layouts: bool,
+    overwrite_numbering: bool,
+    synchronize_config: typing.TextIO | None,
+    force_update: bool,
+    type_prefix: str,
+    role_prefix: str,
+    grouped_links_custom_fields: bool,
+    generate_figure_captions: bool,
+) -> None:
+    """Synchronise model elements."""
+    capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
+    logger.info(
+        "Running Plugins on Polarion project with id %s...",
+        capella_to_polarion_cli.polarion_params.project_id,
+    )
+
+    if capella_to_polarion_cli.capella_model is None:
+        raise ValueError("A model must be defined to use plugins")
+
+    polarion_worker = pw.CapellaPolarionWorker(
+        capella_to_polarion_cli.polarion_params,
+        capella_to_polarion_cli.force_update,
+    )
+
+    configs = plugin_config.read_config_file(plugin_config_file)
+    additional_config = plugin_interfaces.AdditionalAttributes(
+        document_rendering_config,
+        overwrite_layouts,
+        overwrite_numbering,
+        synchronize_config,
+        force_update,
+        type_prefix,
+        role_prefix,
+        grouped_links_custom_fields,
+        generate_figure_captions,
+    )
+
+    plugin_repo = plugins.load_plugins()
+
+    for conf in configs:
+        plugin_cls = plugin_repo.get(conf.plugin_name)
+        if plugin_cls is None:
+            logger.error("Plugin %s wasn't loaded.", conf.plugin_name)
+            continue
+
+        if not issubclass(plugin_cls, plugin_interfaces.PluginInterface):
+            logger.error("Plugin %s is not a valid plugin.", conf.plugin_name)
+            continue
+
+        plugin = plugin_cls(
+            polarion_worker,
+            capella_to_polarion_cli.capella_model,
+            additional_config,
+            **conf.init_args,
+        )
+
+        plugin.run(**conf.args)
 
 
 if __name__ == "__main__":

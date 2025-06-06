@@ -17,7 +17,7 @@ from capellambse import model as m
 
 from capella2polarion import cli, data_model
 from capella2polarion.connectors import polarion_repo, polarion_worker
-from capella2polarion.converters import (
+from capella2polarion.elements import (
     converter_config,
     data_session,
     model_converter,
@@ -29,6 +29,7 @@ TEST_MODEL_ELEMENTS = TEST_DATA_ROOT / "model_elements"
 TEST_MODEL_ELEMENTS_CONFIG = TEST_MODEL_ELEMENTS / "config.yaml"
 TEST_DOCUMENT_ROOT = TEST_DATA_ROOT / "documents"
 TEST_COMBINED_DOCUMENT_CONFIG = TEST_DOCUMENT_ROOT / "combined_config.yaml"
+TEST_PLUGIN_CONFIG = TEST_DATA_ROOT / "plugins.yaml"
 TEST_MODEL = {
     "path": str(TEST_DATA_ROOT / "model" / "Melody Model Test.aird"),
     "diagram_cache": str(TEST_DIAGRAM_CACHE),

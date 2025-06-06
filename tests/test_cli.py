@@ -12,15 +12,30 @@ import pytest
 from click import testing
 
 import capella2polarion.__main__ as main
+from capella2polarion import plugins
 from capella2polarion.connectors import polarion_worker
-from capella2polarion.converters import model_converter
+from capella2polarion.elements import model_converter
+from capella2polarion.plugins import plugin_interfaces
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
 from .conftest import (  # type: ignore[import]
     TEST_COMBINED_DOCUMENT_CONFIG,
     TEST_MODEL,
     TEST_MODEL_ELEMENTS_CONFIG,
+    TEST_PLUGIN_CONFIG,
 )
+
+GROUP_COMMAND = [
+    "--polarion-project-id",
+    "{project-id}",
+    "--polarion-url",
+    "https://www.capella2polarion.invalid",
+    "--polarion-pat",
+    "PrivateAcessToken",
+    "--polarion-delete-work-items",
+    "--capella-model",
+    json.dumps(TEST_MODEL),
+]
 
 
 class CLIMocks(t.NamedTuple):
@@ -34,6 +49,23 @@ class CLIMocks(t.NamedTuple):
     get_document: mock.MagicMock
     create_documents: mock.MagicMock
     update_documents: mock.MagicMock
+    dummy_plugin_1: mock.MagicMock
+    dummy_plugin_2: mock.MagicMock
+
+
+def make_mock_plugin_class():
+    class_mock = mock.MagicMock()
+
+    class MockPlugin(plugin_interfaces.PluginInterface):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            class_mock.init(*args, **kwargs)
+            self._mock = class_mock
+
+        def run(self, **kwargs):
+            return self._mock.run(**kwargs)
+
+    return MockPlugin, class_mock
 
 
 @pytest.fixture
@@ -103,6 +135,19 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
         "update_documents",
         mock_update_documents,
     )
+    plugin_cls_1, mock_plugin_cls_1 = make_mock_plugin_class()
+    plugin_cls_2, mock_plugin_cls_2 = make_mock_plugin_class()
+
+    monkeypatch.setattr(
+        plugins,
+        "load_plugins",
+        mock.MagicMock(
+            return_value={
+                "dummy_plugin_1": plugin_cls_1,
+                "dummy_plugin_2": plugin_cls_2,
+            }
+        ),
+    )
     return CLIMocks(
         get_polarion_wi_map=mock_get_polarion_wi_map,
         generate_work_items=mock_generate_work_items,
@@ -112,21 +157,15 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
         get_document=mock_get_document,
         create_documents=mock_create_documents,
         update_documents=mock_update_documents,
+        dummy_plugin_1=mock_plugin_cls_1,
+        dummy_plugin_2=mock_plugin_cls_2,
     )
 
 
 # pylint: disable=redefined-outer-name
 def test_migrate_model_elements(cli_mocks: CLIMocks):
     command: list[str] = [
-        "--polarion-project-id",
-        "{project-id}",
-        "--polarion-url",
-        "https://www.capella2polarion.invalid",
-        "--polarion-pat",
-        "PrivateAcessToken",
-        "--polarion-delete-work-items",
-        "--capella-model",
-        json.dumps(TEST_MODEL),
+        *GROUP_COMMAND,
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
@@ -151,15 +190,7 @@ def test_migrate_model_elements(cli_mocks: CLIMocks):
 
 def test_render_documents(cli_mocks: CLIMocks):
     command: list[str] = [
-        "--polarion-project-id",
-        "{project-id}",
-        "--polarion-url",
-        "https://www.capella2polarion.invalid",
-        "--polarion-pat",
-        "PrivateAcessToken",
-        "--polarion-delete-work-items",
-        "--capella-model",
-        json.dumps(TEST_MODEL),
+        *GROUP_COMMAND,
         "render-documents",
         "--document-rendering-config",
         str(TEST_COMBINED_DOCUMENT_CONFIG),
@@ -198,3 +229,35 @@ def test_render_documents(cli_mocks: CLIMocks):
     assert (
         cli_mocks.update_documents.call_args_list[1].args[1] == "TestProject"
     )
+
+
+def test_run_plugins(cli_mocks: CLIMocks):
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "run-plugins",
+        "--document-rendering-config",
+        str(TEST_COMBINED_DOCUMENT_CONFIG),
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--grouped-links-custom-fields",
+        "--plugin-config-file",
+        str(TEST_PLUGIN_CONFIG),
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert len(cli_mocks.dummy_plugin_1.method_calls) == 4
+    assert cli_mocks.dummy_plugin_1.init.call_count == 2
+    assert len(cli_mocks.dummy_plugin_1.init.call_args_list[0].args) == 3
+    assert len(cli_mocks.dummy_plugin_1.init.call_args_list[1].args) == 3
+    assert cli_mocks.dummy_plugin_1.init.call_args_list[0].kwargs == {"a": 12}
+    assert cli_mocks.dummy_plugin_1.init.call_args_list[1].kwargs == {"a": 98}
+    assert cli_mocks.dummy_plugin_1.run.call_count == 2
+    assert cli_mocks.dummy_plugin_1.run.call_args_list[0].kwargs == {
+        "b": "abc"
+    }
+    assert cli_mocks.dummy_plugin_1.run.call_args_list[1].kwargs == {
+        "b": "xyz"
+    }
+    assert len(cli_mocks.dummy_plugin_2.method_calls) == 0

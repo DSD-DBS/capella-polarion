@@ -16,7 +16,7 @@ from lxml import etree
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_repo
-from capella2polarion.converters import data_session
+from capella2polarion.elements import data_session
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
     int: 0,
     bool: False,
 }
-WORK_ITEMS_IN_PROJECT_QUERY = (
+WORK_ITEMS_IN_DOCUMENT_QUERY = (
     "SQL:(SELECT item.* FROM POLARION.WORKITEM item, POLARION.MODULE doc, "
     "POLARION.PROJECT proj WHERE proj.C_ID = '{project}' AND "
     "doc.FK_PROJECT = proj.C_PK AND doc.C_ID = '{doc_name}' AND "
@@ -102,7 +102,7 @@ class CapellaPolarionWorker:
         client = self.polarion_client.generate_project_client(
             project_id=project_id,
             delete_status=(
-                "deleted" if self.polarion_params.delete_work_items else None
+                None if self.polarion_params.delete_work_items else "deleted"
             ),
         )
         if not client.exists():
@@ -562,7 +562,7 @@ class CapellaPolarionWorker:
                     di.module_folder, di.module_name, di.project_id
                 ),
                 self._get_client(di.project_id).work_items.get_all(
-                    WORK_ITEMS_IN_PROJECT_QUERY.format(
+                    WORK_ITEMS_IN_DOCUMENT_QUERY.format(
                         project=di.project_id
                         or self.polarion_params.project_id,
                         doc_folder=di.module_folder,
