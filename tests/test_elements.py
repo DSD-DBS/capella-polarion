@@ -326,7 +326,7 @@ class TestModelElements:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("uuid", "_type", "attrs"),
+        ("uuid", "type_", "attrs"),
         [
             pytest.param(
                 "55b90f9a-c5af-47fc-9c1c-48090414d1f1",
@@ -340,14 +340,14 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        _type: str,  # noqa: PT019 # false-positive
+        type_: str,  # false-positive
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
-                    _type[0].lower() + _type[1:], {}
+                    type_[0].lower() + type_[1:], {}
                 ),
                 model.by_uuid(uuid),
             )
@@ -356,7 +356,7 @@ class TestModelElements:
 
         expected = data_model.CapellaWorkItem(
             uuid_capella=uuid,
-            type=_type[0].lower() + _type[1:],
+            type=type_[0].lower() + type_[1:],
             description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
             **attrs,
@@ -827,6 +827,63 @@ class TestModelElements:
         assert work_item.uuid_capella is None
 
     @staticmethod
+    def test_update_type_and_attributes_change(
+        base_object: BaseObjectContainer,
+    ):
+        old_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="oldType",
+            status="closed",
+        )
+        old_wi.additional_attributes = {
+            "uuid_capella": "uuid1",
+            "foo": "bar",
+            "keep": "yes",
+        }
+        old_wi.attachments = []
+        old_wi._content_checksum = "old-content"
+        old_wi.checksum = "old-checksum"
+        old_wi.linked_work_items = []
+        old_wi.linked_work_items_truncated = False
+        base_object.pw.polarion_data_repo.update_work_items([old_wi])
+        base_object.pw.project_client.work_items.get.return_value = old_wi
+        base_object.pw.project_client.work_items.attachments.get_all.return_value = []
+        base_object.pw.project_client.work_items.links.get_all.return_value = []
+        new_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="newType",
+            status="open",
+        )
+        new_wi.additional_attributes = {"uuid_capella": "uuid1", "foo": "baz"}
+        new_wi.calculate_checksum()
+        base_object.mc.converter_session.clear()
+        base_object.mc.converter_session["uuid1"] = data_session.ConverterData(
+            "",
+            converter_config.CapellaTypeConfig("oldType"),
+            None,  # type: ignore
+            new_wi,
+        )
+
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
+
+        calls = base_object.pw.project_client.work_items.update.call_args_list
+        assert len(calls) == 2, (
+            "Expected exactly two update() calls for type + attributes"
+        )
+        first_arg = calls[0][0][0]
+        assert isinstance(first_arg, data_model.CapellaWorkItem)
+        assert first_arg.id == "Obj-1"
+        assert first_arg.type == "newType"
+        second_arg = calls[1][0][0]
+        assert second_arg.id == "Obj-1"
+        assert second_arg.type is None
+        assert second_arg.status == "open"
+        assert "foo" in second_arg.additional_attributes
+        assert "keep" in second_arg.additional_attributes
+
+    @staticmethod
     def test_update_deleted_work_item(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
@@ -964,7 +1021,13 @@ class TestModelElements:
                 )
             ]
         )
-
+        base_object.pw.project_client.work_items.get.return_value = (
+            data_model.CapellaWorkItem(
+                id="Obj-1",
+                type="fakeModelObject",
+                uuid_capella="uuid1",
+            )
+        )
         del base_object.mc.converter_session["uuid2"]
 
         base_object.pw.compare_and_update_work_items(
@@ -1099,20 +1162,17 @@ class TestModelElements:
             )
             for (i, work_item) in enumerate(dummy_work_items.values(), start=4)
         }
-        base_object.pw.polarion_data_repo = (
-            polarion_repo.PolarionDataRepository(
-                [
-                    data_model.CapellaWorkItem(
-                        id="Obj-0", uuid_capella="uuid0", status="open"
-                    ),
-                    data_model.CapellaWorkItem(
-                        id="Obj-1", uuid_capella="uuid1", status="open"
-                    ),
-                    data_model.CapellaWorkItem(
-                        id="Obj-2", uuid_capella="uuid2", status="open"
-                    ),
-                ]
+        work_items = [
+            data_model.CapellaWorkItem(
+                id=f"Obj-{i}",
+                type="fakeModelObject",
+                uuid_capella=f"uuid{i}",
+                status="open",
             )
+            for i in range(3)
+        ]
+        base_object.pw.polarion_data_repo = (
+            polarion_repo.PolarionDataRepository(work_items)
         )
         mock_create_links = mock.MagicMock()
         monkeypatch.setattr(
@@ -1123,6 +1183,7 @@ class TestModelElements:
         mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[  # noqa: ARG005
             uuid
         ].linked_work_items
+        base_object.pw.project_client.work_items.get.side_effect = work_items
 
         def mock_back_link(converter_data, back_links):
             work_item = converter_data.work_item
