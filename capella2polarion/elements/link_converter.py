@@ -38,6 +38,7 @@ class LinkSerializer:
         converter_session: data_session.ConverterSession,
         project_id: str,
         model: capellambse.MelodyModel,
+        global_grouped_links: bool = False,
     ):
         self.capella_polarion_mapping = capella_polarion_mapping
         self.converter_session = converter_session
@@ -49,9 +50,7 @@ class LinkSerializer:
             converter_config.DIAGRAM_ELEMENTS_SERIALIZER: self._handle_diagram_reference_links,  # pylint: disable=line-too-long
         }
 
-        self._link_field_groups: dict[str, list[polarion_api.WorkItemLink]] = (
-            defaultdict(list)
-        )
+        self._global_grouped_links_enabled = global_grouped_links
 
     def create_links_for_work_item(
         self, uuid: str
@@ -62,7 +61,6 @@ class LinkSerializer:
         work_item = converter_data.work_item
         assert work_item is not None
         assert work_item.id is not None
-        self._link_field_groups.clear()
         new_links: list[polarion_api.WorkItemLink] = []
         link_errors: list[str] = []
         for link_config in converter_data.type_config.links:
@@ -94,7 +92,6 @@ class LinkSerializer:
                     links = self._create(work_item.id, role_id, new, {})
 
                 new_links.extend(links)
-                self._link_field_groups[link_config.link_field].extend(links)
             except Exception as error:
                 error_message = make_link_logging_message(
                     f"{type(error).__name__} {error!s}",
@@ -228,21 +225,36 @@ class LinkSerializer:
         wi = f"[{work_item.id}]({work_item.type} {work_item.title})"
         logger.debug("Building grouped links for work item %r...", wi)
         for link_config in data.type_config.links:
-            grouped_links = self._link_field_groups[link_config.link_field]
+            forward_field_name: str | None = None
+            if link_config.link_field is not None:
+                forward_field_name = link_config.link_field
+            elif self._global_grouped_links_enabled:
+                forward_field_name = link_config.polarion_role
 
-            if back_links is not None and link_config.reverse_field:
-                for link in grouped_links:
-                    back_links.setdefault(
-                        link.secondary_work_item_id, {}
-                    ).setdefault(link_config.reverse_field, []).append(link)
+            reverse_field_name: str | None = None
+            if link_config.reverse_field is not None:
+                reverse_field_name = link_config.reverse_field
+            elif self._global_grouped_links_enabled:
+                reverse_field_name = f"{link_config.polarion_role}_reverse"
 
-            if grouped_links:
+            current_links = [
+                link
+                for link in work_item.linked_work_items
+                if link.role == link_config.polarion_role
+            ]
+            if forward_field_name and current_links:
                 self._create_link_fields(
                     work_item,
-                    link_config.link_field,
-                    grouped_links,
+                    forward_field_name,
+                    current_links,
                     config=link_config,
                 )
+
+            if back_links is not None and reverse_field_name and current_links:
+                for link in current_links:
+                    back_links.setdefault(
+                        link.secondary_work_item_id, {}
+                    ).setdefault(reverse_field_name, []).append(link)
 
     def _create_link_fields(
         self,

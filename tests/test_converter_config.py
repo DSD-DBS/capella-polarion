@@ -84,8 +84,6 @@ class TestConverterConfig:
             capella_attr="outputs.exchanges",
             polarion_role="output_exchanges",
             include={"Exchange Items": "exchange_items"},
-            link_field="output_exchanges",
-            reverse_field="output_exchanges_reverse",
         )
 
     @staticmethod

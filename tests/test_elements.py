@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 import typing as t
 from collections import defaultdict
@@ -175,7 +176,7 @@ def grouped_links_base_object(
     dummy_work_items: dict[str, data_model.CapellaWorkItem],
 ) -> GroupedLinksBaseObject:
     config = converter_config.CapellaTypeConfig(
-        "fakeModelObject", links=[LINK_CONFIG]
+        "fakeModelObject", links=[copy.deepcopy(LINK_CONFIG)]
     )
     model.la.extensions.clear()
     fake_2 = model.la.extensions.create(
@@ -189,11 +190,13 @@ def grouped_links_base_object(
     )
     fake_1.attribute = [fake_0, fake_2]
     fake_0.attribute = [fake_1, fake_2]
+
     link_serializer = link_converter.LinkSerializer(
         base_object.pw.polarion_data_repo,
         base_object.mc.converter_session,
         base_object.pw.polarion_params.project_id,
         model,
+        global_grouped_links=False,
     )
     return {
         "link_serializer": link_serializer,
@@ -326,7 +329,7 @@ class TestModelElements:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("uuid", "_type", "attrs"),
+        ("uuid", "type_", "attrs"),
         [
             pytest.param(
                 "55b90f9a-c5af-47fc-9c1c-48090414d1f1",
@@ -340,14 +343,14 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        _type: str,  # noqa: PT019 # false-positive
+        type_: str,  # false-positive
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
             uuid: data_session.ConverterData(
                 "oa",
                 converter_config.CapellaTypeConfig(
-                    _type[0].lower() + _type[1:], {}
+                    type_[0].lower() + type_[1:], {}
                 ),
                 model.by_uuid(uuid),
             )
@@ -356,7 +359,7 @@ class TestModelElements:
 
         expected = data_model.CapellaWorkItem(
             uuid_capella=uuid,
-            type=_type[0].lower() + _type[1:],
+            type=type_[0].lower() + type_[1:],
             description=polarion_api.HtmlContent(markupsafe.Markup("")),
             status="open",
             **attrs,
@@ -1222,10 +1225,10 @@ class TestModelElements:
         )
         for work_item in dummy_work_items.values():
             converter_data = data_session.ConverterData(
-                "test", config, [], work_item
-            )
-            link_serializer._link_field_groups["attribute"] = (
-                work_item.linked_work_items
+                "test",
+                config,
+                model.by_uuid(work_item.uuid_capella),
+                work_item,
             )
             link_serializer.create_grouped_link_fields(converter_data)
         del dummy_work_items["uuid0"].additional_attributes["uuid_capella"]
@@ -1290,15 +1293,12 @@ class TestModelElements:
 
         for work_item in dummy_work_items.values():
             converter_data = data_session.ConverterData(
-                "test", config, [], work_item
+                "test",
+                config,
+                model.by_uuid(work_item.uuid_capella),
+                work_item,
             )
-            if work_item.uuid_capella == "uuid0":
-                link_serializer._link_field_groups["attribute"] = (
-                    work_item.linked_work_items
-                )
-
             link_serializer.create_grouped_link_fields(converter_data)
-            link_serializer._link_field_groups = defaultdict(list)
 
         assert "attribute" in dummy_work_items["uuid0"].additional_attributes
         assert (  # Link Role on links were not prefixed
@@ -1448,10 +1448,10 @@ class TestModelElements:
 
         for work_item in dummy_work_items.values():
             data[work_item.id] = converter_data = data_session.ConverterData(
-                "test", config, [], work_item
-            )
-            link_serializer._link_field_groups["attribute"] = (
-                work_item.linked_work_items
+                "test",
+                config,
+                link_serializer.model.by_uuid(work_item.uuid_capella),
+                work_item,
             )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
@@ -1501,9 +1501,6 @@ class TestModelElements:
                 ),
                 work_item,
             )
-            link_serializer._link_field_groups["attribute"] = (
-                work_item.linked_work_items
-            )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
             )
@@ -1539,11 +1536,13 @@ class TestModelElements:
         data = {}
         for work_item in dummy_work_items.values():
             for link in work_item.linked_work_items:
-                link_serializer._link_field_groups[link.role].append(link)
                 link.role = f"_C2P_{link.role}"
 
             data[work_item.id] = converter_data = data_session.ConverterData(
-                "test", config, [], work_item
+                "test",
+                config,
+                link_serializer.model.by_uuid(work_item.uuid_capella),
+                work_item,
             )
             link_serializer.create_grouped_link_fields(
                 converter_data, back_links
@@ -1561,6 +1560,194 @@ class TestModelElements:
         assert (
             "attribute_reverse"
             in dummy_work_items["uuid1"].additional_attributes
+        )
+
+    @staticmethod
+    def test_grouped_links_explicit_fields_no_global_env(
+        model: capellambse.MelodyModel,
+        grouped_links_base_object: GroupedLinksBaseObject,
+    ):
+        link_serializer = grouped_links_base_object["link_serializer"]
+        dummy_work_items = grouped_links_base_object["work_items"]
+        config = grouped_links_base_object["config"]
+        config.links[0].link_field = "link_field"
+        config.links[0].reverse_field = "reverse_field"
+        link_serializer.converter_session["uuid0"] = (
+            data_session.ConverterData(
+                "oa",
+                config,
+                model.by_uuid("uuid0"),
+                dummy_work_items["uuid0"],
+            )
+        )
+        link_serializer.converter_session[
+            "uuid1"
+        ].type_config = converter_config.CapellaTypeConfig(
+            p_type="fakeModelObject",
+            converters=None,
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
+        )
+        link_serializer.converter_session[
+            "uuid2"
+        ].work_item = dummy_work_items["uuid2"]
+
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        for converter_data in link_serializer.converter_session.values():
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+
+        for polarion_id, links_by_field in back_links.items():
+            capella_uuid = next(
+                k for k, v in POLARION_ID_MAP.items() if v == polarion_id
+            )
+            wi = dummy_work_items[capella_uuid]
+            link_serializer.create_grouped_back_link_fields(wi, links_by_field)
+
+        assert "link_field" in dummy_work_items["uuid0"].additional_attributes
+        assert (
+            "link_field" not in dummy_work_items["uuid1"].additional_attributes
+        )
+        assert (
+            "reverse_field"
+            not in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (  # reverse field comes from uuid0
+            "reverse_field" in dummy_work_items["uuid1"].additional_attributes
+        )
+
+    @staticmethod
+    def test_grouped_links_global_env_fallback(
+        grouped_links_base_object: GroupedLinksBaseObject,
+    ):
+        link_serializer = grouped_links_base_object["link_serializer"]
+        link_serializer._global_grouped_links_enabled = True
+        dummy_work_items = grouped_links_base_object["work_items"]
+        config = grouped_links_base_object["config"]
+        config.links[0].link_field = None
+        config.links[0].reverse_field = None
+        link_serializer.converter_session["uuid0"] = (
+            data_session.ConverterData(
+                "oa",
+                config,
+                link_serializer.model.by_uuid("uuid0"),
+                dummy_work_items["uuid0"],
+            )
+        )
+
+        for (
+            uuid_capella,
+            converter_data,
+        ) in link_serializer.converter_session.items():
+            converter_data.type_config = config
+            converter_data.work_item = dummy_work_items[uuid_capella]
+
+        for uuid_capella in dummy_work_items:
+            link_serializer.create_links_for_work_item(uuid_capella)
+
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        for converter_data in link_serializer.converter_session.values():
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+
+        for polarion_id, links_by_field in back_links.items():
+            capella_uuid = next(
+                k for k, v in POLARION_ID_MAP.items() if v == polarion_id
+            )
+            wi = dummy_work_items[capella_uuid]
+            link_serializer.create_grouped_back_link_fields(wi, links_by_field)
+
+        assert "attribute" in dummy_work_items["uuid0"].additional_attributes
+        assert "attribute" in dummy_work_items["uuid1"].additional_attributes
+        assert (
+            "attribute" not in dummy_work_items["uuid2"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid1"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            in dummy_work_items["uuid2"].additional_attributes
+        )
+
+    @staticmethod
+    def test_grouped_links_no_fields_no_global_env(
+        grouped_links_base_object: GroupedLinksBaseObject,
+    ):
+        link_serializer = grouped_links_base_object["link_serializer"]
+        link_serializer._global_grouped_links_enabled = False
+        dummy_work_items = grouped_links_base_object["work_items"]
+        config = grouped_links_base_object["config"]
+        config.links[0].link_field = None
+        config.links[0].reverse_field = None
+        link_serializer.converter_session["uuid0"] = (
+            data_session.ConverterData(
+                "oa",
+                config,
+                link_serializer.model.by_uuid("uuid0"),
+                dummy_work_items["uuid0"],
+            )
+        )
+
+        for (
+            uuid_capella,
+            converter_data,
+        ) in link_serializer.converter_session.items():
+            converter_data.type_config = config
+            converter_data.work_item = dummy_work_items[uuid_capella]
+
+        for uuid_capella in dummy_work_items:
+            link_serializer.create_links_for_work_item(uuid_capella)
+
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        for converter_data in link_serializer.converter_session.values():
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+
+        for polarion_id, links_by_field in back_links.items():
+            capella_uuid = next(
+                k for k, v in POLARION_ID_MAP.items() if v == polarion_id
+            )
+            wi = dummy_work_items[capella_uuid]
+            link_serializer.create_grouped_back_link_fields(wi, links_by_field)
+
+        assert (
+            "attribute" not in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            not in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (
+            "attribute" not in dummy_work_items["uuid1"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            not in dummy_work_items["uuid1"].additional_attributes
+        )
+        assert (
+            "attribute" not in dummy_work_items["uuid2"].additional_attributes
+        )
+        assert (
+            "attribute_reverse"
+            not in dummy_work_items["uuid2"].additional_attributes
         )
 
 

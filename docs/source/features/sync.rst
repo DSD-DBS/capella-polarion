@@ -102,17 +102,18 @@ specific serializer alone:
 Links
 *****
 
-Attributes on Capella objects referencing other Capella objects are rendered
-as linked work items if (and only if) the link target exists as a work item in
-Polarion. This needs specific configuration in the work item link roles XML.
-If the configuration is done, any Capella attribute can be rendered as a link.
-Per default any configured link will cause the rendering 2 custom fields:
+Attributes on Capella objects referencing other Capella objects are rendered as
+linked work items if (and only if) the link target exists as a work item in
+Polarion. This doesn't need specific configuration in the work item link roles
+XML. The REST API doesn't check the link role enumeration at all. Any Capella
+attribute can be rendered as a link. Any configured link can cause
+the rendering 2 custom fields:
 
 1. Grouped linked work items
 2. Grouped backlink work items (on the link target work items)
 
-Grouped linked work items
-*************************
+Grouped linked work items custom fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In a Polarion live-doc, there is no way to filter the linked work items table
 which is automatically created from Polarion and can be included in the
@@ -130,7 +131,6 @@ and a field for the reverse links on each target:
   :width: 700
   :align: center
 
-For now this feature can not be disabled. Keep in mind that this requires
-configuration of 2 new custom fields on the work item type and the targeted
-work item type. See the :ref:`linked work items configuration documentation
-page <links-config>` for more details.
+Keep in mind that this requires configuration of new custom fields on the work
+item type and the targeted work item type in Polarion. See the :ref:`linked
+work items configuration documentation page <links-config>` for more details.

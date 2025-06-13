@@ -35,7 +35,7 @@ Serializers
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 33-34
+   :lines: 37-38
 
 With ``serializer`` you can control which function is called to render the
 :py:class:`capella2polarion.data_models.CapellaWorkItem`. There is a generic
@@ -49,13 +49,13 @@ configuration of the serializer as value. For example ``Class`` using the
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 9-13
+   :lines: 13-17
 
 or ``SystemFunction`` with the ``add_context_diagram`` serializer using ``filters``:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 64-67
+   :lines: 68-71
 
 Jinja as Description
 ^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +113,7 @@ Different capella type and polarion type ID
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 29-30
+   :lines: 33-34
 
 Sometimes capellambse class types are not the same in Polarion. In order to
 handle this case you can use the ``polarion_type`` key to map capellambse types
@@ -121,7 +121,7 @@ to the desired Polarion type.
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 73-91
+   :lines: 77-99
 
 For the ``PhysicalComponent`` you can see this in extreme action, where based
 on the different permutation of the attributes actor and nature different
@@ -138,24 +138,50 @@ Links can be configured by just providing a list of strings:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 33-37
+   :lines: 33-36
 
 However there is a more verbose way that gives you the option to configure the
 link further:
 
 .. literalinclude:: ../../../tests/data/model_elements/config.yaml
    :language: yaml
-   :lines: 52-63
+   :lines: 56-63
 
-The links of ``SystemFunction`` are configured such that a ``polarion_role``,
-a separate ``capella_attr``, an ``include``, ``link_field`` and
-``reverse_field`` is defined. In this example the ``capella_attr`` is utilizing
-the map functionality of capellambse. You can therefore chain attributes using
-a ``.`` to get to the desired elements for your link. The ``link_field`` is the
-polarion custom field ID for a grouped list of these links. The
-``reverse_field`` is the polarion custom field ID for the grouped backlinks of
-the links. The ``include`` is an optional feature that renders additional
-work item references into the grouped link custom field. In this example for
-each linked ``FunctionalExchange`` in the grouped list there will be
-``ExchangeItem`` s included. The key "Exchange Items" is used for the
-indication in the list.
+In this example the ``capella_attr`` is utilizing the map functionality of
+capellambse. You can therefore chain attributes using a ``.`` to get to the
+desired elements for your link.
+
+Grouped Link Custom Fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+The grouped link custom fields can be configured globally or on a per-link
+basis. By default, if no specific configuration is provided, the system will
+check the ``CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS`` environment
+variable. If this variable is set to ``true``, grouped link custom fields will
+be generated for **all** links. If it is set to ``false`` or not set at all,
+grouped link custom fields will not be generated for links where the following
+properties are not configured.
+
+To explicitly control the generation of grouped link custom fields, you can use
+the ``link_field`` and ``reverse_field`` properties within the ``LinkConfig``
+in your synchronization configuration YAML:
+
+* **`link_field`**: If set, a grouped forward link custom field (e.g.
+  ``inputExchanges``) will be created for the Capella element with the
+  specified name. The value is the polarion custom field ID for a grouped list
+  of these links.
+* **`reverse_field`**: If set, a grouped backlink custom field (e.g.
+  ``inputExchangesReverse``) will be created on the target work item with the
+  specified name. The value is the polarion custom field ID for the grouped
+  backlinks of the links.
+
+If both ``link_field`` and ``reverse_field`` are omitted or set to ``None`` in
+the ``LinkConfig``, and the ``CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS``
+environment variable is *not* set to ``true``, then no grouped link custom
+fields will be generated for that specific link.
+
+Includes
+^^^^^^^^
+The ``include`` is an optional feature that renders additional work item
+references into the grouped link custom field. In this example for each linked
+``FunctionalExchange`` in the grouped list there will be ``ExchangeItem`` s
+included. The key "Exchange Items" is used for the indication in the list.
