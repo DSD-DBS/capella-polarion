@@ -114,7 +114,8 @@ class CapellaPolarionWorker:
         """Instantiate the polarion client as member."""
         if not self.project_client.exists():
             raise KeyError(
-                f"Miss Polarion project with id {self.polarion_params.project_id!r}"
+                "Miss Polarion project with id "
+                f"{self.polarion_params.project_id!r}"
             )
 
     def load_polarion_work_item_map(self) -> None:

@@ -340,7 +340,7 @@ class TestModelElements:
         base_object: BaseObjectContainer,
         model: capellambse.MelodyModel,
         uuid: str,
-        type_: str,  # false-positive
+        type_: str,
         attrs: dict[str, t.Any],
     ):
         base_object.mc.converter_session = {
