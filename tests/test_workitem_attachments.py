@@ -640,7 +640,7 @@ def test_attached_image_in_description_with_caption(
     assert len(created_attachments) == 1
     assert str(work_item.description.value) == (
         '<p><img alt="Other Text used as Caption" '
-        'src="workitemimg:0-5b5bdfe8be29ca756dee7c7af74bca64.png"/></p>'
+        'src="workitemimg:0-grouped_linked_work_items.png"/></p>'
         '<p class="polarion-rte-caption-paragraph">\n  Figure '
         '<span data-sequence="Figure" class="polarion-rte-caption">#</span>'
         " Other Text used as Caption\n</p>\n\n<p>Test</p>\n"

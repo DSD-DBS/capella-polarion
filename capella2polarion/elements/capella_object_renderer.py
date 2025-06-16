@@ -81,48 +81,51 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
             ):
                 return
 
-            file_url = pathlib.PurePosixPath(node.get("src"))
-            workspace = file_url.parts[0]
-            file_path = pathlib.PurePosixPath(*file_url.parts[1:])
-            mime_type, _ = mimetypes.guess_type(file_url)
-            resources = self.model.resources
-            filehandler = resources[
-                ["\x00", workspace][workspace in resources]
-            ]
-            try:
-                with filehandler.open(file_path, "rb") as img:
-                    content = img.read()
-                    file_name = (
-                        hashlib.md5(str(file_path).encode("utf8")).hexdigest()
-                        + file_path.suffix
+            data_uri = str(node.get("src"))
+            content = data_uri.encode("utf8")
+            if data_path := node.attrib.pop("data-capella-path", None):
+                file_path = pathlib.Path(data_path)
+                title = file_path.stem
+                file_name = file_path.name
+                mime_type, _ = mimetypes.guess_type(data_path)
+            else:
+                try:
+                    title = hashlib.md5(content).hexdigest()
+                    header, _ = data_uri.split(",", 1)
+                    mime = header[len("data:") :].split(";", 1)[0]
+                    suffix = mimetypes.guess_extension(mime)
+                    assert suffix is not None, "Unknown mime type"
+                    file_name = title + suffix
+                    mime_type = mime
+                except (ValueError, AssertionError) as e:
+                    errors.add(
+                        f"Inline image can't be loaded {data_uri[:8]!r}: {e}"
                     )
-                    attachments.append(
-                        data_model.Capella2PolarionAttachment(
-                            "",
-                            "",
-                            file_path.name,
-                            content,
-                            mime_type,
-                            file_name,
-                        )
-                    )
-                    # We use the filename here as the ID is unknown here
-                    # This needs to be refactored after updating attachments
-                    node.attrib["src"] = f"workitemimg:{file_name}"
-                    if self.generate_figure_captions:
-                        caption = node.get(
-                            "alt", f'Image "{file_url.stem}" of {obj.name}'
-                        )
-                        node.addnext(
-                            html.fromstring(
-                                polarion_html_helper.POLARION_CAPTION.format(
-                                    label="Figure", caption=caption
-                                )
-                            )
-                        )
+                    return
 
-            except FileNotFoundError:
-                errors.add(f"Inline image can't be found from {file_path!r}.")
+            attachments.append(
+                data_model.Capella2PolarionAttachment(
+                    "",
+                    "",
+                    title,
+                    content,
+                    mime_type,
+                    file_name,
+                )
+            )
+
+            # We use the filename here as the ID is unknown here
+            # This needs to be refactored after updating attachments
+            node.attrib["src"] = f"workitemimg:{file_name}"
+            if self.generate_figure_captions:
+                caption = node.get("alt", f'Image "{title}" of {obj.name}')
+                node.addnext(
+                    html.fromstring(
+                        polarion_html_helper.POLARION_CAPTION.format(
+                            label="Figure", caption=caption
+                        )
+                    )
+                )
 
         repaired_markup = chelpers.process_html_fragments(
             replaced_markup, repair_images
