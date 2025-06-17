@@ -12,6 +12,7 @@ import re
 import typing as t
 
 import capellambse
+import datauri
 import jinja2
 import markupsafe
 import polarion_rest_api_client as polarion_api
@@ -81,8 +82,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
             ):
                 return
 
-            data_uri = str(node.get("src"))
-            content = data_uri.encode("utf8")
+            data_uri = datauri.DataURI(str(node.get("src")))
             if data_path := node.attrib.pop("data-capella-path", None):
                 file_path = pathlib.Path(data_path)
                 title = file_path.stem
@@ -90,13 +90,12 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
                 mime_type, _ = mimetypes.guess_type(data_path)
             else:
                 try:
-                    title = hashlib.md5(content).hexdigest()
+                    title = hashlib.md5(data_uri.data).hexdigest()
                     header, _ = data_uri.split(",", 1)
-                    mime = header[len("data:") :].split(";", 1)[0]
-                    suffix = mimetypes.guess_extension(mime)
+                    mime_type = header[len("data:") :].split(";", 1)[0]
+                    suffix = mimetypes.guess_extension(mime_type)
                     assert suffix is not None, "Unknown mime type"
                     file_name = title + suffix
-                    mime_type = mime
                 except (ValueError, AssertionError) as e:
                     errors.add(
                         f"Inline image can't be loaded {data_uri[:8]!r}: {e}"
@@ -108,7 +107,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
                     "",
                     "",
                     title,
-                    content,
+                    data_uri.data,
                     mime_type,
                     file_name,
                 )
