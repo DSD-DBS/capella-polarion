@@ -35,7 +35,7 @@ dependencies = [
   "click",
   "python-datauri>=3.0.2,<4",
   "jinja2",
-  "polarion-rest-api-client==1.2.2",
+  "polarion-rest-api-client==1.4.1",
   "pydantic",
   "pyyaml",
 ]
