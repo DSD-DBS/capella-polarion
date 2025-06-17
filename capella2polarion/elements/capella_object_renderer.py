@@ -93,8 +93,9 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
                     title = hashlib.md5(data_uri.data).hexdigest()
                     header, _ = data_uri.split(",", 1)
                     mime_type = header[len("data:") :].split(";", 1)[0]
+                    assert mime_type is not None, "Unknown mime type"
                     suffix = mimetypes.guess_extension(mime_type)
-                    assert suffix is not None, "Unknown mime type"
+                    assert suffix is not None, "Unknown file suffix"
                     file_name = title + suffix
                 except (ValueError, AssertionError) as e:
                     errors.add(
