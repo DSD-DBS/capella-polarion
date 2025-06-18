@@ -141,6 +141,7 @@ class ModelConverter:
             self.converter_session,
             self.project_id,
             self.model,
+            global_grouped_links=generate_grouped_links_custom_fields,
         )
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
