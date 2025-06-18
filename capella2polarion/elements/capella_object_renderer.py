@@ -82,18 +82,18 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
             ):
                 return
 
-            data_uri = datauri.DataURI(str(node.get("src")))
+            if not node.get("src", "").startswith("data:"):
+                return
+            data_uri = datauri.DataURI(node.get("src", ""))
+            mime_type = data_uri.mimetype
+            assert mime_type is not None, "Unknown mime type"
             if data_path := node.attrib.pop("data-capella-path", None):
                 file_path = pathlib.Path(data_path)
                 title = file_path.stem
                 file_name = file_path.name
-                mime_type, _ = mimetypes.guess_type(data_path)
             else:
                 try:
                     title = hashlib.md5(data_uri.data).hexdigest()
-                    header, _ = data_uri.split(",", 1)
-                    mime_type = header[len("data:") :].split(";", 1)[0]
-                    assert mime_type is not None, "Unknown mime type"
                     suffix = mimetypes.guess_extension(mime_type)
                     assert suffix is not None, "Unknown file suffix"
                     file_name = title + suffix
