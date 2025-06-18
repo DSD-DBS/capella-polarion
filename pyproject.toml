@@ -33,6 +33,7 @@ dependencies = [
   "capellambse>=0.7.2,<0.8",
   "capellambse_context_diagrams>=0.7.0,<0.8",
   "click",
+  "python-datauri>=3.0.2,<4",
   "jinja2",
   "polarion-rest-api-client==1.2.2",
   "pydantic",
