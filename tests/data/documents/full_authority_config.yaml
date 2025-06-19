@@ -11,6 +11,7 @@
     - polarion_space: _default
       polarion_name: id123
       polarion_title: Interface23
+      polarion_type: genericTemplateType
       params:
         interface: 3d21ab4b-7bf6-428b-ba4c-a27bca4e86db
     - polarion_space: _default

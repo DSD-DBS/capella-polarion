@@ -187,6 +187,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str,
         polarion_name: str,
+        polarion_type: str | None = None,
         document_title: str | None = None,
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
@@ -216,6 +217,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         template_name: str,
         polarion_folder: str | None = None,
         polarion_name: str | None = None,
+        polarion_type: str | None = None,
         document_title: str | None = None,
         heading_numbering: bool = False,
         rendering_layouts: list[polarion_api.RenderingLayout] | None = None,
@@ -231,6 +233,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         if document is not None:
             polarion_folder = document.module_folder
             polarion_name = document.module_name
+            polarion_type = document.type
 
         if polarion_name is None or polarion_folder is None:
             raise AssertionError(
@@ -256,6 +259,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 title=document_title,
                 module_folder=polarion_folder,
                 module_name=polarion_name,
+                type=polarion_type,
                 outline_numbering=heading_numbering,
             )
             if rendering_layouts is not None:
@@ -289,6 +293,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         document_project_id: str | None = None,
     ) -> data_model.DocumentData:
         """Update a mixed authority document."""
+        document.type = None
         text_work_item_provider = (
             text_work_item_provider or twi.TextWorkItemProvider()
         )

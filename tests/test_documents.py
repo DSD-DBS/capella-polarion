@@ -231,6 +231,7 @@ def test_mixed_authority_document(
     old_doc = polarion_api.Document(
         module_folder="_default",
         module_name="TEST-DOC",
+        type="genericTemplateType",
         home_page_content=polarion_api.TextContent(
             type="text/html", value=MIXED_AUTHORITY_DOCUMENT.read_text("utf-8")
         ),
@@ -266,6 +267,7 @@ def test_mixed_authority_document(
         document_data.document.home_page_content.value
     )
 
+    assert document_data.document.type is None
     assert len(document_data.text_work_item_provider.new_text_work_items) == 2
     assert (
         document_data.text_work_item_provider.new_text_work_items["id1"].id
@@ -357,6 +359,54 @@ def test_mixed_authority_with_work_item(
 
     assert len(wis) == 1
     assert len(wi_links) == 2
+
+
+@pytest.mark.parametrize("polarion_type", ["initialTestType", None])
+def test_render_document_with_polarion_type(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+    polarion_type: str,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+
+    document_data_new_with_type = renderer.render_document(
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
+        "_default",
+        "NEW-DOC-TYPE-TEST-1",
+        polarion_type,
+        cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+    )
+
+    assert document_data_new_with_type.document.type == polarion_type
+
+
+def test_update_document_with_polarion_type(
+    empty_polarion_worker: polarion_worker.CapellaPolarionWorker,
+    model: capellambse.MelodyModel,
+):
+    renderer = document_renderer.DocumentRenderer(
+        empty_polarion_worker.polarion_data_repo, model, TEST_PROJECT_ID
+    )
+    new_doc = polarion_api.Document(
+        module_folder="_default",
+        module_name="EXISTING-DOC-TYPE-TEST",
+        type=(new_type := "UpdatedType"),
+        home_page_content=polarion_api.TextContent(
+            type="text/html", value="<p>Test Content</p>"
+        ),
+    )
+
+    document_data_update_with_new_type = renderer.render_document(
+        JUPYTER_TEMPLATE_FOLDER,
+        CLASSES_TEMPLATE,
+        document=new_doc,
+        cls="c710f1c2-ede6-444e-9e2b-0ff30d7fd040",
+    )
+
+    assert document_data_update_with_new_type.document.type == new_type
 
 
 def test_create_full_authority_document_text_work_items(
@@ -597,7 +647,7 @@ def test_insert_work_item_cross_project(
         DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
         "test",
         "name",
-        "title",
+        document_title="title",
         document_project_id="DIFFERENT",
         element="d8655737-39ab-4482-a934-ee847c7ff6bd",
     )
@@ -607,7 +657,7 @@ def test_insert_work_item_cross_project(
         DOCUMENT_WORK_ITEMS_CROSS_PROJECT,
         "test",
         "name",
-        "title",
+        document_title="title",
         element="d8655737-39ab-4482-a934-ee847c7ff6bd",
     )
 
@@ -666,10 +716,12 @@ def test_full_authority_document_config():
     assert conf.full_authority[0].template == "test-icd.html.j2"
     assert conf.full_authority[0].heading_numbering is False
     assert len(conf.full_authority[0].instances) == 2
-    assert conf.full_authority[0].instances[0].polarion_space == "_default"
-    assert conf.full_authority[0].instances[0].polarion_name == "id123"
-    assert conf.full_authority[0].instances[0].polarion_title == "Interface23"
-    assert conf.full_authority[0].instances[0].params == {
+    first_instance = conf.full_authority[0].instances[0]
+    assert first_instance.polarion_space == "_default"
+    assert first_instance.polarion_name == "id123"
+    assert first_instance.polarion_title == "Interface23"
+    assert first_instance.polarion_type == "genericTemplateType"
+    assert first_instance.params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
     assert conf.full_authority[0].project_id == "TestProject"
@@ -684,6 +736,10 @@ def test_mixed_authority_document_config():
 
     assert len(conf.full_authority) == 0
     assert len(conf.mixed_authority) == 2
+    assert conf.mixed_authority[0].project_id == "TestProject"
+    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
+    assert conf.mixed_authority[0].text_work_item_type == "text"
+    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
     assert (
         conf.mixed_authority[0].template_directory == JUPYTER_TEMPLATE_FOLDER
     )
@@ -693,12 +749,11 @@ def test_mixed_authority_document_config():
     }
     assert conf.mixed_authority[0].heading_numbering is False
     assert len(conf.mixed_authority[0].instances) == 2
-    assert conf.mixed_authority[0].instances[0].polarion_space == "_default"
-    assert conf.mixed_authority[0].instances[0].polarion_name == "id123"
-    assert conf.mixed_authority[0].project_id == "TestProject"
-    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
-    assert conf.mixed_authority[0].instances[0].polarion_title == "Interface23"
-    assert conf.mixed_authority[0].instances[0].params == {
+    first_instance = conf.mixed_authority[0].instances[0]
+    assert first_instance.polarion_space == "_default"
+    assert first_instance.polarion_name == "id123"
+    assert first_instance.polarion_title == "Interface23"
+    assert first_instance.params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
     assert conf.mixed_authority[1].instances[0].section_params == {
@@ -706,8 +761,6 @@ def test_mixed_authority_document_config():
     }
     assert conf.mixed_authority[1].project_id is None
     assert conf.mixed_authority[1].status_allow_list is None
-    assert conf.mixed_authority[0].text_work_item_type == "text"
-    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
     assert conf.mixed_authority[1].text_work_item_type == "myType"
     assert conf.mixed_authority[1].text_work_item_id_field == "myId"
 
