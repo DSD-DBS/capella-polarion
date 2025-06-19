@@ -716,14 +716,12 @@ def test_full_authority_document_config():
     assert conf.full_authority[0].template == "test-icd.html.j2"
     assert conf.full_authority[0].heading_numbering is False
     assert len(conf.full_authority[0].instances) == 2
-    assert conf.full_authority[0].instances[0].polarion_space == "_default"
-    assert conf.full_authority[0].instances[0].polarion_name == "id123"
-    assert conf.full_authority[0].instances[0].polarion_title == "Interface23"
-    assert (
-        conf.full_authority[0].instances[0].polarion_type
-        == "genericTemplateType"
-    )
-    assert conf.full_authority[0].instances[0].params == {
+    first_instance = conf.full_authority[0].instances[0]
+    assert first_instance.polarion_space == "_default"
+    assert first_instance.polarion_name == "id123"
+    assert first_instance.polarion_title == "Interface23"
+    assert first_instance.polarion_type == "genericTemplateType"
+    assert first_instance.params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
     assert conf.full_authority[0].project_id == "TestProject"
@@ -738,6 +736,10 @@ def test_mixed_authority_document_config():
 
     assert len(conf.full_authority) == 0
     assert len(conf.mixed_authority) == 2
+    assert conf.mixed_authority[0].project_id == "TestProject"
+    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
+    assert conf.mixed_authority[0].text_work_item_type == "text"
+    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
     assert (
         conf.mixed_authority[0].template_directory == JUPYTER_TEMPLATE_FOLDER
     )
@@ -747,12 +749,11 @@ def test_mixed_authority_document_config():
     }
     assert conf.mixed_authority[0].heading_numbering is False
     assert len(conf.mixed_authority[0].instances) == 2
-    assert conf.mixed_authority[0].instances[0].polarion_space == "_default"
-    assert conf.mixed_authority[0].instances[0].polarion_name == "id123"
-    assert conf.mixed_authority[0].project_id == "TestProject"
-    assert conf.mixed_authority[0].status_allow_list == ["draft", "open"]
-    assert conf.mixed_authority[0].instances[0].polarion_title == "Interface23"
-    assert conf.mixed_authority[0].instances[0].params == {
+    first_instance = conf.mixed_authority[0].instances[0]
+    assert first_instance.polarion_space == "_default"
+    assert first_instance.polarion_name == "id123"
+    assert first_instance.polarion_title == "Interface23"
+    assert first_instance.params == {
         "interface": "3d21ab4b-7bf6-428b-ba4c-a27bca4e86db"
     }
     assert conf.mixed_authority[1].instances[0].section_params == {
@@ -760,8 +761,6 @@ def test_mixed_authority_document_config():
     }
     assert conf.mixed_authority[1].project_id is None
     assert conf.mixed_authority[1].status_allow_list is None
-    assert conf.mixed_authority[0].text_work_item_type == "text"
-    assert conf.mixed_authority[0].text_work_item_id_field == "__C2P__id"
     assert conf.mixed_authority[1].text_work_item_type == "myType"
     assert conf.mixed_authority[1].text_work_item_id_field == "myId"
 
