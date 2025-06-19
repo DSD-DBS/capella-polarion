@@ -30,9 +30,10 @@ classifiers = [
 dependencies = [
   "bidict",
   "cairosvg",
-  "capellambse>=0.7.0,<0.8",
+  "capellambse>=0.7.2,<0.8",
   "capellambse_context_diagrams>=0.7.0,<0.8",
   "click",
+  "python-datauri>=3.0.2,<4",
   "jinja2",
   "polarion-rest-api-client==1.2.2",
   "pydantic",
@@ -63,7 +64,7 @@ docs = [
   "nbsphinx>=0.9.5",
   "python-dotenv",
   "sphinx-copybutton>=0.5.2",
-  "sphinx>=8.1.3,<8.2.0", # Fixated until https://github.com/spatialaudio/nbsphinx/issues/825 is solved
+  "sphinx>=8.1.3,<8.2.0",                # Fixated until https://github.com/spatialaudio/nbsphinx/issues/825 is solved
   "tomli>=2.2.1; python_version<'3.11'",
 ]
 

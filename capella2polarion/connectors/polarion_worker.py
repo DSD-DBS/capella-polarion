@@ -115,7 +115,7 @@ class CapellaPolarionWorker:
         if not self.project_client.exists():
             raise KeyError(
                 "Miss Polarion project with id "
-                f"{self.polarion_params.project_id}"
+                f"{self.polarion_params.project_id!r}"
             )
 
     def load_polarion_work_item_map(self) -> None:
@@ -254,9 +254,16 @@ class CapellaPolarionWorker:
                     self.project_client.work_items.links.get_all(old.id)
                 )
 
-            # Type will only be updated, if set and should be used carefully
-            if new.type == old.type:
-                new.type = None
+            # Type will be updated immediatly, if changed b/c Polarion
+            # does not allow to change the type of a work item and fields in
+            # the same request.
+            if new.type != old.type:
+                new_with_only_type = data_model.CapellaWorkItem(
+                    id=old.id, type=new.type
+                )
+                self.project_client.work_items.update(new_with_only_type)
+
+            new.type = None
             new.status = "open"
 
             # If additional fields were present, but aren't anymore,

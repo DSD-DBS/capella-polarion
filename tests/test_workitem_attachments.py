@@ -140,10 +140,12 @@ def test_diagram_attachments_new(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
     )
-    worker.project_client.work_items.get.return_value = (
-        data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)
+    old_wi = data_model.CapellaWorkItem(
+        WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, type="diagram"
     )
-    worker.project_client.work_items.attachments = mock.MagicMock()
+
+    worker.project_client.work_items.get.return_value = old_wi
+    worker.project_client.work_items.attachments.get_all.return_value = []
     worker.project_client.work_items.attachments.create.side_effect = (
         set_attachment_ids
     )
@@ -186,13 +188,19 @@ def test_new_diagram(
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
         [
             data_model.CapellaWorkItem(
-                WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+                WORKITEM_ID,
+                uuid_capella=TEST_DIAG_UUID,
+                type="diagram",
+                checksum=checksum,
             )
         ]
     )
     worker.project_client.work_items.get.return_value = (
         data_model.CapellaWorkItem(
-            WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, checksum=checksum
+            WORKITEM_ID,
+            uuid_capella=TEST_DIAG_UUID,
+            type="diagram",
+            checksum=checksum,
         )
     )
     worker.project_client.work_items.attachments.create = mock.MagicMock()
@@ -222,7 +230,11 @@ def test_diagram_attachments_updated(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
+        [
+            data_model.CapellaWorkItem(
+                WORKITEM_ID, type="diagram", uuid_capella=TEST_DIAG_UUID
+            )
+        ]
     )
     existing_attachments = [
         polarion_api.WorkItemAttachment(
@@ -242,6 +254,7 @@ def test_diagram_attachments_updated(
         data_model.CapellaWorkItem(
             WORKITEM_ID,
             uuid_capella=TEST_DIAG_UUID,
+            type="diagram",
             attachments=existing_attachments,
         )
     )
@@ -277,6 +290,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
     diagram_work_item = data_model.CapellaWorkItem(
         WORKITEM_ID,
         uuid_capella=TEST_DIAG_UUID,
+        type="diagram",
         checksum=json.dumps(
             {
                 "__C2P__WORK_ITEM": "123",
@@ -358,10 +372,12 @@ def test_add_context_diagram(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     converter = model_converter.ModelConverter(model, "TEST")
-    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_PHYS_FNC)]
+    work_item = data_model.CapellaWorkItem(
+        WORKITEM_ID, uuid_capella=TEST_PHYS_FNC, type="test"
     )
-
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [work_item]
+    )
     converter.converter_session[TEST_PHYS_FNC] = data_session.ConverterData(
         "pa",
         converter_config.CapellaTypeConfig(
@@ -369,7 +385,7 @@ def test_add_context_diagram(
         ),
         model.by_uuid(TEST_PHYS_FNC),
     )
-
+    worker.project_client.work_items.get.return_value = work_item
     worker.project_client.work_items.attachments.create = mock.MagicMock()
     worker.project_client.work_items.attachments.create.side_effect = (
         set_attachment_ids
@@ -413,21 +429,21 @@ def test_update_context_diagram_no_changes(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     converter = model_converter.ModelConverter(model, "TEST")
-    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [
-            data_model.CapellaWorkItem(
-                WORKITEM_ID,
-                uuid_capella=TEST_PHYS_FNC,
-                checksum=json.dumps(
-                    {
-                        "__C2P__WORK_ITEM": WI_CONTEXT_DIAGRAM_CHECKSUM,
-                        "__C2P__context_diagram": CONTEXT_DIAGRAM_CHECKSUM,
-                    }
-                ),
-            )
-        ]
+    work_item = data_model.CapellaWorkItem(
+        WORKITEM_ID,
+        uuid_capella=TEST_PHYS_FNC,
+        type="test",
+        checksum=json.dumps(
+            {
+                "__C2P__WORK_ITEM": WI_CONTEXT_DIAGRAM_CHECKSUM,
+                "__C2P__context_diagram": CONTEXT_DIAGRAM_CHECKSUM,
+            }
+        ),
     )
-
+    worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
+        [work_item]
+    )
+    worker.project_client.work_items.get.return_value = work_item
     converter.converter_session[TEST_PHYS_FNC] = data_session.ConverterData(
         "pa",
         converter_config.CapellaTypeConfig(
@@ -588,8 +604,11 @@ def test_attached_image_in_description_with_caption(
 ):
     uuid = "e76aa1f5-cc12-4885-a8c2-a0022b061549"
     converter = model_converter.ModelConverter(model, "TEST")
+    work_item = data_model.CapellaWorkItem(
+        WORKITEM_ID, type="test", uuid_capella=uuid
+    )
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=uuid)]
+        [work_item]
     )
 
     converter.converter_session[uuid] = data_session.ConverterData(
@@ -597,7 +616,7 @@ def test_attached_image_in_description_with_caption(
         converter_config.CapellaTypeConfig("test", {}),
         model.by_uuid(uuid),
     )
-
+    worker.project_client.work_items.get.return_value = work_item
     worker.project_client.work_items.attachments.create = mock.MagicMock()
     worker.project_client.work_items.attachments.create.side_effect = (
         set_attachment_ids
@@ -621,7 +640,7 @@ def test_attached_image_in_description_with_caption(
     assert len(created_attachments) == 1
     assert str(work_item.description.value) == (
         '<p><img alt="Other Text used as Caption" '
-        'src="workitemimg:0-5b5bdfe8be29ca756dee7c7af74bca64.png"/></p>'
+        'src="workitemimg:0-grouped_linked_work_items.png"/></p>'
         '<p class="polarion-rte-caption-paragraph">\n  Figure '
         '<span data-sequence="Figure" class="polarion-rte-caption">#</span>'
         " Other Text used as Caption\n</p>\n\n<p>Test</p>\n"
