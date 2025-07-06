@@ -1,0 +1,34 @@
+capella2polarion.data\_model package
+====================================
+
+.. automodule:: capella2polarion.data_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+capella2polarion.data\_model.document\_data module
+--------------------------------------------------
+
+.. automodule:: capella2polarion.data_model.document_data
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.data\_model.work\_item\_attachments module
+-----------------------------------------------------------
+
+.. automodule:: capella2polarion.data_model.work_item_attachments
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.data\_model.work\_items module
+-----------------------------------------------
+
+.. automodule:: capella2polarion.data_model.work_items
+   :members:
+   :undoc-members:
+   :show-inheritance:
