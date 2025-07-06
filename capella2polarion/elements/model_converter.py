@@ -154,10 +154,9 @@ class ModelConverter:
             links = link_serializer.create_links_for_work_item(uuid)
             converter_data.work_item.linked_work_items = links
 
-            if generate_grouped_links_custom_fields:
-                link_serializer.create_grouped_link_fields(
-                    converter_data, back_links
-                )
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
 
         for uuid, converter_data in self.converter_session.items():
             if converter_data.work_item is None:
