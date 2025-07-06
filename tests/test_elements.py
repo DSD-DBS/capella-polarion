@@ -32,6 +32,8 @@ from .conftest import (  # type: ignore[import]
     BaseObjectContainer,
 )
 
+# mypy: disable-error-code="no-untyped-def"
+
 TEST_DIAG_UUID = "_APOQ0QPhEeynfbzU12yy7w"
 TEST_ELEMENT_UUID = "0d2edb8f-fa34-4e73-89ec-fb9a63001440"
 TEST_OCAP_UUID = "83d1334f-6180-46c4-a80d-6839341df688"
@@ -1809,6 +1811,62 @@ class TestModelElements:
         assert (
             "attribute_reverse"
             not in dummy_work_items["uuid2"].additional_attributes
+        )
+
+    @staticmethod
+    def test_grouped_links_reverse_fields_without_forward_fields(
+        model: capellambse.MelodyModel,
+        grouped_links_base_object: GroupedLinksBaseObject,
+    ):
+        link_serializer = grouped_links_base_object["link_serializer"]
+        dummy_work_items = grouped_links_base_object["work_items"]
+        del grouped_links_base_object["work_items"]["uuid2"]
+        config = grouped_links_base_object["config"]
+        config.links[0].link_field = None
+        config.links[0].reverse_field = "reverse_field"
+        link_serializer.converter_session["uuid0"] = (
+            data_session.ConverterData(
+                "oa",
+                config,
+                model.by_uuid("uuid0"),
+                dummy_work_items["uuid0"],
+            )
+        )
+        link_serializer.converter_session[
+            "uuid1"
+        ].type_config = converter_config.CapellaTypeConfig(
+            p_type="fakeModelObject",
+            converters=None,
+            links=[
+                converter_config.LinkConfig(
+                    capella_attr="attribute", polarion_role="attribute"
+                )
+            ],
+        )
+        del link_serializer.converter_session["uuid2"]
+        pids = POLARION_ID_MAP.copy()
+        del pids["uuid2"]
+
+        back_links: dict[str, dict[str, list[polarion_api.WorkItemLink]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        for converter_data in link_serializer.converter_session.values():
+            link_serializer.create_grouped_link_fields(
+                converter_data, back_links
+            )
+
+        del back_links["Obj-2"]
+        for polarion_id, links_by_field in back_links.items():
+            capella_uuid = next(k for k, v in pids.items() if v == polarion_id)
+            wi = dummy_work_items[capella_uuid]
+            link_serializer.create_grouped_back_link_fields(wi, links_by_field)
+
+        assert (
+            "reverse_field"
+            not in dummy_work_items["uuid0"].additional_attributes
+        )
+        assert (  # reverse field comes from uuid0
+            "reverse_field" in dummy_work_items["uuid1"].additional_attributes
         )
 
 
