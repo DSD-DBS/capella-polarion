@@ -23,6 +23,11 @@ from lxml import etree, html
 
 from capella2polarion import data_model, polarion_html_helper
 from capella2polarion.connectors import polarion_repo
+from capella2polarion.elements import data_session
+
+if t.TYPE_CHECKING:
+    from capellambse import diagram as cdiagram
+
 
 RE_DESCR_LINK_PATTERN = re.compile(
     r"<a href=\"hlink://([^\"]+)\">([^<]+)<\/a>"
@@ -221,9 +226,7 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         self,
         template_folder: str | pathlib.Path,
         template_path: str | pathlib.Path,
-        capella_element: m.ModelElement | m.Diagram,
-        errors: set[str],
-        work_item: data_model.CapellaWorkItem | None = None,
+        converter_data: data_session.ConverterData,
         render_params: dict[str, t.Any] | None = None,
     ) -> tuple[
         list[str],
@@ -234,22 +237,39 @@ class CapellaObjectRenderer(polarion_html_helper.JinjaRendererMixin):
         env = self._get_jinja_env(str(template_folder))
         template = env.get_template(str(template_path))
         rendered_jinja = template.render(
-            object=capella_element,
+            object=converter_data.capella_element,
             model=self.model,
-            work_item=work_item,
+            work_item=converter_data.work_item,
+            config=converter_data.type_config,
             **(render_params or {}),
         )
-        return self.sanitize_text(capella_element, rendered_jinja, errors)
+        return self.sanitize_text(
+            converter_data.capella_element,
+            rendered_jinja,
+            converter_data.errors,
+        )
 
     def setup_env(self, env: jinja2.Environment) -> None:
         """Add the link rendering filter."""
         env.filters["make_href"] = self.__make_href_filter
+        env.filters["render_diagram_with_params"] = (
+            self.__render_diagram_with_params
+        )
         env.globals["insert_diagram"] = self.__insert_diagram
 
     def __make_href_filter(self, obj: object) -> str:
         if (obj := self.check_model_element(obj)) is None:
             return "#"
         return f"hlink://{obj.uuid}"
+
+    def __render_diagram_with_params(
+        self,
+        diagram: m.AbstractDiagram,
+        format: str | None = None,
+        render_params: dict[str, t.Any] | None = None,
+    ) -> t.Any | cdiagram.Diagram:
+        """Render a diagram with the given parameters."""
+        return diagram.render(format, **(render_params or {}))
 
     def __insert_diagram(
         self,
