@@ -326,9 +326,7 @@ class CapellaWorkItemSerializer:
             _, value, attachments = self.renderer.render_jinja_template(
                 template_folder,
                 template_path,
-                converter_data.capella_element,
-                converter_data.errors,
-                converter_data.work_item,
+                converter_data,
                 params,
             )
 
@@ -359,9 +357,7 @@ class CapellaWorkItemSerializer:
         uuids, value, attachments = self.renderer.render_jinja_template(
             template_folder,
             template_path,
-            converter_data.capella_element,
-            converter_data.errors,
-            converter_data.work_item,
+            converter_data,
             render_parameters,
         )
         for attachment in attachments:
