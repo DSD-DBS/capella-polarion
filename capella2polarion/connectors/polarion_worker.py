@@ -178,6 +178,16 @@ class CapellaPolarionWorker:
                 logger.error("Creating work items failed. %s", error.args[0])
                 raise error
 
+    def needs_work_item_update(
+        self, new: data_model.CapellaWorkItem, old: data_model.CapellaWorkItem
+    ) -> bool:
+        """Check if a work item needs to be updated."""
+        if old.status == self.project_client.work_items.delete_status:
+            old.checksum = None
+
+        new.calculate_checksum()
+        return self.force_update or new.checksum != old.checksum
+
     def compare_and_update_work_item(
         self, converter_data: data_session.ConverterData
     ) -> None:
@@ -189,11 +199,7 @@ class CapellaPolarionWorker:
         assert old is not None
         assert old.id is not None
 
-        if old.status == self.project_client.work_items.delete_status:
-            old.checksum = None
-
-        new.calculate_checksum()
-        if not self.force_update and new.checksum == old.checksum:
+        if not self.needs_work_item_update(new, old):
             return
 
         log_args = (old.id, new.type, new.title)
