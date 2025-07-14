@@ -264,7 +264,6 @@ def test_run_plugins(cli_mocks: CLIMocks):
 
 
 def test_synchronize_with_parallel_updates_enabled(cli_mocks: CLIMocks):
-    """Test synchronize command with parallel updates enabled (default)."""
     command: list[str] = [
         *GROUP_COMMAND,
         "synchronize",
@@ -284,7 +283,6 @@ def test_synchronize_with_parallel_updates_enabled(cli_mocks: CLIMocks):
 
 
 def test_synchronize_with_parallel_updates_disabled(cli_mocks: CLIMocks):
-    """Test synchronize command with parallel updates disabled."""
     command: list[str] = [
         *GROUP_COMMAND,
         "synchronize",
@@ -304,7 +302,6 @@ def test_synchronize_with_parallel_updates_disabled(cli_mocks: CLIMocks):
 
 
 def test_synchronize_with_batch_updates_enabled(cli_mocks: CLIMocks):
-    """Test synchronize command with batch updates enabled."""
     command: list[str] = [
         *GROUP_COMMAND,
         "synchronize",
@@ -326,8 +323,6 @@ def test_synchronize_with_batch_updates_enabled(cli_mocks: CLIMocks):
 def test_synchronize_with_environment_variables(
     cli_mocks: CLIMocks, monkeypatch: pytest.MonkeyPatch
 ):
-    """Test synchronize command with environment variables for parallel/batch settings."""
-    # Set environment variables
     monkeypatch.setenv(
         "CAPELLA2POLARION_SYNC_ENABLE_PARALLEL_UPDATES", "false"
     )

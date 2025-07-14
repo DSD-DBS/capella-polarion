@@ -9,6 +9,7 @@ import logging
 import os
 
 import polarion_rest_api_client as polarion_api
+from tqdm import tqdm
 
 from capella2polarion import data_model
 from capella2polarion.connectors import polarion_worker
@@ -118,27 +119,27 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
             }
 
             errors: list[tuple[str, Exception]] = []
-            completed: int = 0
-            for future in concurrent.futures.as_completed(future_to_uuid):
-                uuid = future_to_uuid[future]
-                try:
-                    result_uuid, error = future.result()
-                    if error:
-                        errors.append((result_uuid, error))
-                    completed += 1
+            with tqdm(
+                total=len(work_items_to_process),
+                desc="Updating work items",
+                unit="items",
+            ) as progress_bar:
+                for future in concurrent.futures.as_completed(future_to_uuid):
+                    uuid = future_to_uuid[future]
+                    try:
+                        result_uuid, error = future.result()
+                        if error:
+                            errors.append((result_uuid, error))
+                        progress_bar.update(1)
 
-                    if completed % 10 == 0:
-                        logger.info(
-                            "Processed %d/%d work items",
-                            completed,
-                            len(work_items_to_process),
+                    except Exception as e:
+                        logger.error(
+                            "Unexpected error processing work item %s: %s",
+                            uuid,
+                            e,
                         )
-
-                except Exception as e:
-                    logger.error(
-                        "Unexpected error processing work item %s: %s", uuid, e
-                    )
-                    errors.append((uuid, e))
+                        errors.append((uuid, e))
+                        progress_bar.update(1)
 
             if errors:
                 logger.warning(
@@ -164,7 +165,6 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         self,
         work_items_to_process: list[tuple[str, data_session.ConverterData]],
     ) -> None:
-        """Process work items using batched operations for better API efficiency."""
         logger.info("Phase 1: Analyzing work items for batch operations")
 
         def analyze_work_item(
@@ -190,9 +190,17 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 for item_data in work_items_to_process
             ]
 
-            for future in concurrent.futures.as_completed(analysis_futures):
-                result = future.result()
-                analysis_results.append(result)
+            with tqdm(
+                total=len(analysis_futures),
+                desc="Analyzing work items",
+                unit="items",
+            ) as progress_bar:
+                for future in concurrent.futures.as_completed(
+                    analysis_futures
+                ):
+                    result = future.result()
+                    analysis_results.append(result)
+                    progress_bar.update(1)
 
         logger.info("Phase 2: Executing batched operations")
         try:
@@ -213,9 +221,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         assert old is not None
         assert old.id is not None
 
-        analysis = data_model.WorkItemAnalysis(
-            uuid=uuid, work_item=new, old_work_item=old
-        )
+        analysis = data_model.WorkItemAnalysis(uuid, new, old)
         analysis.needs_update = self.needs_work_item_update(new, old)
         if not analysis.needs_update:
             return analysis
@@ -274,12 +280,16 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         work_item_updates: list[data_model.CapellaWorkItem] = []
         all_links_to_delete: list[polarion_api.WorkItemLink] = []
         all_links_to_create: list[polarion_api.WorkItemLink] = []
+        progress_bar = tqdm(
+            total=len(successful_analyses),
+            desc="Analyzing operations",
+            unit="operations",
+        )
         for analysis in successful_analyses:
             if not analysis.needs_update:
                 continue
 
             assert analysis.old_work_item is not None
-
             if analysis.needs_type_update:
                 assert analysis.old_work_item.id is not None
                 type_update = data_model.CapellaWorkItem(
@@ -354,35 +364,53 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 all_links_to_delete.extend(analysis.links_to_delete.values())
             if analysis.links_to_create:
                 all_links_to_create.extend(analysis.links_to_create.values())
+            progress_bar.update(1)
+        progress_bar.close()
 
         try:  # Execute batch operations in proper order
-            if type_updates:  # 1. Type updates first (must be separate)
-                logger.info(
-                    "Batch updating types for %d work items", len(type_updates)
-                )
-                self.project_client.work_items.update(type_updates)
+            total_operations = (
+                (1 if type_updates else 0)
+                + (1 if work_item_updates else 0)
+                + (1 if all_links_to_delete else 0)
+                + (1 if all_links_to_create else 0)
+            )
+            with tqdm(
+                total=total_operations,
+                desc="Executing batch operations",
+                unit="batches",
+            ) as progress_bar:
+                if type_updates:  # 1. Type updates first (must be separate)
+                    logger.info(
+                        "Batch updating types for %d work items",
+                        len(type_updates),
+                    )
+                    self.project_client.work_items.update(type_updates)
+                    progress_bar.update(1)
 
-            if work_item_updates:  # 2. Main work item updates
-                logger.info(
-                    "Batch updating %d work items", len(work_item_updates)
-                )
-                self.project_client.work_items.update(work_item_updates)
+                if work_item_updates:  # 2. Main work item updates
+                    logger.info(
+                        "Batch updating %d work items", len(work_item_updates)
+                    )
+                    self.project_client.work_items.update(work_item_updates)
+                    progress_bar.update(1)
 
-            if all_links_to_delete:  # 3. Delete old links
-                logger.info(
-                    "Batch deleting %d links", len(all_links_to_delete)
-                )
-                self.project_client.work_items.links.delete(
-                    all_links_to_delete
-                )
+                if all_links_to_delete:  # 3. Delete old links
+                    logger.info(
+                        "Batch deleting %d links", len(all_links_to_delete)
+                    )
+                    self.project_client.work_items.links.delete(
+                        all_links_to_delete
+                    )
+                    progress_bar.update(1)
 
-            if all_links_to_create:  # 4. Create new links
-                logger.info(
-                    "Batch creating %d links", len(all_links_to_create)
-                )
-                self.project_client.work_items.links.create(
-                    all_links_to_create
-                )
+                if all_links_to_create:  # 4. Create new links
+                    logger.info(
+                        "Batch creating %d links", len(all_links_to_create)
+                    )
+                    self.project_client.work_items.links.create(
+                        all_links_to_create
+                    )
+                    progress_bar.update(1)
 
             logger.info(
                 "Successfully completed batched operations for %d work items",
