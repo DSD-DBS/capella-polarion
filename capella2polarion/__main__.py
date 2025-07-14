@@ -15,6 +15,7 @@ import capella2polarion
 from capella2polarion import plugins
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
+from capella2polarion.connectors import polarion_worker_parallel as pwp
 from capella2polarion.documents import document_config, mass_document_renderer
 from capella2polarion.elements import model_converter
 from capella2polarion.plugins import plugin_config, plugin_interfaces
@@ -128,6 +129,20 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--enable-parallel-updates / --no-enable-parallel-updates",
+    envvar="CAPELLA2POLARION_SYNC_ENABLE_PARALLEL_UPDATES",
+    is_flag=True,
+    default=True,
+    help="Enable parallel processing of work item updates (default: True)",
+)
+@click.option(
+    "--enable-batch-updates / --no-enable-batch-updates",
+    envvar="CAPELLA2POLARION_SYNC_ENABLE_BATCH_UPDATES",
+    is_flag=True,
+    default=False,
+    help="Enable batched API operations for better performance (default: False)",
+)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -138,6 +153,8 @@ def synchronize(
     role_prefix: str,
     grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
+    enable_parallel_updates: bool,
+    enable_batch_updates: bool,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -158,9 +175,11 @@ def synchronize(
 
     converter.read_model(capella_to_polarion_cli.config)
 
-    polarion_worker = pw.CapellaPolarionWorker(
+    polarion_worker = pwp.ParallelCapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.force_update,
+        enable_parallel_updates=enable_parallel_updates,
+        enable_batched_operations=enable_batch_updates,
     )
 
     polarion_worker.load_polarion_work_item_map()
