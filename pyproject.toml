@@ -38,6 +38,7 @@ dependencies = [
   "polarion-rest-api-client==1.4.1",
   "pydantic",
   "pyyaml",
+  "tqdm>=4.67.1",
 ]
 
 [project.urls]

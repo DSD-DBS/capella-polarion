@@ -129,18 +129,15 @@ def test_parallel_worker_parallel_processing():
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
             params,
-            parallel_threshold=3,  # Low threshold to enable parallel
+            parallel_threshold=3,
             enable_parallel_updates=True,
             enable_batched_operations=False,
         )
-
-        # Mock the parallel method
         with mock.patch.object(
             worker, "_compare_and_update_work_items_parallel"
         ) as mock_parallel:
-            # Create a larger converter session (above threshold)
             session = {}
-            for i in range(5):  # Above threshold of 3
+            for i in range(5):
                 key = str(i)
                 session[key] = mock.MagicMock()
                 session[key].work_item = mock.MagicMock()
@@ -154,7 +151,6 @@ def test_parallel_worker_parallel_processing():
 
             worker.compare_and_update_work_items(session)
 
-            # Should use parallel processing due to high item count
             mock_parallel.assert_called_once()
 
 
@@ -171,18 +167,15 @@ def test_parallel_worker_batched_processing():
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
             params,
-            parallel_threshold=3,  # Low threshold
+            parallel_threshold=3,
             enable_parallel_updates=True,
-            enable_batched_operations=True,  # Enable batching
+            enable_batched_operations=True,
         )
-
-        # Mock the batched method
         with mock.patch.object(
             worker, "_compare_and_update_work_items_batched"
         ) as mock_batched:
-            # Create a larger converter session (above threshold)
             session = {}
-            for i in range(5):  # Above threshold of 3
+            for i in range(5):
                 key = str(i)
                 session[key] = mock.MagicMock()
                 session[key].work_item = mock.MagicMock()
@@ -196,7 +189,6 @@ def test_parallel_worker_batched_processing():
 
             worker.compare_and_update_work_items(session)
 
-            # Should use batched processing when enabled
             mock_batched.assert_called_once()
 
 
@@ -212,25 +204,20 @@ def test_parallel_worker_needs_work_item_update():
         polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(params)
-
-        # Create test work items
         old_work_item = work_items.CapellaWorkItem(
             id="TEST-1", uuid_capella="uuid1", title="Old Title", type="test"
         )
         new_work_item = work_items.CapellaWorkItem(
             id="TEST-1", uuid_capella="uuid1", title="New Title", type="test"
         )
-
-        # Test that update is needed when items differ
-        assert (
-            worker.needs_work_item_update(new_work_item, old_work_item) is True
-        )
-
-        # Test that update is not needed when items are identical
         identical_work_item = work_items.CapellaWorkItem(
             id="TEST-1", uuid_capella="uuid1", title="Old Title", type="test"
         )
         identical_work_item.checksum = old_work_item.calculate_checksum()
+
+        assert (
+            worker.needs_work_item_update(new_work_item, old_work_item) is True
+        )
         assert (
             worker.needs_work_item_update(identical_work_item, old_work_item)
             is False
