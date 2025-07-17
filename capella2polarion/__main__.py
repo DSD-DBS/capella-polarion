@@ -12,12 +12,12 @@ import click
 from capellambse import cli_helpers
 
 import capella2polarion
-from capella2polarion import plugins
+from capella2polarion import errors, plugins
 from capella2polarion.cli import Capella2PolarionCli
 from capella2polarion.connectors import polarion_worker as pw
 from capella2polarion.connectors import polarion_worker_parallel as pwp
 from capella2polarion.documents import document_config, mass_document_renderer
-from capella2polarion.elements import model_converter
+from capella2polarion.elements import model_converter_parallel
 from capella2polarion.plugins import plugin_config, plugin_interfaces
 
 logger = logging.getLogger(__name__)
@@ -130,18 +130,32 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     default=False,
 )
 @click.option(
-    "--enable-parallel-updates / --no-enable-parallel-updates",
-    envvar="CAPELLA2POLARION_SYNC_ENABLE_PARALLEL_UPDATES",
+    "--parallel-updates / --no-parallel-updates",
+    envvar="CAPELLA2POLARION_SYNC_PARALLEL_UPDATES",
     is_flag=True,
     default=True,
     help="Enable parallel processing of work item updates (default: True)",
 )
 @click.option(
-    "--enable-batch-updates / --no-enable-batch-updates",
-    envvar="CAPELLA2POLARION_SYNC_ENABLE_BATCH_UPDATES",
+    "--batch-updates / --no-batch-updates",
+    envvar="CAPELLA2POLARION_SYNC_BATCH_UPDATES",
     is_flag=True,
-    default=False,
-    help="Enable batched API operations for better performance (default: False)",
+    default=True,
+    help="Enable batched API operations for better performance (default: True)",
+)
+@click.option(
+    "--parallel-link-generation / --no-parallel-link-generation",
+    envvar="CAPELLA2POLARION_SYNC_PARALLEL_LINK_GENERATION",
+    is_flag=True,
+    default=True,
+    help="Enable parallel processing of work item link generation (default: True)",
+)
+@click.option(
+    "--max-parallel-workers",
+    type=int,
+    envvar="CAPELLA2POLARION_SYNC_MAX_PARALLEL_WORKERS",
+    default=4,
+    help="Maximum number of parallel workers (default: 4)",
 )
 @click.pass_context
 def synchronize(
@@ -153,8 +167,10 @@ def synchronize(
     role_prefix: str,
     grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
-    enable_parallel_updates: bool,
-    enable_batch_updates: bool,
+    parallel_updates: bool,
+    batch_updates: bool,
+    parallel_link_generation: bool,
+    max_parallel_workers: int,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -162,41 +178,57 @@ def synchronize(
         "Synchronising model elements to Polarion project with id %s...",
         capella_to_polarion_cli.polarion_params.project_id,
     )
-    capella_to_polarion_cli.load_synchronize_config(
-        synchronize_config, type_prefix, role_prefix
-    )
-    capella_to_polarion_cli.force_update = force_update
 
-    assert capella_to_polarion_cli.capella_model is not None
-    converter = model_converter.ModelConverter(
-        capella_to_polarion_cli.capella_model,
-        capella_to_polarion_cli.polarion_params.project_id,
-    )
+    error_collector = errors.ErrorCollector()
+    try:
+        capella_to_polarion_cli.load_synchronize_config(
+            synchronize_config, type_prefix, role_prefix
+        )
+        capella_to_polarion_cli.force_update = force_update
 
-    converter.read_model(capella_to_polarion_cli.config)
+        assert capella_to_polarion_cli.capella_model is not None
+        polarion_worker = pwp.ParallelCapellaPolarionWorker(
+            capella_to_polarion_cli.polarion_params,
+            capella_to_polarion_cli.force_update,
+            max_workers=max_parallel_workers,
+            enable_parallel_updates=parallel_updates,
+            enable_batched_operations=batch_updates,
+            error_collector=error_collector,
+        )
+        converter = model_converter_parallel.ParallelModelConverter(
+            capella_to_polarion_cli.capella_model,
+            capella_to_polarion_cli.polarion_params.project_id,
+            max_workers=polarion_worker.parallel_max_workers,
+            enable_parallel_link_generation=parallel_link_generation,
+            error_collector=error_collector,
+        )
 
-    polarion_worker = pwp.ParallelCapellaPolarionWorker(
-        capella_to_polarion_cli.polarion_params,
-        capella_to_polarion_cli.force_update,
-        enable_parallel_updates=enable_parallel_updates,
-        enable_batched_operations=enable_batch_updates,
-    )
+        converter.read_model(capella_to_polarion_cli.config)
 
-    polarion_worker.load_polarion_work_item_map()
+        polarion_worker.load_polarion_work_item_map()
 
-    polarion_worker.delete_orphaned_work_items(converter.converter_session)
-    polarion_worker.create_missing_work_items(converter.converter_session)
+        polarion_worker.delete_orphaned_work_items(converter.converter_session)
+        polarion_worker.create_missing_work_items(converter.converter_session)
 
-    # Create missing links for new work items
-    converter.generate_work_items(
-        polarion_worker.polarion_data_repo,
-        generate_links=True,
-        generate_attachments=True,
-        generate_grouped_links_custom_fields=grouped_links_custom_fields,
-        generate_figure_captions=generate_figure_captions,
-    )
+        # Create missing links for new work items
+        converter.generate_work_items(
+            polarion_worker.polarion_data_repo,
+            generate_links=True,
+            generate_attachments=True,
+            generate_grouped_links_custom_fields=grouped_links_custom_fields,
+            generate_figure_captions=generate_figure_captions,
+        )
 
-    polarion_worker.compare_and_update_work_items(converter.converter_session)
+        polarion_worker.compare_and_update_work_items(
+            converter.converter_session
+        )
+
+    except Exception as e:
+        error_collector.add_critical_error(e)
+        logger.error("Critical error during synchronization: %s", e)
+        raise
+    finally:
+        error_collector.report_errors_and_exit()
 
 
 @cli.command()

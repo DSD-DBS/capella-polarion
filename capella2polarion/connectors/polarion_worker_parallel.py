@@ -6,40 +6,36 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
-import os
 
 import polarion_rest_api_client as polarion_api
 from tqdm import tqdm
 
-from capella2polarion import data_model
+from capella2polarion import data_model, errors
 from capella2polarion.connectors import polarion_worker
 from capella2polarion.elements import data_session
 
 logger = logging.getLogger(__name__)
 
-MAX_FAILURE_THRESHOLD = 0.1
-"""Maximum rate of failed work items during serialization."""
-
 
 class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
-    """Parallel implementation of Capella-Polarion worker operations."""
+    """Parallel implementation of ``CapellaPolarionWorker``."""
 
     def __init__(
         self,
         params: polarion_worker.PolarionWorkerParams,
         force_update: bool = False,
         *,
-        max_workers: int | None = None,
-        parallel_threshold: int = 5,
+        max_workers: int,
         enable_parallel_updates: bool = True,
         enable_batched_operations: bool = False,
+        error_collector: errors.ErrorCollector | None = None,
     ) -> None:
         super().__init__(params, force_update)
 
-        self.parallel_max_workers = max_workers or min(8, os.cpu_count() or 4)
-        self.parallel_threshold = parallel_threshold
+        self.parallel_max_workers = max_workers
         self.enable_parallel_updates = enable_parallel_updates
         self.enable_batched_operations = enable_batched_operations
+        self.error_collector = error_collector or errors.ErrorCollector()
 
     def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
@@ -55,31 +51,21 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
             logger.info("No work items to process")
             return
 
-        if (
-            self.enable_batched_operations
-            and len(work_items_to_process) >= self.parallel_threshold
-            and self.enable_batched_operations
-        ):
+        num_wis = len(work_items_to_process)
+        if self.enable_batched_operations:
             logger.info(
-                "Processing %d work items with batched operations",
-                len(work_items_to_process),
+                "Processing %d work items with batched operations", num_wis
             )
             self._compare_and_update_work_items_batched(work_items_to_process)
-        elif (
-            self.enable_parallel_updates
-            and len(work_items_to_process) >= self.parallel_threshold
-        ):
+        elif self.enable_parallel_updates:
             logger.info(
                 "Processing %d work items in parallel (max_workers=%d)",
-                len(work_items_to_process),
+                num_wis,
                 self.parallel_max_workers,
             )
             self._compare_and_update_work_items_parallel(work_items_to_process)
         else:
-            logger.info(
-                "Processing %d work items sequentially",
-                len(work_items_to_process),
-            )
+            logger.info("Processing %d work items sequentially", num_wis)
             self._compare_and_update_work_items_sequential(
                 work_items_to_process
             )
@@ -130,8 +116,6 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                         result_uuid, error = future.result()
                         if error:
                             errors.append((result_uuid, error))
-                        progress_bar.update(1)
-
                     except Exception as e:
                         logger.error(
                             "Unexpected error processing work item %s: %s",
@@ -139,6 +123,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                             e,
                         )
                         errors.append((uuid, e))
+                    finally:
                         progress_bar.update(1)
 
             if errors:
@@ -148,13 +133,13 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                     len(work_items_to_process),
                 )
                 for uuid, error in errors:
+                    self.error_collector.add_work_item_error(uuid, error)
                     logger.error("Work item %s: %s", uuid, error)
 
                 failure_rate = len(errors) / len(work_items_to_process)
-                if failure_rate > MAX_FAILURE_THRESHOLD:
-                    raise RuntimeError(
-                        f"Too many work item update failures: {failure_rate * 100}%"
-                    )
+                logger.warning(
+                    "Work item update failure rate: %.1f%%", failure_rate * 100
+                )
             else:
                 logger.info(
                     "Successfully updated all %d work items",
@@ -280,143 +265,146 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         work_item_updates: list[data_model.CapellaWorkItem] = []
         all_links_to_delete: list[polarion_api.WorkItemLink] = []
         all_links_to_create: list[polarion_api.WorkItemLink] = []
-        progress_bar = tqdm(
+        with tqdm(
             total=len(successful_analyses),
             desc="Analyzing operations",
             unit="operations",
-        )
-        for analysis in successful_analyses:
-            if not analysis.needs_update:
-                continue
+        ) as progress_bar:
+            for analysis in successful_analyses:
+                if not analysis.needs_update:
+                    continue
 
-            assert analysis.old_work_item is not None
-            if analysis.needs_type_update:
-                assert analysis.old_work_item.id is not None
-                type_update = data_model.CapellaWorkItem(
-                    id=analysis.old_work_item.id, type=analysis.work_item.type
-                )
-                type_updates.append(type_update)
-                analysis.work_item.type = None
+                assert analysis.old_work_item is not None
+                if analysis.needs_type_update:
+                    assert analysis.old_work_item.id is not None
+                    type_update = data_model.CapellaWorkItem(
+                        id=analysis.old_work_item.id,
+                        type=analysis.work_item.type,
+                    )
+                    type_updates.append(type_update)
+                    analysis.work_item.type = None
 
-            if analysis.work_item_changed or self.force_update:
-                if (
-                    analysis.old_work_item.attachments
-                    or analysis.work_item.attachments
-                ):
-                    try:
-                        old_attachments = []
-                        if analysis.old_work_item.attachments:
-                            old_attachments = self.project_client.work_items.attachments.get_all(
-                                work_item_id=analysis.old_work_item.id
+                if analysis.work_item_changed or self.force_update:
+                    if (
+                        analysis.old_work_item.attachments
+                        or analysis.work_item.attachments
+                    ):
+                        try:
+                            old_attachments = []
+                            if analysis.old_work_item.attachments:
+                                old_attachments = self.project_client.work_items.attachments.get_all(
+                                    work_item_id=analysis.old_work_item.id
+                                )
+
+                            attachment_changed = self.update_attachments(
+                                analysis.work_item,
+                                analysis.old_work_item.attachment_checksums,
+                                analysis.work_item.attachment_checksums,
+                                old_attachments,
+                            )
+                            analysis.work_item_changed |= attachment_changed
+                        except Exception as e:
+                            logger.error(
+                                "Failed to update attachments for %s: %s",
+                                analysis.uuid,
+                                e,
                             )
 
-                        attachment_changed = self.update_attachments(
-                            analysis.work_item,
-                            analysis.old_work_item.attachment_checksums,
-                            analysis.work_item.attachment_checksums,
-                            old_attachments,
-                        )
-                        analysis.work_item_changed |= attachment_changed
-                    except Exception as e:
-                        logger.error(
-                            "Failed to update attachments for %s: %s",
-                            analysis.uuid,
-                            e,
-                        )
+                    if analysis.work_item.attachments:
+                        self._refactor_attached_images(analysis.work_item)
 
-                if analysis.work_item.attachments:
-                    self._refactor_attached_images(analysis.work_item)
+                    del analysis.work_item.additional_attributes[
+                        "uuid_capella"
+                    ]
+                    del analysis.old_work_item.additional_attributes[
+                        "uuid_capella"
+                    ]
 
-                del analysis.work_item.additional_attributes["uuid_capella"]
-                del analysis.old_work_item.additional_attributes[
-                    "uuid_capella"
-                ]
+                    defaults = polarion_worker.DEFAULT_ATTRIBUTE_VALUES
+                    for (
+                        attribute,
+                        value,
+                    ) in analysis.old_work_item.additional_attributes.items():
+                        if (
+                            attribute
+                            not in analysis.work_item.additional_attributes
+                        ):
+                            analysis.work_item.additional_attributes[
+                                attribute
+                            ] = defaults.get(type(value))
+                        elif (
+                            analysis.work_item.additional_attributes[attribute]
+                            == value
+                        ):
+                            del analysis.work_item.additional_attributes[
+                                attribute
+                            ]
 
-                defaults = polarion_worker.DEFAULT_ATTRIBUTE_VALUES
-                for (
-                    attribute,
-                    value,
-                ) in analysis.old_work_item.additional_attributes.items():
-                    if (
-                        attribute
-                        not in analysis.work_item.additional_attributes
-                    ):
-                        analysis.work_item.additional_attributes[attribute] = (
-                            defaults.get(type(value))
-                        )
-                    elif (
-                        analysis.work_item.additional_attributes[attribute]
-                        == value
-                    ):
-                        del analysis.work_item.additional_attributes[attribute]
+                    analysis.work_item.status = "open"
+                    work_item_updates.append(analysis.work_item)
+                else:
+                    analysis.work_item.clear_attributes()
+                    analysis.work_item.type = None
+                    analysis.work_item.status = None
+                    analysis.work_item.description = None
+                    analysis.work_item.title = None
+                    work_item_updates.append(analysis.work_item)
 
-                analysis.work_item.status = "open"
-                work_item_updates.append(analysis.work_item)
-            else:
-                analysis.work_item.clear_attributes()
-                analysis.work_item.type = None
-                analysis.work_item.status = None
-                analysis.work_item.description = None
-                analysis.work_item.title = None
-                work_item_updates.append(analysis.work_item)
-
-            if analysis.links_to_delete:
-                all_links_to_delete.extend(analysis.links_to_delete.values())
-            if analysis.links_to_create:
-                all_links_to_create.extend(analysis.links_to_create.values())
-            progress_bar.update(1)
-        progress_bar.close()
-
-        try:  # Execute batch operations in proper order
-            total_operations = (
-                (1 if type_updates else 0)
-                + (1 if work_item_updates else 0)
-                + (1 if all_links_to_delete else 0)
-                + (1 if all_links_to_create else 0)
-            )
-            with tqdm(
-                total=total_operations,
-                desc="Executing batch operations",
-                unit="batches",
-            ) as progress_bar:
-                if type_updates:  # 1. Type updates first (must be separate)
-                    logger.info(
-                        "Batch updating types for %d work items",
-                        len(type_updates),
+                if analysis.links_to_delete:
+                    all_links_to_delete.extend(
+                        analysis.links_to_delete.values()
                     )
-                    self.project_client.work_items.update(type_updates)
-                    progress_bar.update(1)
-
-                if work_item_updates:  # 2. Main work item updates
-                    logger.info(
-                        "Batch updating %d work items", len(work_item_updates)
+                if analysis.links_to_create:
+                    all_links_to_create.extend(
+                        analysis.links_to_create.values()
                     )
-                    self.project_client.work_items.update(work_item_updates)
-                    progress_bar.update(1)
+                progress_bar.update(1)
 
-                if all_links_to_delete:  # 3. Delete old links
-                    logger.info(
-                        "Batch deleting %d links", len(all_links_to_delete)
-                    )
-                    self.project_client.work_items.links.delete(
-                        all_links_to_delete
-                    )
-                    progress_bar.update(1)
+        total_operations = (
+            (1 if type_updates else 0)
+            + (1 if work_item_updates else 0)
+            + (1 if all_links_to_delete else 0)
+            + (1 if all_links_to_create else 0)
+        )
+        with tqdm(
+            total=total_operations,
+            desc="Executing batch operations",
+            unit="batches",
+        ) as progress_bar:
+            if type_updates:  # 1. Type updates first (must be separate)
+                logger.info(
+                    "Batch updating types for %d work items",
+                    len(type_updates),
+                )
+                self.project_client.work_items.update(type_updates)
+                progress_bar.update(1)
 
-                if all_links_to_create:  # 4. Create new links
-                    logger.info(
-                        "Batch creating %d links", len(all_links_to_create)
-                    )
-                    self.project_client.work_items.links.create(
-                        all_links_to_create
-                    )
-                    progress_bar.update(1)
+            if work_item_updates:  # 2. Main work item updates
+                logger.info(
+                    "Batch updating %d work items", len(work_item_updates)
+                )
+                self.project_client.work_items.update(work_item_updates)
+                progress_bar.update(1)
 
-            logger.info(
-                "Successfully completed batched operations for %d work items",
-                len(successful_analyses),
-            )
+            if all_links_to_delete:  # 3. Delete old links
+                logger.info(
+                    "Batch deleting %d links", len(all_links_to_delete)
+                )
+                self.project_client.work_items.links.delete(
+                    all_links_to_delete
+                )
+                progress_bar.update(1)
 
-        except polarion_api.PolarionApiException as error:
-            logger.error("Batch operations failed: %s", error)
-            raise error
+            if all_links_to_create:  # 4. Create new links
+                logger.info(
+                    "Batch creating %d links", len(all_links_to_create)
+                )
+                self.project_client.work_items.links.create(
+                    all_links_to_create
+                )
+                progress_bar.update(1)
+
+        logger.info(
+            "Successfully completed batched operations for %d work items",
+            len(successful_analyses),
+        )
