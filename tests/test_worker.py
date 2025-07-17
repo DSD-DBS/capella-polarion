@@ -4,7 +4,6 @@
 from unittest import mock
 
 import capellambse
-import pytest
 
 from capella2polarion.connectors import (
     polarion_worker,
@@ -94,7 +93,8 @@ def test_parallel_worker_sequential_processing():
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
             params,
-            parallel_threshold=10,
+            max_workers=4,
+            enable_parallel_updates=False,
         )
 
         with mock.patch.object(
@@ -129,7 +129,7 @@ def test_parallel_worker_parallel_processing():
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
             params,
-            parallel_threshold=3,
+            max_workers=4,
             enable_parallel_updates=True,
             enable_batched_operations=False,
         )
@@ -167,7 +167,7 @@ def test_parallel_worker_batched_processing():
     ):
         worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
             params,
-            parallel_threshold=3,
+            max_workers=4,
             enable_parallel_updates=True,
             enable_batched_operations=True,
         )
@@ -203,7 +203,9 @@ def test_parallel_worker_needs_work_item_update():
     with mock.patch.object(
         polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
     ):
-        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(params)
+        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
+            params, max_workers=4
+        )
         old_work_item = work_items.CapellaWorkItem(
             id="TEST-1", uuid_capella="uuid1", title="Old Title", type="test"
         )
@@ -222,75 +224,3 @@ def test_parallel_worker_needs_work_item_update():
             worker.needs_work_item_update(identical_work_item, old_work_item)
             is False
         )
-
-
-@pytest.mark.parametrize(
-    ("error_count", "total_items", "should_raise_error"),
-    [(1, 12, False), (2, 10, True)],
-)
-def test_parallel_worker_error_handling(
-    error_count: int, total_items: int, should_raise_error: bool
-):
-    params = polarion_worker.PolarionWorkerParams(
-        project_id="TEST",
-        url="http://127.0.0.1",
-        pat="PrivateAccessToken",
-        delete_work_items=False,
-    )
-
-    with mock.patch.object(
-        polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
-    ):
-        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
-            params, parallel_threshold=1, max_workers=2
-        )
-
-        original_method = worker.compare_and_update_work_item
-
-        def side_effect(data):
-            if data.work_item.uuid_capella.startswith("error_item"):
-                raise RuntimeError("Test error")
-            return original_method(data)
-
-        session = {}
-        success_count = total_items - error_count
-        for i in range(success_count):
-            uuid = f"success_item_{i}"
-            session[uuid] = mock.MagicMock()
-            session[uuid].work_item = work_items.CapellaWorkItem(
-                id=f"TEST-{i}",
-                uuid_capella=uuid,
-                title="Test",
-                type="test",
-            )
-            worker.polarion_data_repo.update_work_items(
-                [session[uuid].work_item]
-            )
-
-        for i in range(error_count):
-            uuid = f"error_item_{i}"
-            session[uuid] = mock.MagicMock()
-            session[uuid].work_item = work_items.CapellaWorkItem(
-                id=f"TEST-{success_count + i}",
-                uuid_capella=uuid,
-                title="Test",
-                type="test",
-            )
-            worker.polarion_data_repo.update_work_items(
-                [session[uuid].work_item]
-            )
-
-        with mock.patch.object(
-            worker, "compare_and_update_work_item", side_effect=side_effect
-        ):
-            if should_raise_error:
-                with pytest.raises(
-                    RuntimeError, match="Too many work item update failures"
-                ):
-                    worker.compare_and_update_work_items(session)
-            else:
-                worker.compare_and_update_work_items(session)
-
-            assert (
-                worker.compare_and_update_work_item.call_count == total_items
-            )

@@ -269,7 +269,7 @@ def test_synchronize_with_parallel_updates_enabled(cli_mocks: CLIMocks):
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
-        "--enable-parallel-updates",
+        "--parallel-updates",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
@@ -288,7 +288,7 @@ def test_synchronize_with_parallel_updates_disabled(cli_mocks: CLIMocks):
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
-        "--no-enable-parallel-updates",
+        "--no-parallel-updates",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
@@ -307,7 +307,7 @@ def test_synchronize_with_batch_updates_enabled(cli_mocks: CLIMocks):
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
-        "--enable-batch-updates",
+        "--batch-updates",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
@@ -323,16 +323,159 @@ def test_synchronize_with_batch_updates_enabled(cli_mocks: CLIMocks):
 def test_synchronize_with_environment_variables(
     cli_mocks: CLIMocks, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setenv(
-        "CAPELLA2POLARION_SYNC_ENABLE_PARALLEL_UPDATES", "false"
-    )
-    monkeypatch.setenv("CAPELLA2POLARION_SYNC_ENABLE_BATCH_UPDATES", "true")
+    monkeypatch.setenv("CAPELLA2POLARION_SYNC_PARALLEL_UPDATES", "false")
+    monkeypatch.setenv("CAPELLA2POLARION_SYNC_BATCH_UPDATES", "true")
 
     command: list[str] = [
         *GROUP_COMMAND,
         "synchronize",
         "--synchronize-config",
         str(TEST_MODEL_ELEMENTS_CONFIG),
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_with_parallel_link_generation_enabled(
+    cli_mocks: CLIMocks,
+):
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--parallel-link-generation",
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_with_parallel_link_generation_disabled(
+    cli_mocks: CLIMocks,
+):
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--no-parallel-link-generation",
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_with_all_parallel_features_enabled(cli_mocks: CLIMocks):
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--parallel-updates",
+        "--batch-updates",
+        "--parallel-link-generation",
+        "--grouped-links-custom-fields",
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.generate_work_items.call_args_list[0][1] == {
+        "generate_links": True,
+        "generate_attachments": True,
+        "generate_grouped_links_custom_fields": True,
+        "generate_figure_captions": False,
+    }
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_with_parallel_link_generation_env_var(
+    cli_mocks: CLIMocks, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(
+        "CAPELLA2POLARION_SYNC_PARALLEL_LINK_GENERATION", "true"
+    )
+
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_with_mixed_parallel_environment_variables(
+    cli_mocks: CLIMocks, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("CAPELLA2POLARION_SYNC_PARALLEL_UPDATES", "true")
+    monkeypatch.setenv("CAPELLA2POLARION_SYNC_BATCH_UPDATES", "false")
+    monkeypatch.setenv(
+        "CAPELLA2POLARION_SYNC_PARALLEL_LINK_GENERATION", "true"
+    )
+
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+    ]
+
+    result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
+
+    assert result.exit_code == 0
+    assert cli_mocks.get_polarion_wi_map.call_count == 1
+    assert cli_mocks.generate_work_items.call_count == 1
+    assert cli_mocks.delete_work_items.call_count == 1
+    assert cli_mocks.patch_work_items.call_count == 1
+    assert cli_mocks.post_work_items.call_count == 1
+
+
+def test_synchronize_cli_flag_overrides_env_var(
+    cli_mocks: CLIMocks, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(
+        "CAPELLA2POLARION_SYNC_PARALLEL_LINK_GENERATION", "true"
+    )
+
+    command: list[str] = [
+        *GROUP_COMMAND,
+        "synchronize",
+        "--synchronize-config",
+        str(TEST_MODEL_ELEMENTS_CONFIG),
+        "--no-parallel-link-generation",
     ]
 
     result = testing.CliRunner().invoke(main.cli, command, terminal_width=60)
