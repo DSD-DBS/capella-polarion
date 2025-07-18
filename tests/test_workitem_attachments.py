@@ -138,7 +138,11 @@ def test_diagram_attachments_new(
     worker: polarion_worker.CapellaPolarionWorker,
 ):
     worker.polarion_data_repo = polarion_repo.PolarionDataRepository(
-        [data_model.CapellaWorkItem(WORKITEM_ID, uuid_capella=TEST_DIAG_UUID)]
+        [
+            data_model.CapellaWorkItem(
+                WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, type="diagram"
+            )
+        ]
     )
     old_wi = data_model.CapellaWorkItem(
         WORKITEM_ID, uuid_capella=TEST_DIAG_UUID, type="diagram"

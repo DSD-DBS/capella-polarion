@@ -41,121 +41,96 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project in parallel."""
-        work_items_to_process = [
+        work_items = [
             (uuid, data)
             for uuid, data in converter_session.items()
             if uuid in self.polarion_data_repo and data.work_item is not None
         ]
 
-        if not work_items_to_process:
+        if not work_items:
             logger.info("No work items to process")
             return
 
-        num_wis = len(work_items_to_process)
+        num_wis = len(work_items)
         if self.enable_batched_operations:
             logger.info(
                 "Processing %d work items with batched operations", num_wis
             )
-            self._compare_and_update_work_items_batched(work_items_to_process)
+            self._compare_and_update_work_items_batched(work_items)
         elif self.enable_parallel_updates:
             logger.info(
                 "Processing %d work items in parallel (max_workers=%d)",
                 num_wis,
                 self.parallel_max_workers,
             )
-            self._compare_and_update_work_items_parallel(work_items_to_process)
+            self._compare_and_update_work_items_parallel(work_items)
         else:
             logger.info("Processing %d work items sequentially", num_wis)
-            self._compare_and_update_work_items_sequential(
-                work_items_to_process
-            )
-
-    def _compare_and_update_work_items_sequential(
-        self,
-        work_items_to_process: list[tuple[str, data_session.ConverterData]],
-    ) -> None:
-        """Sequential implementation using ``CapellaPolarionWorker``."""
-        for _, data in work_items_to_process:
-            self.compare_and_update_work_item(data)
+            for _, data in work_items:
+                self.compare_and_update_work_item(data)
 
     def _compare_and_update_work_items_parallel(
         self,
-        work_items_to_process: list[tuple[str, data_session.ConverterData]],
+        work_items: list[tuple[str, data_session.ConverterData]],
     ) -> None:
-        """Process work items in parallel with comprehensive error handling."""
+        errors: list[tuple[str, Exception]] = []
 
-        def process_work_item(
-            item_data: tuple[str, data_session.ConverterData],
-        ) -> tuple[str, Exception | None]:
-            """Process a single work item with error handling."""
-            uuid, data = item_data
+        def _compare_and_update_work_items_safely(
+            uuid: str, data: data_session.ConverterData
+        ) -> str:
             try:
                 self.compare_and_update_work_item(data)
-                return uuid, None
             except Exception as e:
                 logger.error("Failed to update work item %s: %s", uuid, e)
-                return uuid, e
+                errors.append((uuid, e))
+            return uuid
 
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.parallel_max_workers
         ) as executor:
-            future_to_uuid = {
-                executor.submit(process_work_item, item_data): item_data[0]
-                for item_data in work_items_to_process
-            }
-
-            errors: list[tuple[str, Exception]] = []
+            updates = [
+                executor.submit(
+                    _compare_and_update_work_items_safely, uuid, data
+                )
+                for uuid, data in work_items
+            ]
             with tqdm(
-                total=len(work_items_to_process),
+                total=len(work_items),
                 desc="Updating work items",
-                unit="items",
+                unit="work item",
             ) as progress_bar:
-                for future in concurrent.futures.as_completed(future_to_uuid):
-                    uuid = future_to_uuid[future]
-                    try:
-                        result_uuid, error = future.result()
-                        if error:
-                            errors.append((result_uuid, error))
-                    except Exception as e:
-                        logger.error(
-                            "Unexpected error processing work item %s: %s",
-                            uuid,
-                            e,
-                        )
-                        errors.append((uuid, e))
-                    finally:
-                        progress_bar.update(1)
+                for future in concurrent.futures.as_completed(updates):
+                    future.result()
+                    progress_bar.update(1)
 
             if errors:
                 logger.warning(
                     "Failed to update %d out of %d work items",
                     len(errors),
-                    len(work_items_to_process),
+                    len(work_items),
                 )
                 for uuid, error in errors:
                     self.error_collector.add_work_item_error(uuid, error)
                     logger.error("Work item %s: %s", uuid, error)
 
-                failure_rate = len(errors) / len(work_items_to_process)
+                failure_rate = len(errors) / len(work_items)
                 logger.warning(
                     "Work item update failure rate: %.1f%%", failure_rate * 100
                 )
             else:
                 logger.info(
-                    "Successfully updated all %d work items",
-                    len(work_items_to_process),
+                    "Successfully updated all %d work items", len(work_items)
                 )
 
     def _compare_and_update_work_items_batched(
         self,
-        work_items_to_process: list[tuple[str, data_session.ConverterData]],
+        work_items: list[tuple[str, data_session.ConverterData]],
     ) -> None:
         logger.info("Phase 1: Analyzing work items for batch operations")
 
         def analyze_work_item(
             item_data: tuple[str, data_session.ConverterData],
         ) -> data_model.WorkItemAnalysis:
-            """Analyze what operations are needed for a work item."""
             uuid, data = item_data
             try:
                 return self._analyze_work_item_changes(data)
@@ -172,13 +147,11 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         ) as executor:
             analysis_futures = [
                 executor.submit(analyze_work_item, item_data)
-                for item_data in work_items_to_process
+                for item_data in work_items
             ]
-
+            total = len(analysis_futures)
             with tqdm(
-                total=len(analysis_futures),
-                desc="Analyzing work items",
-                unit="items",
+                total=total, desc="Analyzing work items", unit="work item"
             ) as progress_bar:
                 for future in concurrent.futures.as_completed(
                     analysis_futures
@@ -193,7 +166,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         except Exception as e:
             logger.error("Batched operations failed: %s", e)
             logger.info("Falling back to parallel processing")
-            self._compare_and_update_work_items_parallel(work_items_to_process)
+            self._compare_and_update_work_items_parallel(work_items)
 
     def _analyze_work_item_changes(
         self, data: data_session.ConverterData
@@ -206,47 +179,24 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         assert old is not None
         assert old.id is not None
 
+        (
+            needs_update,
+            work_item_changed,
+            needs_type_update,
+            fresh_old,
+            links_to_delete,
+            links_to_create,
+        ) = self._analyze_work_item_for_update(new, old)
+
         analysis = data_model.WorkItemAnalysis(uuid, new, old)
-        analysis.needs_update = self.needs_work_item_update(new, old)
-        if not analysis.needs_update:
-            return analysis
-
-        analysis.work_item_changed = (
-            new.content_checksum != old.content_checksum
-        )
-        analysis.needs_type_update = new.type != old.type
-        if analysis.work_item_changed or self.force_update:
-            fresh_old = self.project_client.work_items.get(
-                old.id, work_item_cls=data_model.CapellaWorkItem
-            )
-            assert fresh_old is not None
-            analysis.old_work_item = fresh_old
-            if fresh_old.attachments or new.attachments:
-                try:
-                    attachment_changed = (
-                        fresh_old.attachment_checksums
-                        != new.attachment_checksums
-                    )
-                    analysis.work_item_changed |= attachment_changed
-                except Exception as e:
-                    logger.error(
-                        "Failed to check attachments for %s: %s",
-                        analysis.uuid,
-                        e,
-                    )
-
-            if fresh_old.linked_work_items_truncated:
-                fresh_old.linked_work_items = (
-                    self.project_client.work_items.links.get_all(fresh_old.id)
-                )
-
-            analysis.links_to_delete = self.get_missing_link_ids(
-                fresh_old.linked_work_items, new.linked_work_items
-            )
-            analysis.links_to_create = self.get_missing_link_ids(
-                new.linked_work_items, fresh_old.linked_work_items
-            )
-
+        analysis.needs_update = needs_update
+        analysis.work_item_changed = work_item_changed
+        analysis.needs_type_update = needs_type_update
+        analysis.old_work_item = fresh_old
+        assert links_to_delete is not None
+        analysis.links_to_delete = links_to_delete
+        assert links_to_create is not None
+        analysis.links_to_create = links_to_create
         return analysis
 
     def _execute_batched_operations(
@@ -260,15 +210,19 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 "Skipping %d work items due to analysis errors",
                 len(failed_analyses),
             )
+            for analysis in failed_analyses:
+                assert analysis.error is not None
+                self.error_collector.add_work_item_error(
+                    analysis.uuid, analysis.error
+                )
 
         type_updates: list[data_model.CapellaWorkItem] = []
         work_item_updates: list[data_model.CapellaWorkItem] = []
         all_links_to_delete: list[polarion_api.WorkItemLink] = []
         all_links_to_create: list[polarion_api.WorkItemLink] = []
+        total = len(successful_analyses)
         with tqdm(
-            total=len(successful_analyses),
-            desc="Analyzing operations",
-            unit="operations",
+            total=total, desc="Analyzing operations", unit="operation"
         ) as progress_bar:
             for analysis in successful_analyses:
                 if not analysis.needs_update:
