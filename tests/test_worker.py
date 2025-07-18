@@ -96,11 +96,11 @@ def test_parallel_worker_sequential_processing():
             max_workers=4,
             enable_parallel_updates=False,
         )
+        session = {"1": mock.MagicMock(), "2": mock.MagicMock()}
 
         with mock.patch.object(
-            worker, "_compare_and_update_work_items_sequential"
+            worker, "compare_and_update_work_item"
         ) as mock_sequential:
-            session = {"1": mock.MagicMock(), "2": mock.MagicMock()}
             for key, data in session.items():
                 data.work_item = mock.MagicMock()
                 worker.polarion_data_repo.update_work_items(
@@ -113,7 +113,8 @@ def test_parallel_worker_sequential_processing():
 
             worker.compare_and_update_work_items(session)
 
-            mock_sequential.assert_called_once()
+        assert len(session) == 2
+        assert mock_sequential.call_count == 2
 
 
 def test_parallel_worker_parallel_processing():
