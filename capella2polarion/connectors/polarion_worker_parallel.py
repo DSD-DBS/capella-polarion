@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+import threading
 
 import polarion_rest_api_client as polarion_api
 from tqdm import tqdm
@@ -74,6 +75,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         work_items: list[tuple[str, data_session.ConverterData]],
     ) -> None:
         errors: list[tuple[str, Exception]] = []
+        errors_lock = threading.Lock()
 
         def _compare_and_update_work_items_safely(
             uuid: str, data: data_session.ConverterData
@@ -82,7 +84,8 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 self.compare_and_update_work_item(data)
             except Exception as e:
                 logger.error("Failed to update work item %s: %s", uuid, e)
-                errors.append((uuid, e))
+                with errors_lock:
+                    errors.append((uuid, e))
             return uuid
 
         with concurrent.futures.ThreadPoolExecutor(
