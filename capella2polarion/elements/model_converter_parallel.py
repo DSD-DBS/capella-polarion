@@ -123,6 +123,7 @@ class ParallelModelConverter(model_converter.ModelConverter):
     ) -> None:
         total = len(work_items)
         errors: list[tuple[str, Exception]] = []
+        errors_lock = threading.Lock()
 
         def _create_links_safely(
             uuid_data: tuple[str, data_session.ConverterData],
@@ -139,7 +140,8 @@ class ParallelModelConverter(model_converter.ModelConverter):
                 logger.error(
                     "Failed to create links for work item %s: %s", uuid, e
                 )
-                errors.append((uuid, e))
+                with errors_lock:
+                    errors.append((uuid, e))
             return uuid
 
         with (
@@ -175,6 +177,7 @@ class ParallelModelConverter(model_converter.ModelConverter):
     ) -> BackLinksMapping:
         total = len(work_items)
         errors: list[tuple[str, Exception]] = []
+        errors_lock = threading.Lock()
         back_links_lock = threading.Lock()
         back_links: BackLinksMapping = {}
 
@@ -200,7 +203,8 @@ class ParallelModelConverter(model_converter.ModelConverter):
                     uuid,
                     e,
                 )
-                errors.append((uuid, e))
+                with errors_lock:
+                    errors.append((uuid, e))
             return uuid
 
         with (
@@ -236,6 +240,7 @@ class ParallelModelConverter(model_converter.ModelConverter):
     ) -> None:
         total = len(work_items)
         errors: list[tuple[str, Exception]] = []
+        errors_lock = threading.Lock()
 
         def _create_back_fields_safely(
             uuid_data: tuple[str, data_session.ConverterData],
@@ -256,7 +261,8 @@ class ParallelModelConverter(model_converter.ModelConverter):
                     uuid,
                     e,
                 )
-                errors.append((uuid, e))
+                with errors_lock:
+                    errors.append((uuid, e))
             return uuid
 
         with (
