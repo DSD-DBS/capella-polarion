@@ -151,6 +151,7 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     help="Enable parallel processing of work item link generation (default: True)",
 )
 @click.option(
+    "-j",
     "--max-parallel-workers",
     type=int,
     envvar="CAPELLA2POLARION_SYNC_MAX_PARALLEL_WORKERS",
@@ -179,8 +180,7 @@ def synchronize(
         capella_to_polarion_cli.polarion_params.project_id,
     )
 
-    error_collector = errors.ErrorCollector()
-    try:
+    with errors.ErrorCollector() as error_collector:
         capella_to_polarion_cli.load_synchronize_config(
             synchronize_config, type_prefix, role_prefix
         )
@@ -222,13 +222,6 @@ def synchronize(
         polarion_worker.compare_and_update_work_items(
             converter.converter_session
         )
-
-    except Exception as e:
-        error_collector.add_critical_error(e)
-        logger.error("Critical error during synchronization: %s", e)
-        raise
-    finally:
-        error_collector.report_errors_and_exit()
 
 
 @cli.command()

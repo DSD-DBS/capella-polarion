@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Error collection and reporting for capella2polarion."""
 
+from __future__ import annotations
+
 import logging
 import sys
+from types import TracebackType
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +20,25 @@ class ErrorCollector:
         self.work_item_errors: list[tuple[str, Exception]] = []
         self.link_errors: list[tuple[str, Exception]] = []
         self.critical_errors: list[Exception] = []
+
+    def __enter__(self) -> ErrorCollector:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[Exception] | None,
+        exc_value: Exception | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        if exc_value is not None:
+            assert exc_type is not None
+            assert traceback is not None
+            self.add_critical_error(exc_value)
+            logger.error(
+                "Critical error during synchronization: %s", exc_value
+            )
+
+        self.report_errors_and_exit()
 
     def add_work_item_error(self, uuid: str, error: Exception) -> None:
         """Add a work item processing error."""

@@ -9,7 +9,7 @@ import logging
 import threading
 
 import polarion_rest_api_client as polarion_api
-from tqdm import tqdm
+import tqdm
 
 from capella2polarion import data_model, errors
 from capella2polarion.connectors import polarion_worker
@@ -97,7 +97,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 )
                 for uuid, data in work_items
             ]
-            with tqdm(
+            with tqdm.tqdm(
                 total=len(work_items),
                 desc="Updating work items",
                 unit="work item",
@@ -153,7 +153,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 for item_data in work_items
             ]
             total = len(analysis_futures)
-            with tqdm(
+            with tqdm.tqdm(
                 total=total, desc="Analyzing work items", unit="work item"
             ) as progress_bar:
                 for future in concurrent.futures.as_completed(
@@ -241,7 +241,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         all_links_to_delete: list[polarion_api.WorkItemLink] = []
         all_links_to_create: list[polarion_api.WorkItemLink] = []
         total = len(successful_analyses)
-        with tqdm(
+        with tqdm.tqdm(
             total=total, desc="Analyzing operations", unit="operation"
         ) as progress_bar:
             for analysis in successful_analyses:
@@ -377,7 +377,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
             + (1 if links_to_create else 0)
         )
 
-        with tqdm(
+        with tqdm.tqdm(
             total=total_operations,
             desc="Executing batch operations",
             unit="batches",
