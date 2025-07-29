@@ -73,8 +73,7 @@ class ModelConverter:
             for missing_type in missing_types:
                 layer, c_type, attributes = missing_type
                 logger.warning(
-                    "Capella type %r is configured in layer %r, but not"
-                    " for %s.",
+                    "Capella type %r is configured in layer %r, but not for %s.",
                     layer,
                     c_type,
                     ", ".join(f"{k!r}={v!r}" for k, v in attributes.items()),
@@ -168,8 +167,7 @@ class ModelConverter:
 
             if converter_data.work_item.id is None:
                 logger.error(
-                    "Expected WorkItem to be created before creating "
-                    "links: %s.",
+                    "Expected WorkItem to be created before creating links: %s.",
                     uuid,
                 )
                 continue
@@ -180,11 +178,12 @@ class ModelConverter:
                 )
 
 
-def get_layer_name(diagram: m.Diagram) -> str:
+def get_layer_name(diagram: m.AbstractDiagram) -> str:
     """Return the layer name for a diagram."""
     if diagram.type.name in ["EAB", "CIBD"]:
         return "epbs"
 
+    assert isinstance(diagram.target, m.AbstractDiagram)
     match diagram.target.layer:
         case diagram._model.oa:
             return "oa"

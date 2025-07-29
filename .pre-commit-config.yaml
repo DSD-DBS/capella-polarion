@@ -105,7 +105,7 @@ repos:
         additional_dependencies:
           - bidict
           - cairosvg
-          - capellambse==0.6.6
+          - capellambse==0.7.5
           - click
           - jinja2
           - polarion-rest-api-client==1.2.0
