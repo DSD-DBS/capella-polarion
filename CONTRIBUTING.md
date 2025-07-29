@@ -118,8 +118,6 @@ The key differences are:
   writing `from typing import SomeName`, use `import typing as t` and access
   typing related classes like `t.TypedDict`.
 
-  <!-- prettier-ignore -->
-
   Use the new syntax and classes for typing introduced with Python 3.10.
 
   - Instead of `t.Tuple`, `t.List` etc. use the builtin classes `tuple`, `list`

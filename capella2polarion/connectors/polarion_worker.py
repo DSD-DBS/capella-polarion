@@ -172,7 +172,9 @@ class CapellaPolarionWorker:
         ]
         if missing_work_items:
             try:
-                self.project_client.work_items.create(missing_work_items)
+                self.project_client.work_items.create(
+                    t.cast(list[polarion_api.WorkItem], missing_work_items)
+                )
                 self.polarion_data_repo.update_work_items(missing_work_items)
             except polarion_api.PolarionApiException as error:
                 logger.error("Creating work items failed. %s", error.args[0])

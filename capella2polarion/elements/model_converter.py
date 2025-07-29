@@ -180,11 +180,12 @@ class ModelConverter:
                 )
 
 
-def get_layer_name(diagram: m.Diagram) -> str:
+def get_layer_name(diagram: m.AbstractDiagram) -> str:
     """Return the layer name for a diagram."""
     if diagram.type.name in ["EAB", "CIBD"]:
         return "epbs"
 
+    assert isinstance(diagram.target, m.ModelElement)
     match diagram.target.layer:
         case diagram._model.oa:
             return "oa"

@@ -6,7 +6,7 @@ default_stages: [pre-commit, pre-merge-commit]
 minimum_pre_commit_version: 4.0.0
 repos:
   - repo: https://github.com/gitleaks/gitleaks.git
-    rev: v8.24.3
+    rev: v8.28.0
     hooks:
       - id: gitleaks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -82,41 +82,50 @@ repos:
           - LICENSES/.license_header_apache.txt
           - --comment-style
           - '..|  |'
-  - repo: https://github.com/PyCQA/docformatter
-    rev: eb1df347edd128b30cd3368dddc3aa65edcfac38 # Don't autoupdate until https://github.com/PyCQA/docformatter/issues/293 is fixed
+  - repo: local # docformatter
     hooks:
       - id: docformatter
-        additional_dependencies:
-          - docformatter[tomli]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.7
+        name: docformatter
+        language: system
+        entry: uv run --dev docformatter --in-place
+        types_or: [python]
+        require_serial: true
+  - repo: local # ruff
     hooks:
-      - id: ruff
-        args: [--extend-ignore=FIX, --fix]
       - id: ruff-format
+        name: Format with ruff
+        language: system
+        entry: uv run --dev ruff format
+        types_or: [python, pyi, jupyter]
+        require_serial: true
+      - id: ruff-check
+        name: Lint with ruff
+        language: system
+        entry: uv run --dev ruff check
+        args: [--extend-ignore=FIX, --fix]
+        types_or: [python, pyi, jupyter]
+        require_serial: true
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.7
     hooks:
       - id: actionlint-docker
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+  - repo: local # mypy
     hooks:
       - id: mypy
-        additional_dependencies:
-          - bidict
-          - cairosvg
-          - capellambse==0.6.6
-          - click
-          - jinja2
-          - polarion-rest-api-client==1.2.0
-          - pydantic
-          - types-requests
-          - types-PyYAML
-        exclude: tests
-  - repo: https://github.com/fsfe/reuse-tool
-    rev: v5.0.2
+        name: mypy
+        language: system
+        entry: uv run --dev mypy
+        args: [capella2polarion, --scripts-are-modules]
+        types_or: [python, pyi, toml, yaml]
+        require_serial: true
+        pass_filenames: false
+  - repo: local # reuse
     hooks:
       - id: reuse
+        name: reuse
+        language: system
+        entry: uv run --dev reuse lint-file
+        require_serial: true
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.22.0
     hooks:
