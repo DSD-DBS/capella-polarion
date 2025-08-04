@@ -130,6 +130,13 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     default=False,
 )
 @click.option(
+    "--parallel-serialization / --no-parallel-serialization",
+    envvar="CAPELLA2POLARION_SYNC_PARALLEL_SERIALIZATION",
+    is_flag=True,
+    default=True,
+    help="Enable parallel processing of work item serialization (default: True)",
+)
+@click.option(
     "--parallel-updates / --no-parallel-updates",
     envvar="CAPELLA2POLARION_SYNC_PARALLEL_UPDATES",
     is_flag=True,
@@ -168,6 +175,7 @@ def synchronize(
     role_prefix: str,
     grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
+    parallel_serialization: bool,
     parallel_updates: bool,
     batch_updates: bool,
     parallel_link_generation: bool,
@@ -200,6 +208,7 @@ def synchronize(
             capella_to_polarion_cli.polarion_params.project_id,
             max_workers=polarion_worker.parallel_max_workers,
             enable_parallel_link_generation=parallel_link_generation,
+            enable_parallel_serialization=parallel_serialization,
             error_collector=error_collector,
         )
 
