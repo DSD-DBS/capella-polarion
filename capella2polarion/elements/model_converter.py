@@ -183,8 +183,7 @@ def get_layer_name(diagram: m.AbstractDiagram) -> str:
     if diagram.type.name in ["EAB", "CIBD"]:
         return "epbs"
 
-    assert isinstance(diagram.target, m.AbstractDiagram)
-    match diagram.target.layer:
+    match diagram.target.layer:  # type: ignore[attr-defined]
         case diagram._model.oa:
             return "oa"
         case diagram._model.sa:
