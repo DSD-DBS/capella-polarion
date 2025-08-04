@@ -13,8 +13,11 @@ from click import testing
 
 import capella2polarion.__main__ as main
 from capella2polarion import plugins
-from capella2polarion.connectors import polarion_worker
-from capella2polarion.elements import model_converter
+from capella2polarion.connectors import (
+    polarion_worker,
+    polarion_worker_parallel,
+)
+from capella2polarion.elements import model_converter_parallel
 from capella2polarion.plugins import plugin_interfaces
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
@@ -82,7 +85,7 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
     )
     mock_generate_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        model_converter.ModelConverter,
+        model_converter_parallel.ParallelModelConverter,
         "generate_work_items",
         mock_generate_work_items,
     )
@@ -100,7 +103,7 @@ def cli_mocks(monkeypatch: pytest.MonkeyPatch) -> CLIMocks:
     )
     mock_patch_work_items = mock.MagicMock()
     monkeypatch.setattr(
-        polarion_worker.CapellaPolarionWorker,
+        polarion_worker_parallel.ParallelCapellaPolarionWorker,
         "compare_and_update_work_items",
         mock_patch_work_items,
     )
