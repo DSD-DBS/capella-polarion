@@ -12,10 +12,11 @@ import capellambse
 import polarion_rest_api_client as polarion_api
 from tqdm import tqdm
 
-from capella2polarion import errors
+from capella2polarion import data_model, errors
 from capella2polarion.connectors import polarion_repo
 from capella2polarion.elements import (
     data_session,
+    element_converter_parallel,
     link_converter,
     model_converter,
 )
@@ -36,13 +37,58 @@ class ParallelModelConverter(model_converter.ModelConverter):
         *,
         max_workers: int = 4,
         enable_parallel_link_generation: bool = True,
+        enable_parallel_serialization: bool = True,
         error_collector: errors.ErrorCollector | None = None,
     ) -> None:
         super().__init__(capella_model, project_id)
 
         self.parallel_max_workers = max_workers
         self.enable_parallel_link_generation = enable_parallel_link_generation
+        self.enable_parallel_serialization = enable_parallel_serialization
         self.error_collector = error_collector or errors.ErrorCollector()
+
+    def generate_work_items(
+        self,
+        polarion_data_repo: polarion_repo.PolarionDataRepository,
+        generate_links: bool = False,
+        generate_attachments: bool = False,
+        generate_grouped_links_custom_fields: bool = False,
+        generate_figure_captions: bool = False,
+    ) -> dict[str, data_model.CapellaWorkItem]:
+        """Generate work items with optional parallel serialization."""
+        if not self.enable_parallel_serialization:
+            logger.info("Using sequential serialization")
+            return super().generate_work_items(
+                polarion_data_repo,
+                generate_links,
+                generate_attachments,
+                generate_grouped_links_custom_fields,
+                generate_figure_captions,
+            )
+
+        logger.info("Using parallel serialization")
+        serializer = element_converter_parallel.ParallelCapellaWorkItemSerializer(
+            self.model,
+            polarion_data_repo,
+            self.converter_session,
+            generate_attachments,
+            generate_figure_captions,
+            max_workers=self.parallel_max_workers,
+            enable_parallel_serialization=self.enable_parallel_serialization,
+            error_collector=self.error_collector,
+        )
+
+        work_items = serializer.serialize_all()
+        for work_item in work_items:
+            assert work_item.title is not None
+            assert work_item.type is not None
+
+        if generate_links:
+            self.generate_work_item_links(
+                polarion_data_repo, generate_grouped_links_custom_fields
+            )
+
+        return {wi.uuid_capella: wi for wi in work_items}
 
     def generate_work_item_links(
         self,

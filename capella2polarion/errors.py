@@ -19,6 +19,7 @@ class ErrorCollector:
     def __init__(self) -> None:
         self.work_item_errors: list[tuple[str, Exception]] = []
         self.link_errors: list[tuple[str, Exception]] = []
+        self.serialization_errors: list[tuple[str, Exception]] = []
         self.critical_errors: list[Exception] = []
 
     def __enter__(self) -> ErrorCollector:
@@ -52,6 +53,12 @@ class ErrorCollector:
         """Add multiple link processing errors."""
         self.link_errors.extend(errors)
 
+    def add_serialization_errors(
+        self, errors: list[tuple[str, Exception]]
+    ) -> None:
+        """Add multiple serialization processing errors."""
+        self.serialization_errors.extend(errors)
+
     def add_critical_error(self, error: Exception) -> None:
         """Add a critical error that should cause immediate failure."""
         self.critical_errors.append(error)
@@ -59,14 +66,21 @@ class ErrorCollector:
     def has_errors(self) -> bool:
         """Check if any errors were collected."""
         return bool(
-            self.work_item_errors or self.link_errors or self.critical_errors
+            self.work_item_errors
+            or self.link_errors
+            or self.serialization_errors
+            or self.critical_errors
         )
 
     def get_exit_code(self) -> int:
         """Get appropriate exit code based on collected errors."""
         if self.critical_errors:
             return 2
-        if self.work_item_errors or self.link_errors:
+        if (
+            self.work_item_errors
+            or self.link_errors
+            or self.serialization_errors
+        ):
             return 1
         return 0
 
@@ -79,6 +93,7 @@ class ErrorCollector:
         total_errors = (
             len(self.work_item_errors)
             + len(self.link_errors)
+            + len(self.serialization_errors)
             + len(self.critical_errors)
         )
         logger.error("Synchronization completed with %d errors:", total_errors)
@@ -103,6 +118,19 @@ class ErrorCollector:
                 logger.error(
                     "  ... and %d more link errors",
                     len(self.link_errors) - ERROR_LOOKUP_LIMIT,
+                )
+
+        if self.serialization_errors:
+            logger.error(
+                "Serialization processing errors: %d",
+                len(self.serialization_errors),
+            )
+            for uuid, error in self.serialization_errors[:ERROR_LOOKUP_LIMIT]:
+                logger.error("  - %s: %s", uuid, error)
+            if len(self.serialization_errors) > ERROR_LOOKUP_LIMIT:
+                logger.error(
+                    "  ... and %d more serialization errors",
+                    len(self.serialization_errors) - ERROR_LOOKUP_LIMIT,
                 )
 
         if self.critical_errors:
