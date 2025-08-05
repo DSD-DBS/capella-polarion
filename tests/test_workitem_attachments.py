@@ -428,7 +428,6 @@ def test_add_context_diagram(
     )
 
 
-@pytest.mark.skip("Currently broken locally.")
 def test_update_context_diagram_no_changes(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
