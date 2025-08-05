@@ -185,6 +185,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         (
             needs_update,
             work_item_changed,
+            _,
             needs_type_update,
             fresh_old,
             links_to_delete,

@@ -849,6 +849,7 @@ class TestModelElements:
         old_wi.attachments = []
         old_wi._content_checksum = "old-content"
         old_wi.checksum = "old-checksum"
+        old_wi._attachment_checksums = {}
         old_wi.linked_work_items = []
         old_wi.linked_work_items_truncated = False
         base_object.pw.polarion_data_repo.update_work_items([old_wi])
