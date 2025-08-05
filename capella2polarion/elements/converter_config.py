@@ -15,6 +15,8 @@ import yaml
 from capellambse import model as m
 from capellambse_context_diagrams import filters as context_filters
 
+from . import element_converter
+
 logger = logging.getLogger(__name__)
 
 _C2P_DEFAULT = "_C2P_DEFAULT"
@@ -63,8 +65,9 @@ class LinkConfig:
                     reverse_field=None,
                 )
             elif isinstance(link, dict):
+                lid: str = link["capella_attr"]
                 config = LinkConfig(
-                    capella_attr=(lid := link["capella_attr"]),
+                    capella_attr=lid,
                     polarion_role=add_prefix(
                         link.get("polarion_role", lid),
                         role_prefix,
@@ -474,8 +477,6 @@ def merge_converters(
 @functools.cache
 def _get_valid_converters() -> frozenset[str]:
     """Return valid converters from CapellaWorkItemSerializer."""
-    from . import element_converter
-
     valid_converters = set()
     serializer_cls = element_converter.CapellaWorkItemSerializer
     for name, member in inspect.getmembers(serializer_cls):

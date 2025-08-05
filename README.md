@@ -24,7 +24,6 @@ Use cases covered:
 
 # Documentation
 
-<!-- prettier-ignore -->
 Read the [full documentation on GitHub](https://dsd-dbs.github.io/capella-polarion).
 
 # Installation

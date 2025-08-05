@@ -11,7 +11,6 @@ import typing as t
 import capellambse
 import jinja2
 import polarion_rest_api_client as polarion_api
-from lxml import etree
 from lxml import html as lxmlhtml
 
 from capella2polarion import data_model, polarion_html_helper
@@ -359,6 +358,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 [
                     lxmlhtml.tostring(element).decode("utf-8")
                     for element in new_content
+                    if not isinstance(element, str)
                 ]
             ),
         )
@@ -369,12 +369,15 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
         )
 
     def _extract_section_areas(
-        self, html_elements: list[etree._Element], session: RenderingSession
+        self,
+        html_elements: list[lxmlhtml.HtmlElement | str],
+        session: RenderingSession,
     ) -> dict[str, tuple[int, int]]:
         section_areas = {}
         current_area_id = None
         current_area_start = None
         for element_index, element in enumerate(html_elements):
+            assert not isinstance(element, str)
             if (
                 current_area_id is None
                 and element.tag == "div"
@@ -404,7 +407,7 @@ class DocumentRenderer(polarion_html_helper.JinjaRendererMixin):
                 continue
             for child in element.iterchildren():
                 if child.get("class") == "polarion-dle-wiki-block-source":
-                    text = html.unescape(child.text)
+                    text = html.unescape(child.text or "")
                     content = lxmlhtml.fragments_fromstring(text)
                     if (
                         content

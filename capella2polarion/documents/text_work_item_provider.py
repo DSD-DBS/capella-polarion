@@ -37,12 +37,14 @@ class TextWorkItemProvider:
 
     def generate_text_work_items(
         self,
-        content: list[html.HtmlElement] | str,
+        content: list[html.HtmlElement | str],
         work_item_id_filter: list[str] | None = None,
     ) -> None:
         """Generate text work items from the provided html."""
         content = html_helper.ensure_fragments(content)
         for element in content:
+            # FIXME what if content[0] is str?
+            assert not isinstance(element, str)
             if element.tag != html_helper.WORK_ITEM_TAG:
                 continue
 
@@ -121,5 +123,7 @@ class TextWorkItemProvider:
 
         new_content += html_fragments[last_match + 1 :]
         document.home_page_content.value = "\n".join(
-            [html.tostring(element).decode("utf-8") for element in new_content]
+            html.tostring(element).decode("utf-8")
+            for element in new_content
+            if isinstance(element, html.HtmlElement)
         )
