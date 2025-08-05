@@ -182,26 +182,7 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         assert old is not None
         assert old.id is not None
 
-        (
-            needs_update,
-            work_item_changed,
-            _,
-            needs_type_update,
-            fresh_old,
-            links_to_delete,
-            links_to_create,
-        ) = self._analyze_work_item_for_update(new, old)
-
-        analysis = data_model.WorkItemAnalysis(uuid, new, old)
-        analysis.needs_update = needs_update
-        analysis.work_item_changed = work_item_changed
-        analysis.needs_type_update = needs_type_update
-        analysis.old_work_item = fresh_old
-        assert links_to_delete is not None
-        analysis.links_to_delete = links_to_delete
-        assert links_to_create is not None
-        analysis.links_to_create = links_to_create
-        return analysis
+        return self._analyze_work_item_for_update(new, old)
 
     def _execute_batched_operations(
         self, analysis_results: list[data_model.WorkItemAnalysis]
