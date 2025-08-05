@@ -97,14 +97,13 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 )
                 for uuid, data in work_items
             ]
-            with tqdm.tqdm(
-                total=len(work_items),
+            for future in tqdm.tqdm(
+                concurrent.futures.as_completed(updates),
                 desc="Updating work items",
+                total=len(work_items),
                 unit="work item",
-            ) as progress_bar:
-                for future in concurrent.futures.as_completed(updates):
-                    future.result()
-                    progress_bar.update(1)
+            ):
+                future.result()
 
             if errors:
                 logger.warning(
@@ -152,16 +151,14 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 executor.submit(analyze_work_item, item_data)
                 for item_data in work_items
             ]
-            total = len(analysis_futures)
-            with tqdm.tqdm(
-                total=total, desc="Analyzing work items", unit="work item"
-            ) as progress_bar:
-                for future in concurrent.futures.as_completed(
-                    analysis_futures
-                ):
-                    result = future.result()
-                    analysis_results.append(result)
-                    progress_bar.update(1)
+            for future in tqdm.tqdm(
+                concurrent.futures.as_completed(analysis_futures),
+                desc="Analyzing work items",
+                total=len(analysis_futures),
+                unit="work item",
+            ):
+                result = future.result()
+                analysis_results.append(result)
 
         logger.info("Phase 2: Executing batched operations")
         try:
@@ -222,37 +219,32 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         work_item_updates: list[data_model.CapellaWorkItem] = []
         all_links_to_delete: list[polarion_api.WorkItemLink] = []
         all_links_to_create: list[polarion_api.WorkItemLink] = []
-        total = len(successful_analyses)
-        with tqdm.tqdm(
-            total=total, desc="Analyzing operations", unit="operation"
-        ) as progress_bar:
-            for analysis in successful_analyses:
-                if not analysis.needs_update:
-                    continue
+        for analysis in tqdm.tqdm(
+            successful_analyses,
+            desc="Analyzing operations",
+            total=len(successful_analyses),
+            unit="operation",
+        ):
+            if not analysis.needs_update:
+                continue
 
-                assert analysis.old_work_item is not None
-                if analysis.needs_type_update:
-                    type_update = self._create_type_update(analysis)
-                    type_updates.append(type_update)
-                    analysis.work_item.type = None
+            assert analysis.old_work_item is not None
+            if analysis.needs_type_update:
+                type_update = self._create_type_update(analysis)
+                type_updates.append(type_update)
+                analysis.work_item.type = None
 
-                if analysis.work_item_changed or self.force_update:
-                    self._prepare_work_item_for_update(analysis)
-                    work_item_updates.append(analysis.work_item)
-                else:
-                    self._clear_work_item_attributes(analysis)
-                    work_item_updates.append(analysis.work_item)
+            if analysis.work_item_changed or self.force_update:
+                self._prepare_work_item_for_update(analysis)
+                work_item_updates.append(analysis.work_item)
+            else:
+                self._clear_work_item_attributes(analysis)
+                work_item_updates.append(analysis.work_item)
 
-                if analysis.links_to_delete:
-                    all_links_to_delete.extend(
-                        analysis.links_to_delete.values()
-                    )
-                if analysis.links_to_create:
-                    all_links_to_create.extend(
-                        analysis.links_to_create.values()
-                    )
-
-                progress_bar.update(1)
+            if analysis.links_to_delete:
+                all_links_to_delete.extend(analysis.links_to_delete.values())
+            if analysis.links_to_create:
+                all_links_to_create.extend(analysis.links_to_create.values())
 
         return {
             "type_updates": type_updates,
