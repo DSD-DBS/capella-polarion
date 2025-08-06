@@ -278,40 +278,20 @@ class CapellaPolarionWorker:
         analysis: data_model.WorkItemAnalysis,
     ) -> bool:
         work_item_changed = False
-        attachment_changed = (
-            analysis.old_work_item is not None
-            and analysis.old_work_item.attachment_checksums
-            != new.attachment_checksums
-        )
-        if attachment_changed or self.force_update:
-            assert analysis.old_work_item is not None
-            # Call get_all if there are attachments OR attachment_checksums
-            # (covers failed upload case)
-            if (
-                analysis.old_work_item.attachments
-                or analysis.old_work_item.attachment_checksums
-            ):
-                old_attachments = (
-                    self.project_client.work_items.attachments.get_all(
-                        work_item_id=analysis.old_work_item.id
-                    )
+        assert analysis.old_work_item is not None
+        # Call get_all if there are attachments OR attachment_checksums
+        # (covers failed upload case)
+        if (
+            analysis.old_work_item.attachments
+            or analysis.old_work_item.attachment_checksums
+        ):
+            old_attachments = (
+                self.project_client.work_items.attachments.get_all(
+                    work_item_id=analysis.old_work_item.id
                 )
-            else:
-                old_attachments = []
+            )
         else:
-            # When attachments haven't changed, still need get_all if there are attachments
-            assert analysis.old_work_item is not None
-            if (
-                analysis.old_work_item.attachments
-                or analysis.old_work_item.attachment_checksums
-            ):
-                old_attachments = (
-                    self.project_client.work_items.attachments.get_all(
-                        work_item_id=analysis.old_work_item.id
-                    )
-                )
-            else:
-                old_attachments = []
+            old_attachments = []
 
         if old_attachments or new.attachments:
             work_item_changed |= self.update_attachments(
