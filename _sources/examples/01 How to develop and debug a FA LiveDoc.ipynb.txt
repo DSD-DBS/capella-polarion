@@ -1,0 +1,280 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "1a1fe414",
+   "metadata": {},
+   "source": [
+    "# How to develop and debug a full authorized Polarion LiveDoc\n",
+    "\n",
+    "Welcome to the capella2polarion notebook where local development and debugging \n",
+    "of an FA Polarion LiveDoc is showcased. Full-authorized means, that we want to generate\n",
+    "a live document as a whole without any interference in content from a human.\n",
+    "\n",
+    "This notebook will show you the following:\n",
+    "- How to load all current Polarion work-items into the PolarionWorker\n",
+    "- How to load all current Polarion LiveDocs under a specified space\n",
+    "- How to create and update Polarion LiveDocs under a specified space\n",
+    "\n",
+    "Before we can interact with the REST API of Polarion we need to prepare our\n",
+    "environment:\n",
+    "Create a `.env` file with the following values:\n",
+    "- POLARION_PROJECT\n",
+    "- POLARION_HOST\n",
+    "- POLARION_PAT\n",
+    "- MODEL_PATH\n",
+    "\n",
+    "First the load the Capella model with capellambse:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "3e28d1c9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import pathlib\n",
+    "\n",
+    "import capellambse\n",
+    "import dotenv\n",
+    "\n",
+    "from capella2polarion.connectors import polarion_worker\n",
+    "from capella2polarion.converters import document_config, document_renderer\n",
+    "\n",
+    "dotenv.load_dotenv()\n",
+    "\n",
+    "test_data_path = pathlib.Path(\"../../../tests/data\")\n",
+    "\n",
+    "model = capellambse.MelodyModel(\n",
+    "    os.environ.get(\"MODEL_PATH\")\n",
+    "    or str(test_data_path / \"model/Melody Model Test.aird\")\n",
+    ")\n",
+    "worker = polarion_worker.CapellaPolarionWorker(\n",
+    "    polarion_worker.PolarionWorkerParams(\n",
+    "        os.environ.get(\"POLARION_PROJECT\") or \"\",\n",
+    "        os.environ.get(\"POLARION_HOST\") or \"\",\n",
+    "        os.environ.get(\"POLARION_PAT\") or \"\",\n",
+    "        delete_work_items=False,\n",
+    "    )\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "48ce0c1e",
+   "metadata": {},
+   "source": [
+    "## How to load all current work items from the Polarion project into the worker:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "58c646df",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "worker.load_polarion_work_item_map()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "72383c59",
+   "metadata": {},
+   "source": [
+    "Now we load all current LiveDocs under a specific space. This is configured in\n",
+    "the document config `capella2polarion_document_config.yaml`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "1ffea0f8",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "# Copyright DB InfraGO AG and contributors\n",
+      "# SPDX-License-Identifier: Apache-2.0\n",
+      "\n",
+      "full_authority:\n",
+      "  - template_directory: document_templates\n",
+      "    template: test-pcd.html.j2\n",
+      "    heading_numbering: True\n",
+      "    work_item_layouts:\n",
+      "      _C2P_componentExchange:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "        fields_at_end:\n",
+      "          - context_diagram\n",
+      "      _C2P_physicalLink:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "      _C2P_physicalActor:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "        fields_at_end:\n",
+      "          - context_diagram\n",
+      "      _C2P_physicalComponentNode:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "        fields_at_end:\n",
+      "          - context_diagram\n",
+      "      _C2P_physicalComponentBehavior:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "        fields_at_end:\n",
+      "          - context_diagram\n",
+      "      _C2P_physicalFunction:\n",
+      "        fields_at_start:\n",
+      "          - id\n",
+      "        fields_at_end:\n",
+      "          - context_diagram\n",
+      "    instances:\n",
+      "    {%- for pc in model.search(\"PhysicalComponent\") %}\n",
+      "    - polarion_space: PC-Drafts\n",
+      "      polarion_name: {{ pc.uuid }}\n",
+      "      polarion_title: {{ pc.name | safe }}\n",
+      "      params:\n",
+      "        uuid: {{ pc.uuid }}\n",
+      "        title: {{ pc.name | safe }}\n",
+      "        kinds:\n",
+      "          - SOFTWARE\n",
+      "          - HARDWARE\n",
+      "    {% endfor %}\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "document_rendering_config_path = pathlib.Path(\n",
+    "    \"configs/capella2polarion_document_config.yaml.j2\"\n",
+    ")\n",
+    "print(document_rendering_config_path.read_text(encoding=\"utf8\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fc142852",
+   "metadata": {},
+   "source": [
+    "As you can see we configured the work item layouts, i.e. work item representation in a live doc, for all work item types we expect from the template. The human should **never** modify the configuration because it will be overwritten by the service:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "78bffe9e",
+   "metadata": {},
+   "source": [
+    "![Work item layout config](./_static/work-item-layout-config.png)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f5271823",
+   "metadata": {},
+   "source": [
+    "If you want to know more about the features and limitations, head into the\n",
+    "documentation of the configuration for live doc rendering.\n",
+    "\n",
+    "## How to load all current Polarion LiveDocs under a specified space"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "10fd79b3",
+   "metadata": {},
+   "source": [
+    "We need a `DocumentRenderer` and set it up with the following parameters:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "4ec7c85f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "renderer = document_renderer.DocumentRenderer(\n",
+    "    worker.polarion_data_repo,\n",
+    "    model,\n",
+    "    os.environ.get(\"POLARION_PROJECT\") or \"\",\n",
+    "    overwrite_heading_numbering=True,\n",
+    "    overwrite_layouts=True,\n",
+    ")\n",
+    "with document_rendering_config_path.open(\"r\", encoding=\"utf8\") as file:\n",
+    "    configs = document_config.read_config_file(file, model)\n",
+    "\n",
+    "documents = worker.load_polarion_documents(configs.iterate_documents())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "91b21c79",
+   "metadata": {},
+   "source": [
+    "From the config file we can compute the documents (for each Physical Component one)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "80c149f4",
+   "metadata": {},
+   "source": [
+    "## How to create and update Polarion LiveDocs under a specified space"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "b290d1a6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "projects_document_data = renderer.render_documents(configs, documents)\n",
+    "for project, project_data in projects_document_data.items():\n",
+    "    worker.create_documents(project_data.new_docs, project)\n",
+    "    worker.update_documents(project_data.updated_docs, project)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ca616dff",
+   "metadata": {},
+   "source": [
+    "![Fullauthority live docs](./_static/fa-live-doc-space.png)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "dee20bf2",
+   "metadata": {},
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "venv",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
