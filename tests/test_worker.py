@@ -5,7 +5,10 @@ from unittest import mock
 
 import capellambse
 
-from capella2polarion.connectors import polarion_worker
+from capella2polarion.connectors import (
+    polarion_worker,
+    polarion_worker_parallel,
+)
 from capella2polarion.data_model import work_items
 from capella2polarion.elements import converter_config, data_session
 
@@ -75,3 +78,147 @@ def test_polarion_worker_reuse_deleted_work_item(
     assert (
         empty_polarion_worker.project_client.work_items.update.call_count == 1
     )
+
+
+def test_parallel_worker_sequential_processing():
+    params = polarion_worker.PolarionWorkerParams(
+        project_id="TEST",
+        url="http://127.0.0.1",
+        pat="PrivateAccessToken",
+        delete_work_items=False,
+    )
+
+    with mock.patch.object(
+        polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
+    ):
+        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
+            params,
+            max_workers=4,
+            enable_parallel_updates=False,
+        )
+        session = {"1": mock.MagicMock(), "2": mock.MagicMock()}
+
+        with mock.patch.object(
+            worker, "compare_and_update_work_item"
+        ) as mock_sequential:
+            for key, data in session.items():
+                data.work_item = mock.MagicMock()
+                worker.polarion_data_repo.update_work_items(
+                    [
+                        work_items.CapellaWorkItem(
+                            id=key, uuid_capella=key, title="Test", type="test"
+                        )
+                    ]
+                )
+
+            worker.compare_and_update_work_items(session)
+
+        assert len(session) == 2
+        assert mock_sequential.call_count == 2
+
+
+def test_parallel_worker_parallel_processing():
+    params = polarion_worker.PolarionWorkerParams(
+        project_id="TEST",
+        url="http://127.0.0.1",
+        pat="PrivateAccessToken",
+        delete_work_items=False,
+    )
+
+    with mock.patch.object(
+        polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
+    ):
+        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
+            params,
+            max_workers=4,
+            enable_parallel_updates=True,
+            enable_batched_operations=False,
+        )
+        with mock.patch.object(
+            worker, "_compare_and_update_work_items_parallel"
+        ) as mock_parallel:
+            session = {}
+            for i in range(5):
+                key = str(i)
+                session[key] = mock.MagicMock()
+                session[key].work_item = mock.MagicMock()
+                worker.polarion_data_repo.update_work_items(
+                    [
+                        work_items.CapellaWorkItem(
+                            id=key, uuid_capella=key, title="Test", type="test"
+                        )
+                    ]
+                )
+
+            worker.compare_and_update_work_items(session)
+
+            mock_parallel.assert_called_once()
+
+
+def test_parallel_worker_batched_processing():
+    params = polarion_worker.PolarionWorkerParams(
+        project_id="TEST",
+        url="http://127.0.0.1",
+        pat="PrivateAccessToken",
+        delete_work_items=False,
+    )
+
+    with mock.patch.object(
+        polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
+    ):
+        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
+            params,
+            max_workers=4,
+            enable_parallel_updates=True,
+            enable_batched_operations=True,
+        )
+        with mock.patch.object(
+            worker, "_compare_and_update_work_items_batched"
+        ) as mock_batched:
+            session = {}
+            for i in range(5):
+                key = str(i)
+                session[key] = mock.MagicMock()
+                session[key].work_item = mock.MagicMock()
+                worker.polarion_data_repo.update_work_items(
+                    [
+                        work_items.CapellaWorkItem(
+                            id=key, uuid_capella=key, title="Test", type="test"
+                        )
+                    ]
+                )
+
+            worker.compare_and_update_work_items(session)
+
+            mock_batched.assert_called_once()
+
+
+def test_parallel_worker_needs_work_item_update():
+    params = polarion_worker.PolarionWorkerParams(
+        project_id="TEST",
+        url="http://127.0.0.1",
+        pat="PrivateAccessToken",
+        delete_work_items=False,
+    )
+
+    with mock.patch.object(
+        polarion_worker_parallel.ParallelCapellaPolarionWorker, "check_client"
+    ):
+        worker = polarion_worker_parallel.ParallelCapellaPolarionWorker(
+            params, max_workers=4
+        )
+        old_work_item = work_items.CapellaWorkItem(
+            id="TEST-1", uuid_capella="uuid1", title="Old Title", type="test"
+        )
+        new_work_item = work_items.CapellaWorkItem(
+            id="TEST-1", uuid_capella="uuid1", title="New Title", type="test"
+        )
+        identical_work_item = work_items.CapellaWorkItem(
+            id="TEST-1", uuid_capella="uuid1", title="Old Title", type="test"
+        )
+        identical_work_item.checksum = old_work_item.calculate_checksum()
+
+        assert worker.needs_work_item_update(new_work_item, old_work_item)
+        assert not worker.needs_work_item_update(
+            identical_work_item, old_work_item
+        )

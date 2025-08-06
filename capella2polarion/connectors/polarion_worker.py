@@ -26,6 +26,8 @@ DEFAULT_ATTRIBUTE_VALUES: dict[type, t.Any] = {
     int: 0,
     bool: False,
 }
+
+
 WORK_ITEMS_IN_DOCUMENT_QUERY = (
     "SQL:(SELECT item.* FROM POLARION.WORKITEM item, POLARION.MODULE doc, "
     "POLARION.PROJECT proj WHERE proj.C_ID = '{project}' AND "
@@ -180,6 +182,51 @@ class CapellaPolarionWorker:
                 logger.error("Creating work items failed. %s", error.args[0])
                 raise error
 
+    def needs_work_item_update(
+        self, new: data_model.CapellaWorkItem, old: data_model.CapellaWorkItem
+    ) -> bool:
+        """Check if a work item needs to be updated."""
+        if old.status == self.project_client.work_items.delete_status:
+            old.checksum = None
+
+        new.calculate_checksum()
+        return self.force_update or new.checksum != old.checksum
+
+    def _analyze_work_item_for_update(
+        self, new: data_model.CapellaWorkItem, old: data_model.CapellaWorkItem
+    ) -> data_model.WorkItemAnalysis:
+        """Analyze what changes are needed for a work item."""
+        uuid = new.uuid_capella
+        analysis = data_model.WorkItemAnalysis(uuid=uuid, work_item=new)
+
+        analysis.needs_update = self.needs_work_item_update(new, old)
+        if not analysis.needs_update and not self.force_update:
+            return analysis
+
+        analysis.work_item_changed = (
+            new.content_checksum != old.content_checksum
+        )
+
+        assert old.id is not None
+        fresh_old = self.project_client.work_items.get(
+            old.id, work_item_cls=data_model.CapellaWorkItem
+        )
+        assert fresh_old is not None
+        if fresh_old.linked_work_items_truncated:
+            fresh_old.linked_work_items = (
+                self.project_client.work_items.links.get_all(fresh_old.id)
+            )
+
+        analysis.old_work_item = fresh_old
+        analysis.needs_type_update = new.type != fresh_old.type
+        analysis.links_to_delete = self.get_missing_link_ids(
+            fresh_old.linked_work_items, new.linked_work_items
+        )
+        analysis.links_to_create = self.get_missing_link_ids(
+            new.linked_work_items, fresh_old.linked_work_items
+        )
+        return analysis
+
     def compare_and_update_work_item(
         self, converter_data: data_session.ConverterData
     ) -> None:
@@ -191,11 +238,8 @@ class CapellaPolarionWorker:
         assert old is not None
         assert old.id is not None
 
-        if old.status == self.project_client.work_items.delete_status:
-            old.checksum = None
-
-        new.calculate_checksum()
-        if not self.force_update and new.checksum == old.checksum:
+        analysis = self._analyze_work_item_for_update(new, old)
+        if not analysis.needs_update:
             return
 
         log_args = (old.id, new.type, new.title)
@@ -203,35 +247,11 @@ class CapellaPolarionWorker:
             "Update work item %r for model element %s %r...", *log_args
         )
 
-        work_item_changed = new.content_checksum != old.content_checksum
         try:
-            if work_item_changed or self.force_update:
-                old = self.project_client.work_items.get(
-                    old.id, work_item_cls=data_model.CapellaWorkItem
-                )
-                assert old is not None
-                assert old.id is not None
-                if old.attachments:
-                    old_attachments = (
-                        self.project_client.work_items.attachments.get_all(
-                            work_item_id=old.id
-                        )
-                    )
-                else:
-                    old_attachments = []
-            else:
-                old_attachments = (
-                    self.project_client.work_items.attachments.get_all(
-                        work_item_id=old.id
-                    )
-                )
-            if old_attachments or new.attachments:
-                work_item_changed |= self.update_attachments(
-                    new,
-                    old.attachment_checksums,
-                    new.attachment_checksums,
-                    old_attachments,
-                )
+            work_item_changed = self._update_work_item_attachments(
+                new, analysis
+            )
+            analysis.work_item_changed |= work_item_changed
         except (polarion_api.PolarionApiException, ValueError) as error:
             logger.error(
                 "Updating attachments for WorkItem %r (%s %s) failed. %s",
@@ -240,28 +260,67 @@ class CapellaPolarionWorker:
             )
             raise error
 
-        assert new.id is not None
-        delete_links = None
-        create_links = None
+        try:
+            self._prepare_work_item_for_update(analysis)
+            self.project_client.work_items.update(new)
+            self._update_work_item_links(analysis)
+        except polarion_api.PolarionApiException as error:
+            logger.error(
+                "Updating work item %r (%s %s) failed. %s",
+                *log_args,
+                error.args[0],
+            )
+            raise error
 
-        if work_item_changed or self.force_update:
+    def _update_work_item_attachments(
+        self,
+        new: data_model.CapellaWorkItem,
+        analysis: data_model.WorkItemAnalysis,
+    ) -> bool:
+        work_item_changed = False
+        assert analysis.old_work_item is not None
+        # Call get_all if there are attachments OR attachment_checksums
+        # (covers failed upload case)
+        if (
+            analysis.old_work_item.attachments
+            or analysis.old_work_item.attachment_checksums
+        ):
+            old_attachments = (
+                self.project_client.work_items.attachments.get_all(
+                    work_item_id=analysis.old_work_item.id
+                )
+            )
+        else:
+            old_attachments = []
+
+        if old_attachments or new.attachments:
+            work_item_changed |= self.update_attachments(
+                new,
+                analysis.old_work_item.attachment_checksums,
+                new.attachment_checksums,
+                old_attachments,
+            )
             if new.attachments:
                 self._refactor_attached_images(new)
 
+        return work_item_changed
+
+    def _prepare_work_item_for_update(
+        self, analysis: data_model.WorkItemAnalysis
+    ) -> None:
+        new = analysis.work_item
+        assert new.id is not None
+        if analysis.work_item_changed or self.force_update:
+            assert analysis.old_work_item is not None
             del new.additional_attributes["uuid_capella"]
-            del old.additional_attributes["uuid_capella"]
+            del analysis.old_work_item.additional_attributes["uuid_capella"]
 
-            if old.linked_work_items_truncated:
-                old.linked_work_items = (
-                    self.project_client.work_items.links.get_all(old.id)
-                )
-
-            # Type will be updated immediatly, if changed b/c Polarion
+            # Type will be updated immediately, if changed b/c Polarion
             # does not allow to change the type of a work item and fields in
             # the same request.
-            if new.type != old.type:
+            if analysis.needs_type_update:
                 new_with_only_type = data_model.CapellaWorkItem(
-                    id=old.id, type=new.type
+                    id=analysis.old_work_item.id, type=new.type
                 )
                 self.project_client.work_items.update(new_with_only_type)
 
@@ -271,20 +330,16 @@ class CapellaPolarionWorker:
             # If additional fields were present, but aren't anymore,
             # we have to set them to an empty value manually
             defaults = DEFAULT_ATTRIBUTE_VALUES
-            for attribute, value in old.additional_attributes.items():
+            for (
+                attribute,
+                value,
+            ) in analysis.old_work_item.additional_attributes.items():
                 if attribute not in new.additional_attributes:
                     new.additional_attributes[attribute] = defaults.get(
                         type(value)
                     )
                 elif new.additional_attributes[attribute] == value:
                     del new.additional_attributes[attribute]
-
-            delete_links = CapellaPolarionWorker.get_missing_link_ids(
-                old.linked_work_items, new.linked_work_items
-            )
-            create_links = CapellaPolarionWorker.get_missing_link_ids(
-                new.linked_work_items, old.linked_work_items
-            )
         else:
             new.clear_attributes()
             new.type = None
@@ -292,39 +347,32 @@ class CapellaPolarionWorker:
             new.description = None
             new.title = None
 
-        try:
-            self.project_client.work_items.update(new)
-            if delete_links:
-                id_list_str = ", ".join(delete_links.keys())
-                logger.info(
-                    "Delete work item links %r for model %s %r",
-                    id_list_str,
-                    old.type,
-                    old.title,
-                )
-                self.project_client.work_items.links.delete(
-                    list(delete_links.values())
-                )
-
-            if create_links:
-                id_list_str = ", ".join(create_links.keys())
-                logger.info(
-                    "Create work item links %r for model %s %r",
-                    id_list_str,
-                    old.type,
-                    old.title,
-                )
-                self.project_client.work_items.links.create(
-                    list(create_links.values())
-                )
-
-        except polarion_api.PolarionApiException as error:
-            logger.error(
-                "Updating work item %r (%s %s) failed. %s",
-                *log_args,
-                error.args[0],
+    def _update_work_item_links(
+        self, analysis: data_model.WorkItemAnalysis
+    ) -> None:
+        if analysis.links_to_delete:
+            assert analysis.old_work_item is not None
+            logger.info(
+                "Delete work item links %r for model %s %r",
+                ", ".join(analysis.links_to_delete),
+                analysis.old_work_item.type,
+                analysis.old_work_item.title,
             )
-            raise error
+            self.project_client.work_items.links.delete(
+                list(analysis.links_to_delete.values())
+            )
+
+        if analysis.links_to_create:
+            assert analysis.old_work_item is not None
+            logger.info(
+                "Create work item links %r for model %s %r",
+                ", ".join(analysis.links_to_create),
+                analysis.old_work_item.type,
+                analysis.old_work_item.title,
+            )
+            self.project_client.work_items.links.create(
+                list(analysis.links_to_create.values())
+            )
 
     def _refactor_attached_images(
         self, new: data_model.CapellaWorkItem
@@ -427,7 +475,6 @@ class CapellaPolarionWorker:
                 new_checksums.get(base_file_name)
                 != old_checksums.get(base_file_name)
                 or self.force_update
-                or attachment.mime_type == "image/svg+xml"
             ):
                 attachments_for_update[attachment.file_name] = attachment
 

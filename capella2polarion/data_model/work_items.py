@@ -17,7 +17,10 @@ WORK_ITEM_CHECKSUM_KEY = "__C2P__WORK_ITEM"
 logger = logging.getLogger(__name__)
 
 
-__all__ = ["CapellaWorkItem"]
+__all__ = [
+    "CapellaWorkItem",
+    "WorkItemAnalysis",
+]
 
 
 class CapellaWorkItem(polarion_api.WorkItem):
@@ -182,3 +185,22 @@ class CapellaWorkItem(polarion_api.WorkItem):
             | dict(sorted(self._attachment_checksums.items()))
         )
         return self.checksum
+
+
+@dataclasses.dataclass
+class WorkItemAnalysis:
+    """Analysis results for a work item update operation."""
+
+    uuid: str
+    work_item: CapellaWorkItem
+    old_work_item: CapellaWorkItem | None = None
+    needs_update: bool = False
+    needs_type_update: bool = False
+    work_item_changed: bool = False
+    links_to_delete: dict[str, polarion_api.WorkItemLink] = dataclasses.field(
+        default_factory=dict
+    )
+    links_to_create: dict[str, polarion_api.WorkItemLink] = dataclasses.field(
+        default_factory=dict
+    )
+    error: Exception | None = None

@@ -7,7 +7,6 @@ from __future__ import annotations
 import collections.abc as cabc
 import logging
 import typing as t
-from collections import defaultdict
 
 import capellambse
 import polarion_rest_api_client as polarion_api
@@ -353,17 +352,6 @@ def find_link_config(
 
     logger.error("No LinkConfig found for %r", role)
     return None
-
-
-def _group_by(
-    attr: str,
-    links: cabc.Iterable[polarion_api.WorkItemLink],
-) -> dict[str, list[polarion_api.WorkItemLink]]:
-    group = defaultdict(list)
-    for link in links:
-        key = getattr(link, attr)
-        group[key].append(link)
-    return group
 
 
 def _make_url_list(link_map: dict[str, dict[str, list[str]]]) -> str:

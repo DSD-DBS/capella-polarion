@@ -15,6 +15,11 @@ variables:
   # CAPELLA2POLARION_ROLE_PREFIX - Prefix for work item link roles
   # CAPELLA2POLARION_GENERATE_FIGURE_CAPTIONS - Generate captions for figures
   # CAPELLA2POLARION_GROUPED_LINKS_CUSTOM_FIELDS - Generate custom fields for links grouped by role
+  # CAPELLA2POLARION_SYNC_PARALLEL_SERIALIZATION - Enable parallelization for work item serialization
+  # CAPELLA2POLARION_SYNC_PARALLEL_LINK_GENERATION - Enable parallelization for work item link serialization
+  # CAPELLA2POLARION_SYNC_PARALLEL_UPDATES - Enable parallelization for work item comparison and updates
+  # CAPELLA2POLARION_SYNC_BATCH_UPDATES - Enable batching of work item updates
+  # CAPELLA2POLARION_SYNC_MAX_PARALLEL_WORKERS - Number of maximum parallel workers (bound to CPU cores)
 
 capella2polarion_synchronise_elements:
   needs:
