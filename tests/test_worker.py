@@ -218,10 +218,7 @@ def test_parallel_worker_needs_work_item_update():
         )
         identical_work_item.checksum = old_work_item.calculate_checksum()
 
-        assert (
-            worker.needs_work_item_update(new_work_item, old_work_item) is True
-        )
-        assert (
-            worker.needs_work_item_update(identical_work_item, old_work_item)
-            is False
+        assert worker.needs_work_item_update(new_work_item, old_work_item)
+        assert not worker.needs_work_item_update(
+            identical_work_item, old_work_item
         )

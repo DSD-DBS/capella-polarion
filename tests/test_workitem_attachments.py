@@ -332,7 +332,7 @@ def test_diagram_attachments_unchanged_work_item_changed(
 
     assert worker.project_client.work_items.get.call_count == 1
     assert worker.project_client.work_items.update.call_count == 1
-    assert worker.project_client.work_items.attachments.get_all.call_count == 0
+    assert worker.project_client.work_items.attachments.get_all.call_count == 1
     assert worker.project_client.work_items.attachments.create.call_count == 0
     assert worker.project_client.work_items.attachments.update.call_count == 0
     work_item: data_model.CapellaWorkItem = (

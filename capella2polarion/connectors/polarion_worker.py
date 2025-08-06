@@ -286,10 +286,12 @@ class CapellaPolarionWorker:
         )
         if attachment_changed or self.force_update:
             assert analysis.old_work_item is not None
+            # Call get_all if there are attachments OR attachment_checksums
+            # (covers failed upload case)
             if (
                 analysis.old_work_item.attachments
-                and not analysis.old_work_item.attachment_checksums
-            ) or analysis.old_work_item.attachment_checksums:
+                or analysis.old_work_item.attachment_checksums
+            ):
                 old_attachments = (
                     self.project_client.work_items.attachments.get_all(
                         work_item_id=analysis.old_work_item.id
@@ -297,32 +299,23 @@ class CapellaPolarionWorker:
                 )
             else:
                 old_attachments = []
+        else:
+            # When attachments haven't changed, still need get_all
+            old_attachments = (
+                self.project_client.work_items.attachments.get_all(
+                    work_item_id=analysis.old_work_item.id
+                )
+            )
 
+        if old_attachments or new.attachments:
             work_item_changed |= self.update_attachments(
                 new,
                 analysis.old_work_item.attachment_checksums,
                 new.attachment_checksums,
                 old_attachments,
             )
-
-        # If attachments haven't changed, we need to set IDs from existing attachments
-        if new.attachments:
-            if (
-                not (attachment_changed or self.force_update)
-                and analysis.old_work_item is not None
-                and analysis.old_work_item.attachments
-            ):
-                # Map existing attachment IDs to new attachments by filename
-                for new_attachment in new.attachments:
-                    for old_attachment in analysis.old_work_item.attachments:
-                        if (
-                            new_attachment.file_name
-                            == old_attachment.file_name
-                        ):
-                            new_attachment.id = old_attachment.id
-                            break
-
-            self._refactor_attached_images(new)
+            if new.attachments:
+                self._refactor_attached_images(new)
 
         return work_item_changed
 
