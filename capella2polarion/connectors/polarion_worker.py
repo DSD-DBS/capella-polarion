@@ -206,7 +206,6 @@ class CapellaPolarionWorker:
         analysis.work_item_changed = (
             new.content_checksum != old.content_checksum
         )
-        analysis.needs_type_update = new.type != old.type
 
         assert old.id is not None
         fresh_old = self.project_client.work_items.get(
@@ -219,13 +218,13 @@ class CapellaPolarionWorker:
             )
 
         analysis.old_work_item = fresh_old
+        analysis.needs_type_update = new.type != fresh_old.type
         analysis.links_to_delete = self.get_missing_link_ids(
             fresh_old.linked_work_items, new.linked_work_items
         )
         analysis.links_to_create = self.get_missing_link_ids(
             new.linked_work_items, fresh_old.linked_work_items
         )
-
         return analysis
 
     def compare_and_update_work_item(
@@ -300,12 +299,19 @@ class CapellaPolarionWorker:
             else:
                 old_attachments = []
         else:
-            # When attachments haven't changed, still need get_all
-            old_attachments = (
-                self.project_client.work_items.attachments.get_all(
-                    work_item_id=analysis.old_work_item.id
+            # When attachments haven't changed, still need get_all if there are attachments
+            assert analysis.old_work_item is not None
+            if (
+                analysis.old_work_item.attachments
+                or analysis.old_work_item.attachment_checksums
+            ):
+                old_attachments = (
+                    self.project_client.work_items.attachments.get_all(
+                        work_item_id=analysis.old_work_item.id
+                    )
                 )
-            )
+            else:
+                old_attachments = []
 
         if old_attachments or new.attachments:
             work_item_changed |= self.update_attachments(
@@ -324,7 +330,6 @@ class CapellaPolarionWorker:
     ) -> None:
         new = analysis.work_item
         assert new.id is not None
-
         if analysis.work_item_changed or self.force_update:
             assert analysis.old_work_item is not None
             del new.additional_attributes["uuid_capella"]

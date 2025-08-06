@@ -178,7 +178,6 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
         old = self.polarion_data_repo.get_work_item_by_capella_uuid(uuid)
         assert old is not None
         assert old.id is not None
-
         return self._analyze_work_item_for_update(new, old)
 
     def _execute_batched_operations(
@@ -229,10 +228,10 @@ class ParallelCapellaPolarionWorker(polarion_worker.CapellaPolarionWorker):
                 continue
 
             assert analysis.old_work_item is not None
+            analysis.work_item.type = None
             if analysis.needs_type_update:
                 type_update = self._create_type_update(analysis)
                 type_updates.append(type_update)
-                analysis.work_item.type = None
 
             if analysis.work_item_changed or self.force_update:
                 self._prepare_work_item_for_update(analysis)

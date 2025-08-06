@@ -891,6 +891,60 @@ class TestModelElements:
         assert "keep" in second_arg.additional_attributes
 
     @staticmethod
+    def test_type_update_not_needed_when_fresh_work_item_already_correct_type(
+        base_object: BaseObjectContainer,
+    ):
+        cached_old_wi = data_model.CapellaWorkItem(
+            id="Obj-1", type="oldType", status="open", uuid_capella="uuid1"
+        )
+        cached_old_wi.attachments = []
+        cached_old_wi._content_checksum = "old-content"
+        cached_old_wi.checksum = "old-checksum"
+        cached_old_wi._attachment_checksums = {}
+        cached_old_wi.linked_work_items = []
+        cached_old_wi.linked_work_items_truncated = False
+        fresh_old_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="newType",  # Already has the target type!
+            status="open",
+            uuid_capella="uuid1",
+        )
+        fresh_old_wi.attachments = []
+        fresh_old_wi._attachment_checksums = {}
+        fresh_old_wi.linked_work_items = []
+        fresh_old_wi.linked_work_items_truncated = False
+        new_wi = data_model.CapellaWorkItem(
+            id="Obj-1", type="newType", status="open", uuid_capella="uuid1"
+        )
+        new_wi.calculate_checksum()
+        base_object.pw.polarion_data_repo.update_work_items([cached_old_wi])
+        base_object.pw.project_client.work_items.get.return_value = (
+            fresh_old_wi
+        )
+        base_object.pw.project_client.work_items.attachments.get_all.return_value = []
+        base_object.pw.project_client.work_items.links.get_all.return_value = []
+        base_object.mc.converter_session.clear()
+        base_object.mc.converter_session["uuid1"] = data_session.ConverterData(
+            "",
+            converter_config.CapellaTypeConfig("newType"),
+            None,  # type: ignore
+            new_wi,
+        )
+
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
+
+        calls = base_object.pw.project_client.work_items.update.call_args_list
+        assert len(calls) == 1, (
+            "Expected only one update() call since type is already correct"
+        )
+        update_arg = calls[0][0][0]
+        assert isinstance(update_arg, data_model.CapellaWorkItem)
+        assert update_arg.id == "Obj-1"
+        assert update_arg.type is None
+
+    @staticmethod
     def test_update_deleted_work_item(
         monkeypatch: pytest.MonkeyPatch, base_object: BaseObjectContainer
     ):
