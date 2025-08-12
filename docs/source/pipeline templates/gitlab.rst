@@ -21,8 +21,8 @@ capella2polarion synchronization job could look like this:
 .. code:: yaml
 
     include:
-        - remote: https://raw.githubusercontent.com/DSD-DBS/capella-dockerimages/${CAPELLA_DOCKER_IMAGES_REVISION}/ci-templates/gitlab/diagram-cache.yml
-        - remote: https://raw.githubusercontent.com/DSD-DBS/capella-polarion/ci-templates/gitlab/synchronise_elements.yml
+        - remote: https://raw.githubusercontent.com/dbinfrago/capella-dockerimages/${CAPELLA_DOCKER_IMAGES_REVISION}/ci-templates/gitlab/diagram-cache.yml
+        - remote: https://raw.githubusercontent.com/dbinfrago/capella-polarion/ci-templates/gitlab/synchronise_elements.yml
 
     default:
         tags:

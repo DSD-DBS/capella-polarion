@@ -29,4 +29,4 @@ since C2P is open-source we want to know about the feedback of our external
 users. We are curious about the ideas and feature requests you might come up
 with ❤️.
 
-.. _GitHub issues board: https://github.com/DSD-DBS/capella-polarion/issues
+.. _GitHub issues board: https://github.com/dbinfrago/capella-polarion/issues

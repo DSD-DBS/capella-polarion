@@ -16,15 +16,15 @@ reduce the burden on our maintainers, please make sure that your code follows
 our style guidelines outlined below.
 
 <!-- prettier-ignore -->
-[open an issue]: https://github.com/DSD-DBS/capella-polarion/issues
-[open a pull request]: https://github.com/DSD-DBS/capella-polarion/pulls
+[open an issue]: https://github.com/dbinfrago/capella-polarion/issues
+[open a pull request]: https://github.com/dbinfrago/capella-polarion/pulls
 
 ## Developing
 
 Use [uv](https://docs.astral.sh/uv/) to set up a local development environment.
 
 ```sh
-git clone https://github.com/DSD-DBS/capella-polarion.git
+git clone https://github.com/dbinfrago/capella-polarion.git
 cd capella-polarion
 uv sync
 uv run pre-commit install

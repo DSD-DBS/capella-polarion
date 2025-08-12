@@ -13,7 +13,7 @@ project correctly. For that there is the `Capella2Polarion Project Template`_
 which includes icon, custom field and enumeration configuration for a pleasant
 capella2polarion synchronization.
 
-.. _Capella2Polarion Project Template: https://github.com/DSD-DBS/capella-polarion-template#polarion-dbs-project-template
+.. _Capella2Polarion Project Template: https://github.com/dbinfrago/capella-polarion-template#polarion-dbs-project-template
 
 In general it is advised to use a separate Polarion project for the model
 synchronization. In the following are some requirements for the configuration

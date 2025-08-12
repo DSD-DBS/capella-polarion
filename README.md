@@ -6,9 +6,9 @@
 # capella2polarion
 
 <!-- prettier-ignore -->
-![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/build-test-publish.yml/badge.svg)
-![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/lint.yml/badge.svg)
-![image](https://github.com/DSD-DBS/capella-polarion/actions/workflows/docs.yml/badge.svg)
+![image](https://github.com/dbinfrago/capella-polarion/actions/workflows/build-test-publish.yml/badge.svg)
+![image](https://github.com/dbinfrago/capella-polarion/actions/workflows/lint.yml/badge.svg)
+![image](https://github.com/dbinfrago/capella-polarion/actions/workflows/docs.yml/badge.svg)
 
 Synchronise Capella models with Polarion projects.
 
@@ -24,7 +24,7 @@ Use cases covered:
 
 # Documentation
 
-Read the [full documentation on GitHub](https://dsd-dbs.github.io/capella-polarion).
+Read the [full documentation on GitHub](https://dbinfrago.github.io/capella-polarion).
 
 # Installation
 

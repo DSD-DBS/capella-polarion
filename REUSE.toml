@@ -4,7 +4,7 @@
 version = 1
 SPDX-PackageName = "Capella-Polarion"
 SPDX-PackageSupplier = "Ernst Würger <ernst.wuerger@deutschebahn.com>"
-SPDX-PackageDownloadLocation = "https://github.com/DSD-DBS/capella-polarion"
+SPDX-PackageDownloadLocation = "https://github.com/dbinfrago/capella-polarion"
 
 [[annotations]]
 path = "docs/source/examples/_static/*.png"
