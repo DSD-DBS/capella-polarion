@@ -261,7 +261,10 @@ class CapellaWorkItemSerializer:
         if uuids:
             converter_data.description_references = uuids
 
-        converter_data.work_item.attachments += attachments
+        for attachment in attachments:
+            polarion_html_helper.add_attachment_to_workitem(
+                converter_data.work_item, attachment
+            )
         return converter_data.work_item
 
     def _add_context_diagram(

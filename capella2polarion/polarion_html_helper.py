@@ -237,6 +237,7 @@ def add_attachment_to_workitem(
 ) -> None:
     """Add the attachment to the workitem and add a PNG version if needed."""
     assert attachment.file_name is not None
+    _ = attachment.content_checksum
     attachment.work_item_id = work_item.id or ""
     work_item.attachments.append(attachment)
     if attachment.mime_type == "image/svg+xml":
