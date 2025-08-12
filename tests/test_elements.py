@@ -23,6 +23,7 @@ from capella2polarion.elements import (
     element_converter,
     link_converter,
     model_converter,
+    model_converter_parallel,
 )
 
 # pylint: disable-next=relative-beyond-top-level, useless-suppression
@@ -848,6 +849,7 @@ class TestModelElements:
         old_wi.attachments = []
         old_wi._content_checksum = "old-content"
         old_wi.checksum = "old-checksum"
+        old_wi._attachment_checksums = {}
         old_wi.linked_work_items = []
         old_wi.linked_work_items_truncated = False
         base_object.pw.polarion_data_repo.update_work_items([old_wi])
@@ -887,6 +889,60 @@ class TestModelElements:
         assert second_arg.status == "open"
         assert "foo" in second_arg.additional_attributes
         assert "keep" in second_arg.additional_attributes
+
+    @staticmethod
+    def test_type_update_not_needed_when_fresh_work_item_already_correct_type(
+        base_object: BaseObjectContainer,
+    ):
+        cached_old_wi = data_model.CapellaWorkItem(
+            id="Obj-1", type="oldType", status="open", uuid_capella="uuid1"
+        )
+        cached_old_wi.attachments = []
+        cached_old_wi._content_checksum = "old-content"
+        cached_old_wi.checksum = "old-checksum"
+        cached_old_wi._attachment_checksums = {}
+        cached_old_wi.linked_work_items = []
+        cached_old_wi.linked_work_items_truncated = False
+        fresh_old_wi = data_model.CapellaWorkItem(
+            id="Obj-1",
+            type="newType",  # Already has the target type!
+            status="open",
+            uuid_capella="uuid1",
+        )
+        fresh_old_wi.attachments = []
+        fresh_old_wi._attachment_checksums = {}
+        fresh_old_wi.linked_work_items = []
+        fresh_old_wi.linked_work_items_truncated = False
+        new_wi = data_model.CapellaWorkItem(
+            id="Obj-1", type="newType", status="open", uuid_capella="uuid1"
+        )
+        new_wi.calculate_checksum()
+        base_object.pw.polarion_data_repo.update_work_items([cached_old_wi])
+        base_object.pw.project_client.work_items.get.return_value = (
+            fresh_old_wi
+        )
+        base_object.pw.project_client.work_items.attachments.get_all.return_value = []
+        base_object.pw.project_client.work_items.links.get_all.return_value = []
+        base_object.mc.converter_session.clear()
+        base_object.mc.converter_session["uuid1"] = data_session.ConverterData(
+            "",
+            converter_config.CapellaTypeConfig("newType"),
+            None,  # type: ignore
+            new_wi,
+        )
+
+        base_object.pw.compare_and_update_work_items(
+            base_object.mc.converter_session
+        )
+
+        calls = base_object.pw.project_client.work_items.update.call_args_list
+        assert len(calls) == 1, (
+            "Expected only one update() call since type is already correct"
+        )
+        update_arg = calls[0][0][0]
+        assert isinstance(update_arg, data_model.CapellaWorkItem)
+        assert update_arg.id == "Obj-1"
+        assert update_arg.type is None
 
     @staticmethod
     def test_update_deleted_work_item(
@@ -1868,6 +1924,292 @@ class TestModelElements:
         assert (  # reverse field comes from uuid0
             "reverse_field" in dummy_work_items["uuid1"].additional_attributes
         )
+
+
+class TestParallelModelConverter:
+    @staticmethod
+    def test_parallel_link_generation_disabled():
+        model = mock.MagicMock()
+        project_id = "test-project"
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, project_id, enable_parallel_link_generation=False
+        )
+        polarion_data_repo = mock.MagicMock()
+
+        with mock.patch.object(
+            converter, "generate_work_item_links"
+        ) as mock_sequential:
+            converter.generate_work_item_links(
+                polarion_data_repo, generate_grouped_links_custom_fields=True
+            )
+
+        mock_sequential.assert_called_once_with(
+            polarion_data_repo, generate_grouped_links_custom_fields=True
+        )
+
+    @staticmethod
+    def test_parallel_link_generation_fallback_on_error():
+        model = mock.MagicMock()
+        project_id = "test-project"
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, project_id
+        )
+        converter.converter_session = {
+            f"uuid{i}": mock.MagicMock(work_item=mock.MagicMock())
+            for i in range(10)
+        }
+        polarion_data_repo = mock.MagicMock()
+
+        with (
+            mock.patch.object(
+                converter, "generate_work_item_links"
+            ) as mock_sequential,
+            mock.patch.object(
+                converter, "generate_work_item_links_in_parallel"
+            ) as mock_parallel,
+        ):
+            mock_parallel.side_effect = Exception("Test error")
+
+            converter.generate_work_item_links(
+                polarion_data_repo,
+                generate_grouped_links_custom_fields=True,
+            )
+
+        mock_sequential.assert_called_once_with(
+            polarion_data_repo, generate_grouped_links_custom_fields=True
+        )
+
+    @staticmethod
+    def test_create_links_for_item_for_parallel_success():
+        work_item = mock.MagicMock()
+        converter_data = mock.MagicMock(work_item=work_item)
+        work_items = [("test-uuid", converter_data)]
+
+        link_serializer = mock.MagicMock()
+        expected_links = [mock.MagicMock()]
+        link_serializer.create_links_for_work_item.return_value = (
+            expected_links
+        )
+
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+
+        converter._create_links_parallel(work_items, link_serializer)
+
+        assert work_item.linked_work_items == expected_links
+        link_serializer.create_links_for_work_item.assert_called_once_with(
+            "test-uuid"
+        )
+
+    @staticmethod
+    def test_create_links_for_item_for_parallel_error():
+        work_item = mock.MagicMock()
+        converter_data = mock.MagicMock(work_item=work_item)
+        work_items = [("test-uuid", converter_data)]
+        link_serializer = mock.MagicMock()
+        test_error = Exception("Test error")
+        link_serializer.create_links_for_work_item.side_effect = test_error
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+        error_collector = mock.MagicMock()
+        converter.error_collector = error_collector
+
+        converter._create_links_parallel(work_items, link_serializer)
+
+        assert error_collector.add_link_errors.call_count == 1
+        errors = error_collector.add_link_errors.call_args[0][0]
+        assert len(errors) == 1
+        assert errors[0][0] == "test-uuid"
+        assert errors[0][1] is test_error
+
+    @staticmethod
+    def test_create_forward_fields_for_parallel_success():
+        converter_data = mock.MagicMock()
+        link_serializer = mock.MagicMock()
+
+        def mock_create_grouped_link_fields(_, local_back_links):
+            local_back_links["wi-1"] = {"role1": [mock.MagicMock()]}
+            local_back_links["wi-2"] = {"role2": [mock.MagicMock()]}
+
+        link_serializer.create_grouped_link_fields.side_effect = (
+            mock_create_grouped_link_fields
+        )
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+        work_items = [("test-uuid", converter_data)]
+        back_links = converter._create_forward_fields_parallel(
+            work_items, link_serializer
+        )
+
+        assert "wi-1" in back_links
+        assert "wi-2" in back_links
+        assert "role1" in back_links["wi-1"]
+        assert "role2" in back_links["wi-2"]
+
+    @staticmethod
+    def test_create_forward_fields_for_parallel_error():
+        converter_data = mock.MagicMock()
+        link_serializer = mock.MagicMock()
+        test_error = Exception("Test error")
+        link_serializer.create_grouped_link_fields.side_effect = test_error
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+        error_collector = mock.MagicMock()
+        converter.error_collector = error_collector
+        work_items = [("test-uuid", converter_data)]
+
+        converter._create_forward_fields_parallel(work_items, link_serializer)
+
+        assert error_collector.add_link_errors.call_count == 1
+        errors = error_collector.add_link_errors.call_args[0][0]
+        assert len(errors) == 1
+        assert errors[0][0] == "test-uuid"
+        assert errors[0][1] is test_error
+
+    @staticmethod
+    def test_create_back_fields_for_parallel_success():
+        work_item = mock.MagicMock(id="wi-1")
+        converter_data = mock.MagicMock(work_item=work_item)
+        work_items = [("test-uuid", converter_data)]
+        link_serializer = mock.MagicMock()
+        back_links = {
+            "wi-1": {"role1": [mock.MagicMock()]},
+            "wi-2": {"role2": [mock.MagicMock()]},
+        }
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+
+        converter._create_back_fields_parallel(
+            work_items, link_serializer, back_links
+        )
+
+        link_serializer.create_grouped_back_link_fields.assert_called_once_with(
+            work_item, back_links["wi-1"]
+        )
+
+    @staticmethod
+    def test_create_back_fields_for_parallel_no_work_item():
+        converter_data = mock.MagicMock(work_item=None)
+        work_items = [("test-uuid", converter_data)]
+        link_serializer = mock.MagicMock()
+        back_links = {}
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+
+        converter._create_back_fields_parallel(
+            work_items, link_serializer, back_links
+        )
+
+        assert link_serializer.create_grouped_back_link_fields.call_count == 0
+
+    @staticmethod
+    def test_create_back_fields_for_parallel_no_back_links():
+        work_item = mock.MagicMock(id="wi-1")
+        converter_data = mock.MagicMock(work_item=work_item)
+        work_items = [("test-uuid", converter_data)]
+        link_serializer = mock.MagicMock()
+        back_links = {"wi-2": {"role1": [mock.MagicMock()]}}
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+
+        converter._create_back_fields_parallel(
+            work_items, link_serializer, back_links
+        )
+
+        assert link_serializer.create_grouped_back_link_fields.call_count == 0
+
+    @staticmethod
+    def test_create_back_fields_for_parallel_error():
+        work_item = mock.MagicMock(id="wi-1")
+        converter_data = mock.MagicMock(work_item=work_item)
+        work_items = [("test-uuid", converter_data)]
+        link_serializer = mock.MagicMock()
+        test_error = Exception("Test error")
+        link_serializer.create_grouped_back_link_fields.side_effect = (
+            test_error
+        )
+        back_links = {"wi-1": {"role1": [mock.MagicMock()]}}
+        model = mock.MagicMock()
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, "test-project", max_workers=1
+        )
+        error_collector = mock.MagicMock()
+        converter.error_collector = error_collector
+
+        converter._create_back_fields_parallel(
+            work_items, link_serializer, back_links
+        )
+
+        error_collector.add_link_errors.assert_called_once()
+        errors = error_collector.add_link_errors.call_args[0][0]
+        assert len(errors) == 1
+        assert errors[0][0] == "test-uuid"
+        assert errors[0][1] is test_error
+
+    @staticmethod
+    def test_parallel_link_generation_end_to_end():
+        model = mock.MagicMock()
+        project_id = "test-project"
+        converter = model_converter_parallel.ParallelModelConverter(
+            model, project_id, max_workers=2
+        )
+        work_items = {}
+        for i in range(3):
+            work_item = mock.MagicMock(id=f"wi-{i}")
+            converter_data = mock.MagicMock(work_item=work_item)
+            work_items[f"uuid{i}"] = converter_data
+
+        converter.converter_session = work_items
+        polarion_data_repo = mock.MagicMock()
+        link_serializer = mock.MagicMock()
+
+        def mock_create_links(_):
+            return [mock.MagicMock()]
+
+        def mock_create_grouped_fields(_, local_back_links):
+            local_back_links[f"wi-{len(local_back_links)}"] = {
+                "role1": [mock.MagicMock()]
+            }
+
+        link_serializer.create_links_for_work_item.side_effect = (
+            mock_create_links
+        )
+        link_serializer.create_grouped_link_fields.side_effect = (
+            mock_create_grouped_fields
+        )
+
+        with (
+            mock.patch(
+                "capella2polarion.elements.link_converter.LinkSerializer",
+                return_value=link_serializer,
+            ),
+            mock.patch("tqdm.tqdm") as mock_tqdm,
+        ):
+            mock_progress_bar = mock.MagicMock()
+            mock_tqdm.return_value.__enter__.return_value = mock_progress_bar
+
+            converter.generate_work_item_links(
+                polarion_data_repo,
+                generate_grouped_links_custom_fields=True,
+            )
+
+        assert link_serializer.create_links_for_work_item.call_count == 3
+        assert link_serializer.create_grouped_link_fields.call_count == 3
+        assert link_serializer.create_grouped_back_link_fields.call_count <= 3
 
 
 def test_grouped_linked_work_items_order_consistency(
