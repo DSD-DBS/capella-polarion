@@ -51,7 +51,7 @@ how this service is configured see the :ref:`configuration page
 
 .. note:: Additional features will be documented here in the future as they are developed and integrated.
 
-.. _capella diagram cache: https://github.com/DSD-DBS/capella-dockerimages/blob/main/ci-templates/gitlab/diagram-cache.yml
+.. _capella diagram cache: https://github.com/dbinfrago/capella-dockerimages/blob/main/ci-templates/gitlab/diagram-cache.yml
 
 .. toctree::
    :maxdepth: 2

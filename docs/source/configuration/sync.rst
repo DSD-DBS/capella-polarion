@@ -14,7 +14,7 @@ Underneath the links key use attributes on the matched capellambse model
 object. Make sure that the attribute name is correct, you can use
 `capellambse's documentation`__ for that.
 
-__ https://dsd-dbs.github.io/py-capellambse/code/capellambse.model.layers.html
+__ https://dbinfrago.github.io/py-capellambse/code/capellambse.model.layers.html
 
 Generic
 -------

@@ -19,7 +19,7 @@ Per default, capella2polarion will not delete any work items but will set the
 status to deleted. However, with the ``--delete`` flag, you can enable the
 deletion.
 
-.. _Python client: https://github.com/DSD-DBS/polarion-rest-api-client#polarion-rest-api-client
+.. _Python client: https://github.com/dbinfrago/polarion-rest-api-client#polarion-rest-api-client
 
 Features
 --------
