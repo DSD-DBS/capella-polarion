@@ -41,8 +41,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dbinfrago/capella2polarion"
-Documentation = "https://dbinfrago.github.io/capella2polarion"
+Homepage = "https://github.com/dbinfrago/capella-polarion"
+Documentation = "https://dbinfrago.github.io/capella-polarion"
 
 [project.scripts]
 capella2polarion = "capella2polarion.__main__:cli"
