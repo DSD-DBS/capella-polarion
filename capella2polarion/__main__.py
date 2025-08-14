@@ -8,7 +8,6 @@ import asyncio
 import logging
 import typing
 
-import capellambse
 import click
 from capellambse import cli_helpers
 
@@ -26,7 +25,8 @@ logger = logging.getLogger(__name__)
 @click.group()
 @click.option(
     "--capella-model",
-    type=cli_helpers.ModelCLI(),
+    "capella_model_info",
+    type=cli_helpers.ModelInfoCLI(),
     required=True,
     envvar="CAPELLA2POLARION_CAPELLA_MODEL",
 )
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 def cli(
     ctx: click.core.Context,
     *,
-    capella_model: capellambse.MelodyModel | None,
+    capella_model_info: dict[str, typing.Any] | None,
     polarion_project_id: str,
     polarion_url: str,
     polarion_pat: str,
@@ -69,7 +69,10 @@ def cli(
     debug: bool,
 ) -> None:
     """Synchronise data from Capella to Polarion."""
-    if capella_model is not None and capella_model.diagram_cache is None:
+    if (
+        capella_model_info is not None
+        and capella_model_info.diagram_cache is None
+    ):
         logger.warning("It's highly recommended to define a diagram cache!")
 
     capella2polarion_cli = Capella2PolarionCli(
@@ -78,7 +81,7 @@ def cli(
         polarion_url,
         polarion_pat,
         polarion_delete_work_items,
-        capella_model,
+        capella_model_info,
     )
     capella2polarion_cli.setup_logger()
     ctx.obj = capella2polarion_cli
@@ -129,6 +132,20 @@ def print_cli_state(capella2polarion_cli: Capella2PolarionCli) -> None:
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--enable-multiprocessing",
+    envvar="CAPELLA2POLARION_ENABLE_MULTIPROCESSING",
+    is_flag=True,
+    default=False,
+    help="Enable multiprocessing for work item generation",
+)
+@click.option(
+    "--max-workers",
+    envvar="CAPELLA2POLARION_MAX_WORKERS",
+    type=int,
+    default=4,
+    help="Maximum number of worker processes (default: 4)",
+)
 @click.pass_context
 def synchronize(
     ctx: click.core.Context,
@@ -139,6 +156,8 @@ def synchronize(
     role_prefix: str,
     grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
+    enable_multiprocessing: bool,
+    max_workers: int,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -151,17 +170,23 @@ def synchronize(
     )
     capella_to_polarion_cli.force_update = force_update
 
-    assert capella_to_polarion_cli.capella_model is not None
+    assert capella_to_polarion_cli.capella_model_info is not None
     converter = model_converter.ModelConverter(
-        capella_to_polarion_cli.capella_model,
+        capella_to_polarion_cli.capella_model_info,
         capella_to_polarion_cli.polarion_params.project_id,
+        enable_multiprocessing=enable_multiprocessing,
+        max_workers=max_workers,
     )
+
+    if enable_multiprocessing:
+        logger.info("Multiprocessing enabled with %d workers", max_workers)
 
     converter.read_model(capella_to_polarion_cli.config)
 
     polarion_worker = pw.CapellaPolarionWorker(
         capella_to_polarion_cli.polarion_params,
         capella_to_polarion_cli.force_update,
+        max_workers=max_workers,
     )
 
     polarion_worker.load_polarion_work_item_map()
@@ -303,6 +328,20 @@ def render_documents(
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--enable-multiprocessing",
+    envvar="CAPELLA2POLARION_ENABLE_MULTIPROCESSING",
+    is_flag=True,
+    default=False,
+    help="Enable multiprocessing for work item generation",
+)
+@click.option(
+    "--max-workers",
+    envvar="CAPELLA2POLARION_MAX_WORKERS",
+    type=int,
+    default=4,
+    help="Maximum number of worker processes (default: 4)",
+)
 @click.pass_context
 def run_plugins(
     ctx: click.core.Context,
@@ -316,6 +355,8 @@ def run_plugins(
     role_prefix: str,
     grouped_links_custom_fields: bool,
     generate_figure_captions: bool,
+    enable_multiprocessing: bool,
+    max_workers: int,
 ) -> None:
     """Synchronise model elements."""
     capella_to_polarion_cli: Capella2PolarionCli = ctx.obj
@@ -343,6 +384,8 @@ def run_plugins(
         role_prefix,
         grouped_links_custom_fields,
         generate_figure_captions,
+        enable_multiprocessing,
+        max_workers,
     )
 
     plugin_repo = plugins.load_plugins()

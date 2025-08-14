@@ -1185,7 +1185,7 @@ class TestModelElements:
             "create_links_for_work_item",
             mock_create_links,
         )
-        mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[  # noqa: ARG005
+        mock_create_links.side_effect = lambda uuid, *args: dummy_work_items[
             uuid
         ].linked_work_items
         base_object.pw.project_client.work_items.get.side_effect = work_items

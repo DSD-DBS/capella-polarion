@@ -8,7 +8,6 @@ import logging
 import pathlib
 import typing
 
-import capellambse
 import click
 
 from capella2polarion.connectors import polarion_worker as pw
@@ -27,7 +26,7 @@ class Capella2PolarionCli:
         polarion_url: str,
         polarion_pat: str,
         polarion_delete_work_items: bool,
-        capella_model: capellambse.MelodyModel | None,
+        capella_model_info: dict[str, typing.Any] | None,
         force_update: bool = False,
     ) -> None:
         self.debug = debug
@@ -38,7 +37,7 @@ class Capella2PolarionCli:
             polarion_delete_work_items,
         )
 
-        self.capella_model = capella_model
+        self.capella_model_info = capella_model_info
         self.config = converter_config.ConverterConfig()
         self.force_update = force_update
 

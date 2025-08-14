@@ -8,6 +8,7 @@ import asyncio
 import collections.abc as cabc
 import logging
 import typing as t
+from concurrent import futures
 from urllib import parse
 
 import httpx
@@ -54,11 +55,15 @@ class CapellaPolarionWorker:
     """CapellaPolarionWorker encapsulate the Polarion API Client work."""
 
     def __init__(
-        self, params: PolarionWorkerParams, force_update: bool = False
+        self,
+        params: PolarionWorkerParams,
+        force_update: bool = False,
+        max_workers: int = 4,
     ) -> None:
         self.polarion_params = params
         self.polarion_data_repo = polarion_repo.PolarionDataRepository()
         self.force_update = force_update
+        self.max_workers = max_workers
 
         if (self.polarion_params.project_id is None) or (
             len(self.polarion_params.project_id) == 0
@@ -190,7 +195,9 @@ class CapellaPolarionWorker:
                 raise error
 
     async def compare_and_update_work_item(
-        self, converter_data: data_session.ConverterData
+        self,
+        converter_data: data_session.ConverterData,
+        executor: futures.ProcessPoolExecutor,
     ) -> None:
         """Patch a given WorkItem."""
         new = converter_data.work_item
@@ -203,7 +210,9 @@ class CapellaPolarionWorker:
         if old.status == self.project_client.work_items.delete_status:
             old.checksum = None
 
-        new.calculate_checksum()
+        new.checksum = await asyncio.wrap_future(
+            executor.submit(new.calculate_checksum)
+        )
         if not self.force_update and new.checksum == old.checksum:
             return
 
@@ -486,12 +495,16 @@ class CapellaPolarionWorker:
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
-        coros = [
-            self.compare_and_update_work_item(data)
-            for uuid, data in converter_session.items()
-            if uuid in self.polarion_data_repo and data.work_item is not None
-        ]
-        await asyncio.gather(*coros)
+        with futures.ProcessPoolExecutor(
+            max_workers=self.max_workers
+        ) as executor:
+            coros = [
+                self.compare_and_update_work_item(data, executor)
+                for uuid, data in converter_session.items()
+                if uuid in self.polarion_data_repo
+                and data.work_item is not None
+            ]
+            await asyncio.gather(*coros)
 
     def create_documents(
         self,

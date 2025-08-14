@@ -36,7 +36,7 @@ def calculate_content_checksum(
     return base64.b64encode(attachment.content_bytes or b"").decode("utf8")
 
 
-def render_diagram_as_string(
+def render_elk_input_data_as_string(
     diagram: context.ContextDiagram, render_params: dict[str, t.Any] | None
 ) -> str:
     """Render the ELKInputData as a JSON string."""
@@ -139,7 +139,7 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
         if self._checksum is None:
             try:
                 assert isinstance(self.diagram, context.ContextDiagram)
-                input_str = render_diagram_as_string(
+                input_str = render_elk_input_data_as_string(
                     self.diagram, self.render_params
                 )
                 self._checksum = hashlib.sha256(
