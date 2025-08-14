@@ -36,6 +36,29 @@ def calculate_content_checksum(
     return base64.b64encode(attachment.content_bytes or b"").decode("utf8")
 
 
+def render_elk_input_data_as_string(
+    diagram: context.ContextDiagram, render_params: dict[str, t.Any] | None
+) -> str:
+    """Render the ELKInputData as a JSON string."""
+    elk_input = diagram.elk_input_data(render_params or {})
+    if isinstance(elk_input, tuple):
+        input_data, edges_or_list = elk_input
+        if isinstance(edges_or_list, list):
+            return (
+                input_data.model_dump_json(exclude_defaults=True)
+                + ";"
+                + ";".join(
+                    edge.model_dump_json(exclude_defaults=True)
+                    for edge in edges_or_list
+                )
+            )
+        return ";".join(
+            obj.model_dump_json(exclude_defaults=True)
+            for obj in (input_data, edges_or_list)
+        )
+    return elk_input.model_dump_json(exclude_defaults=True)
+
+
 @dataclasses.dataclass
 class Capella2PolarionAttachment(polarion_api.WorkItemAttachment):
     """Stub Base-Class for Capella2Polarion attachments."""
@@ -115,28 +138,10 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
         """Return checksum based on elk input for ContextDiagrams else None."""
         if self._checksum is None:
             try:
-                elk_input = self.diagram.elk_input_data(self.render_params)
-                if isinstance(elk_input, tuple):
-                    input_data, edges_or_list = elk_input
-                    if isinstance(edges_or_list, list):
-                        input_str = (
-                            input_data.model_dump_json(exclude_defaults=True)
-                            + ";"
-                            + ";".join(
-                                edge.model_dump_json(exclude_defaults=True)
-                                for edge in edges_or_list
-                            )
-                        )
-                    else:
-                        input_str = ";".join(
-                            obj.model_dump_json(exclude_defaults=True)
-                            for obj in elk_input
-                        )
-                else:
-                    input_str = elk_input.model_dump_json(
-                        exclude_defaults=True
-                    )
-
+                assert isinstance(self.diagram, context.ContextDiagram)
+                input_str = render_elk_input_data_as_string(
+                    self.diagram, self.render_params
+                )
                 self._checksum = hashlib.sha256(
                     input_str.encode("utf-8")
                 ).hexdigest()
