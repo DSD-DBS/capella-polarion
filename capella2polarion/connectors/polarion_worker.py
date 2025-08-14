@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import collections.abc as cabc
 import logging
 import typing as t
@@ -127,7 +128,15 @@ class CapellaPolarionWorker:
         )
         self.polarion_data_repo.update_work_items(work_items)
 
-    def delete_orphaned_work_items(
+    async def update_work_item_existence(
+        self, converter_session: data_session.ConverterSession
+    ) -> None:
+        await asyncio.gather(
+            self.delete_orphaned_work_items(converter_session),
+            self.create_missing_work_items(converter_session),
+        )
+
+    async def delete_orphaned_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Delete work items in a Polarion project.
@@ -150,14 +159,14 @@ class CapellaPolarionWorker:
                 work_items.append(wi)
 
         try:
-            self.project_client.work_items.delete(work_items)
+            await self.project_client.work_items.async_delete(work_items)
         except polarion_api.PolarionApiException as error:
             logger.error("Deleting work items failed. %s", error.args[0])
             raise error
 
         self.polarion_data_repo.remove_work_items_by_capella_uuid(uuids)
 
-    def create_missing_work_items(
+    async def create_missing_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Post work items in a Polarion project."""
@@ -172,7 +181,7 @@ class CapellaPolarionWorker:
         ]
         if missing_work_items:
             try:
-                self.project_client.work_items.create(
+                await self.project_client.work_items.async_create(
                     t.cast(list[polarion_api.WorkItem], missing_work_items)
                 )
                 self.polarion_data_repo.update_work_items(missing_work_items)
@@ -180,7 +189,7 @@ class CapellaPolarionWorker:
                 logger.error("Creating work items failed. %s", error.args[0])
                 raise error
 
-    def compare_and_update_work_item(
+    async def compare_and_update_work_item(
         self, converter_data: data_session.ConverterData
     ) -> None:
         """Patch a given WorkItem."""
@@ -206,27 +215,25 @@ class CapellaPolarionWorker:
         work_item_changed = new.content_checksum != old.content_checksum
         try:
             if work_item_changed or self.force_update:
-                old = self.project_client.work_items.get(
+                old = await self.project_client.work_items.async_get(
                     old.id, work_item_cls=data_model.CapellaWorkItem
                 )
                 assert old is not None
                 assert old.id is not None
                 if old.attachments:
-                    old_attachments = (
-                        self.project_client.work_items.attachments.get_all(
-                            work_item_id=old.id
-                        )
+                    old_attachments = await self.project_client.work_items.attachments.async_get_all(
+                        work_item_id=old.id
                     )
                 else:
                     old_attachments = []
             else:
-                old_attachments = (
-                    self.project_client.work_items.attachments.get_all(
+                old_attachments = await (
+                    self.project_client.work_items.attachments.async_get_all(
                         work_item_id=old.id
                     )
                 )
             if old_attachments or new.attachments:
-                work_item_changed |= self.update_attachments(
+                work_item_changed |= await self.update_attachments(
                     new,
                     old.attachment_checksums,
                     new.attachment_checksums,
@@ -252,8 +259,8 @@ class CapellaPolarionWorker:
             del old.additional_attributes["uuid_capella"]
 
             if old.linked_work_items_truncated:
-                old.linked_work_items = (
-                    self.project_client.work_items.links.get_all(old.id)
+                old.linked_work_items = await (
+                    self.project_client.work_items.links.async_get_all(old.id)
                 )
 
             # Type will be updated immediatly, if changed b/c Polarion
@@ -263,7 +270,9 @@ class CapellaPolarionWorker:
                 new_with_only_type = data_model.CapellaWorkItem(
                     id=old.id, type=new.type
                 )
-                self.project_client.work_items.update(new_with_only_type)
+                await self.project_client.work_items.async_update(
+                    new_with_only_type
+                )
 
             new.type = None
             new.status = "open"
@@ -293,7 +302,7 @@ class CapellaPolarionWorker:
             new.title = None
 
         try:
-            self.project_client.work_items.update(new)
+            await self.project_client.work_items.async_update(new)
             if delete_links:
                 id_list_str = ", ".join(delete_links.keys())
                 logger.info(
@@ -302,7 +311,7 @@ class CapellaPolarionWorker:
                     old.type,
                     old.title,
                 )
-                self.project_client.work_items.links.delete(
+                await self.project_client.work_items.links.async_delete(
                     list(delete_links.values())
                 )
 
@@ -314,7 +323,7 @@ class CapellaPolarionWorker:
                     old.type,
                     old.title,
                 )
-                self.project_client.work_items.links.create(
+                await self.project_client.work_items.links.async_create(
                     list(create_links.values())
                 )
 
@@ -359,7 +368,7 @@ class CapellaPolarionWorker:
                     attributes["value"], set_attachment_id
                 )
 
-    def update_attachments(
+    async def update_attachments(
         self,
         new: data_model.CapellaWorkItem,
         old_checksums: dict[str, str],
@@ -399,12 +408,14 @@ class CapellaPolarionWorker:
                     attachment.file_name,
                     attachment.id,
                 )
-                self.project_client.work_items.attachments.delete(attachment)
+                await self.project_client.work_items.attachments.async_delete(
+                    attachment
+                )
 
         old_attachment_file_names = set(old_attachment_dict)
         new_attachment_file_names = set(new_attachment_dict)
         for file_name in old_attachment_file_names - new_attachment_file_names:
-            self.project_client.work_items.attachments.delete(
+            await self.project_client.work_items.attachments.async_delete(
                 old_attachment_dict[file_name]
             )
 
@@ -413,7 +424,9 @@ class CapellaPolarionWorker:
             new_attachment_file_names - old_attachment_file_names,
         )
         if new_attachments := list(filter(None, new_attachments)):
-            self.project_client.work_items.attachments.create(new_attachments)
+            await self.project_client.work_items.attachments.async_create(
+                new_attachments
+            )
             created = True
 
         attachments_for_update: dict[str, polarion_api.WorkItemAttachment] = {}
@@ -439,7 +452,9 @@ class CapellaPolarionWorker:
             ):
                 continue
 
-            self.project_client.work_items.attachments.update(attachment)
+            await self.project_client.work_items.attachments.async_update(
+                attachment
+            )
         return created
 
     @staticmethod
@@ -467,13 +482,16 @@ class CapellaPolarionWorker:
             secondary_id = f"{link.secondary_work_item_project}/{secondary_id}"
         return "/".join((link.primary_work_item_id, link.role, secondary_id))
 
-    def compare_and_update_work_items(
+    async def compare_and_update_work_items(
         self, converter_session: data_session.ConverterSession
     ) -> None:
         """Update work items in a Polarion project."""
-        for uuid, data in converter_session.items():
-            if uuid in self.polarion_data_repo and data.work_item is not None:
-                self.compare_and_update_work_item(data)
+        coros = [
+            self.compare_and_update_work_item(data)
+            for uuid, data in converter_session.items()
+            if uuid in self.polarion_data_repo and data.work_item is not None
+        ]
+        await asyncio.gather(*coros)
 
     def create_documents(
         self,

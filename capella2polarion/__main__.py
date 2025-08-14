@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import typing
 
@@ -165,8 +166,9 @@ def synchronize(
 
     polarion_worker.load_polarion_work_item_map()
 
-    polarion_worker.delete_orphaned_work_items(converter.converter_session)
-    polarion_worker.create_missing_work_items(converter.converter_session)
+    asyncio.run(
+        polarion_worker.update_work_item_existence(converter.converter_session)
+    )
 
     # Create missing links for new work items
     converter.generate_work_items(
@@ -177,7 +179,11 @@ def synchronize(
         generate_figure_captions=generate_figure_captions,
     )
 
-    polarion_worker.compare_and_update_work_items(converter.converter_session)
+    asyncio.run(
+        polarion_worker.compare_and_update_work_items(
+            converter.converter_session
+        )
+    )
 
 
 @cli.command()
