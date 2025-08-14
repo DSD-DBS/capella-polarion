@@ -1,0 +1,58 @@
+capella2polarion.elements package
+=================================
+
+.. automodule:: capella2polarion.elements
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+capella2polarion.elements.capella\_object\_renderer module
+----------------------------------------------------------
+
+.. automodule:: capella2polarion.elements.capella_object_renderer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.elements.converter\_config module
+--------------------------------------------------
+
+.. automodule:: capella2polarion.elements.converter_config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.elements.data\_session module
+----------------------------------------------
+
+.. automodule:: capella2polarion.elements.data_session
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.elements.element\_converter module
+---------------------------------------------------
+
+.. automodule:: capella2polarion.elements.element_converter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.elements.link\_converter module
+------------------------------------------------
+
+.. automodule:: capella2polarion.elements.link_converter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.elements.model\_converter module
+-------------------------------------------------
+
+.. automodule:: capella2polarion.elements.model_converter
+   :members:
+   :undoc-members:
+   :show-inheritance:

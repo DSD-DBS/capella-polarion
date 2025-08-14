@@ -1,0 +1,862 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="capella2polarion.connectors package" href="capella2polarion.connectors.html" /><link rel="prev" title="capella-polarion" href="modules.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.07.19 -->
+        <title>capella2polarion package - capella2polarion documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=25af2a20" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">capella2polarion  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">capella2polarion  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Features:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../features/render_documents.html">Render Live-Docs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/sync.html">Model synchronization</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/render_documents.html">Live-Docs rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/sync.html">Model synchronization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/polarion.html">Polarion</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CI/CD Templates:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../pipeline%20templates/gitlab.html">GitLab CI/CD pipeline Template</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../howtos.html">How Tos</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of How Tos</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../examples/01%20How%20to%20develop%20and%20debug%20a%20FA%20LiveDoc.html">1. How to develop and debug a full authorized Polarion LiveDoc</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../examples/02%20How%20to%20generate%20work-items.html">2. How to serialize work-items</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../examples/03%20How%20to%20develop%20and%20debug%20a%20MA%20LiveDoc.html">3. How to develop and debug a mixed authorized Polarion LiveDoc</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Roadmap:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../roadmap.html">Polarion config diff/mig tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roadmap.html#c2p-configuration-frontend">C2P configuration frontend</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roadmap.html#bug-fixes-issues-and-requests">Bug-Fixes, issues and requests</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="modules.html">capella-polarion</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of capella-polarion</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children current-page"><a class="current reference internal" href="#">capella2polarion package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of capella2polarion package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html">capella2polarion.connectors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html">capella2polarion.data_model package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html">capella2polarion.documents package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html">capella2polarion.elements package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.plugins.html">capella2polarion.plugins package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/code/capella2polarion.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-capella2polarion">
+<span id="capella2polarion-package"></span><h1>capella2polarion package<a class="headerlink" href="#module-capella2polarion" title="Link to this heading">¶</a></h1>
+<p>The capella2polarion package.</p>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="capella2polarion.connectors.html">capella2polarion.connectors package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.connectors.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.connectors.html#module-capella2polarion.connectors.polarion_repo">capella2polarion.connectors.polarion_repo module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.DocumentRepository"><code class="docutils literal notranslate"><span class="pre">DocumentRepository</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.get_capella_uuid"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.get_capella_uuid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.get_work_item_by_capella_uuid"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.get_work_item_by_capella_uuid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.get_work_item_by_polarion_id"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.get_work_item_by_polarion_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.get_work_item_id"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.get_work_item_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.items"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.remove_work_items_by_capella_uuid"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.remove_work_items_by_capella_uuid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.PolarionDataRepository.update_work_items"><code class="docutils literal notranslate"><span class="pre">PolarionDataRepository.update_work_items()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_repo.check_work_items"><code class="docutils literal notranslate"><span class="pre">check_work_items()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.connectors.html#module-capella2polarion.connectors.polarion_worker">capella2polarion.connectors.polarion_worker module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.check_client"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.check_client()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.compare_and_update_work_item"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.compare_and_update_work_item()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.compare_and_update_work_items"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.compare_and_update_work_items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.create_documents"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.create_documents()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.create_missing_work_items"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.create_missing_work_items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.delete_orphaned_work_items"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.delete_orphaned_work_items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.get_document"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.get_document()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.get_missing_link_ids"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.get_missing_link_ids()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.load_polarion_documents"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.load_polarion_documents()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.load_polarion_work_item_map"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.load_polarion_work_item_map()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.update_attachments"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.update_attachments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.CapellaPolarionWorker.update_documents"><code class="docutils literal notranslate"><span class="pre">CapellaPolarionWorker.update_documents()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.PolarionWorkerParams"><code class="docutils literal notranslate"><span class="pre">PolarionWorkerParams</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.connectors.html#capella2polarion.connectors.polarion_worker.WORK_ITEMS_IN_DOCUMENT_QUERY"><code class="docutils literal notranslate"><span class="pre">WORK_ITEMS_IN_DOCUMENT_QUERY</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="capella2polarion.data_model.html">capella2polarion.data_model package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.data_model.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.data_model.html#module-capella2polarion.data_model.document_data">capella2polarion.data_model.document_data module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentData"><code class="docutils literal notranslate"><span class="pre">DocumentData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentData.document"><code class="docutils literal notranslate"><span class="pre">DocumentData.document</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentData.headings"><code class="docutils literal notranslate"><span class="pre">DocumentData.headings</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentData.text_work_item_provider"><code class="docutils literal notranslate"><span class="pre">DocumentData.text_work_item_provider</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo"><code class="docutils literal notranslate"><span class="pre">DocumentInfo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.doc_type"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.doc_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.module_folder"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.module_folder</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.module_name"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.module_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.project_id"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.project_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.text_work_item_id_field"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.text_work_item_id_field</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.document_data.DocumentInfo.text_work_item_type"><code class="docutils literal notranslate"><span class="pre">DocumentInfo.text_work_item_type</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.data_model.html#module-capella2polarion.data_model.work_item_attachments">capella2polarion.data_model.work_item_attachments module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.Capella2PolarionAttachment"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionAttachment</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.Capella2PolarionAttachment.content_checksum"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionAttachment.content_checksum</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.CapellaContextDiagramAttachment"><code class="docutils literal notranslate"><span class="pre">CapellaContextDiagramAttachment</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.CapellaContextDiagramAttachment.content_checksum"><code class="docutils literal notranslate"><span class="pre">CapellaContextDiagramAttachment.content_checksum</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.CapellaDiagramAttachment"><code class="docutils literal notranslate"><span class="pre">CapellaDiagramAttachment</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.CapellaDiagramAttachment.content_bytes"><code class="docutils literal notranslate"><span class="pre">CapellaDiagramAttachment.content_bytes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.PngConvertedSvgAttachment"><code class="docutils literal notranslate"><span class="pre">PngConvertedSvgAttachment</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.PngConvertedSvgAttachment.content_bytes"><code class="docutils literal notranslate"><span class="pre">PngConvertedSvgAttachment.content_bytes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.calculate_content_checksum"><code class="docutils literal notranslate"><span class="pre">calculate_content_checksum()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.data_model.html#module-capella2polarion.data_model.work_items">capella2polarion.data_model.work_items module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.attachment_checksums"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.attachment_checksums</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.calculate_checksum"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.calculate_checksum()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.checksum"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.checksum</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.clear_attributes"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.clear_attributes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.content_checksum"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.content_checksum</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.postCondition"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.postCondition</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.preCondition"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.preCondition</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_items.CapellaWorkItem.uuid_capella"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItem.uuid_capella</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="capella2polarion.documents.html">capella2polarion.documents package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.documents.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.documents.html#module-capella2polarion.documents.document_config">capella2polarion.documents.document_config module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.heading_numbering"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.heading_numbering</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.instances"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.instances</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.model_config"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.project_id"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.project_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.status_allow_list"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.status_allow_list</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.template_directory"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.template_directory</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.text_work_item_id_field"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.text_work_item_id_field</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.text_work_item_type"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.text_work_item_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.BaseDocumentRenderingConfig.work_item_layouts"><code class="docutils literal notranslate"><span class="pre">BaseDocumentRenderingConfig.work_item_layouts</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentConfigs"><code class="docutils literal notranslate"><span class="pre">DocumentConfigs</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentConfigs.full_authority"><code class="docutils literal notranslate"><span class="pre">DocumentConfigs.full_authority</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentConfigs.iterate_documents"><code class="docutils literal notranslate"><span class="pre">DocumentConfigs.iterate_documents()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentConfigs.mixed_authority"><code class="docutils literal notranslate"><span class="pre">DocumentConfigs.mixed_authority</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentConfigs.model_config"><code class="docutils literal notranslate"><span class="pre">DocumentConfigs.model_config</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.model_config"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.params"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.params</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.polarion_name"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.polarion_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.polarion_space"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.polarion_space</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.polarion_title"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.polarion_title</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.DocumentRenderingInstance.polarion_type"><code class="docutils literal notranslate"><span class="pre">DocumentRenderingInstance.polarion_type</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.FullAuthorityDocumentRenderingConfig"><code class="docutils literal notranslate"><span class="pre">FullAuthorityDocumentRenderingConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.FullAuthorityDocumentRenderingConfig.model_config"><code class="docutils literal notranslate"><span class="pre">FullAuthorityDocumentRenderingConfig.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.FullAuthorityDocumentRenderingConfig.template"><code class="docutils literal notranslate"><span class="pre">FullAuthorityDocumentRenderingConfig.template</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.MixedAuthorityDocumentRenderingConfig"><code class="docutils literal notranslate"><span class="pre">MixedAuthorityDocumentRenderingConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.MixedAuthorityDocumentRenderingConfig.instances"><code class="docutils literal notranslate"><span class="pre">MixedAuthorityDocumentRenderingConfig.instances</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.MixedAuthorityDocumentRenderingConfig.model_config"><code class="docutils literal notranslate"><span class="pre">MixedAuthorityDocumentRenderingConfig.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.MixedAuthorityDocumentRenderingConfig.sections"><code class="docutils literal notranslate"><span class="pre">MixedAuthorityDocumentRenderingConfig.sections</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.SectionBasedDocumentRenderingInstance"><code class="docutils literal notranslate"><span class="pre">SectionBasedDocumentRenderingInstance</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.SectionBasedDocumentRenderingInstance.model_config"><code class="docutils literal notranslate"><span class="pre">SectionBasedDocumentRenderingInstance.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.SectionBasedDocumentRenderingInstance.section_params"><code class="docutils literal notranslate"><span class="pre">SectionBasedDocumentRenderingInstance.section_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.fields_at_end"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.fields_at_end</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.fields_at_start"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.fields_at_start</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.model_config"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.show_description"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.show_description</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.show_fields_as_table"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.show_fields_as_table</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.WorkItemLayout.show_title"><code class="docutils literal notranslate"><span class="pre">WorkItemLayout.show_title</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.generate_work_item_layouts"><code class="docutils literal notranslate"><span class="pre">generate_work_item_layouts()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_config.read_config_file"><code class="docutils literal notranslate"><span class="pre">read_config_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.documents.html#module-capella2polarion.documents.document_renderer">capella2polarion.documents.document_renderer module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.AREA_END_CLS"><code class="docutils literal notranslate"><span class="pre">AREA_END_CLS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.AREA_START_CLS"><code class="docutils literal notranslate"><span class="pre">AREA_START_CLS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.DocumentRenderer"><code class="docutils literal notranslate"><span class="pre">DocumentRenderer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.DocumentRenderer.render_document"><code class="docutils literal notranslate"><span class="pre">DocumentRenderer.render_document()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.DocumentRenderer.setup_env"><code class="docutils literal notranslate"><span class="pre">DocumentRenderer.setup_env()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.DocumentRenderer.update_mixed_authority_document"><code class="docutils literal notranslate"><span class="pre">DocumentRenderer.update_mixed_authority_document()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession"><code class="docutils literal notranslate"><span class="pre">RenderingSession</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.document_project_id"><code class="docutils literal notranslate"><span class="pre">RenderingSession.document_project_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.heading_ids"><code class="docutils literal notranslate"><span class="pre">RenderingSession.heading_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.headings"><code class="docutils literal notranslate"><span class="pre">RenderingSession.headings</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.inserted_work_item_ids"><code class="docutils literal notranslate"><span class="pre">RenderingSession.inserted_work_item_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.rendering_layouts"><code class="docutils literal notranslate"><span class="pre">RenderingSession.rendering_layouts</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.document_renderer.RenderingSession.text_work_items"><code class="docutils literal notranslate"><span class="pre">RenderingSession.text_work_items</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.documents.html#module-capella2polarion.documents.mass_document_renderer">capella2polarion.documents.mass_document_renderer module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.mass_document_renderer.MassDocumentRenderer"><code class="docutils literal notranslate"><span class="pre">MassDocumentRenderer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.mass_document_renderer.MassDocumentRenderer.render_documents"><code class="docutils literal notranslate"><span class="pre">MassDocumentRenderer.render_documents()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.mass_document_renderer.ProjectData"><code class="docutils literal notranslate"><span class="pre">ProjectData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.mass_document_renderer.ProjectData.new_docs"><code class="docutils literal notranslate"><span class="pre">ProjectData.new_docs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.mass_document_renderer.ProjectData.updated_docs"><code class="docutils literal notranslate"><span class="pre">ProjectData.updated_docs</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.documents.html#module-capella2polarion.documents.text_work_item_provider">capella2polarion.documents.text_work_item_provider module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.text_work_item_provider.TextWorkItemProvider"><code class="docutils literal notranslate"><span class="pre">TextWorkItemProvider</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.text_work_item_provider.TextWorkItemProvider.generate_text_work_items"><code class="docutils literal notranslate"><span class="pre">TextWorkItemProvider.generate_text_work_items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.documents.html#capella2polarion.documents.text_work_item_provider.TextWorkItemProvider.insert_text_work_items"><code class="docutils literal notranslate"><span class="pre">TextWorkItemProvider.insert_text_work_items()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="capella2polarion.elements.html">capella2polarion.elements package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.capella_object_renderer">capella2polarion.elements.capella_object_renderer module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.draw_diagram_svg"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.draw_diagram_svg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.get_requirement_types_text"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.get_requirement_types_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.render_jinja_template"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.render_jinja_template()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.replace_markup"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.replace_markup()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.sanitize_linked_text"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.sanitize_linked_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.sanitize_text"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.sanitize_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.capella_object_renderer.CapellaObjectRenderer.setup_env"><code class="docutils literal notranslate"><span class="pre">CapellaObjectRenderer.setup_env()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.converter_config">capella2polarion.elements.converter_config module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig.converters"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig.converters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig.is_actor"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig.is_actor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig.links"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig.links</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig.nature"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig.nature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.CapellaTypeConfig.p_type"><code class="docutils literal notranslate"><span class="pre">CapellaTypeConfig.p_type</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig"><code class="docutils literal notranslate"><span class="pre">ConverterConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.add_layer"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.add_layer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.get_type_config"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.get_type_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.layers_and_types"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.layers_and_types()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.read_config_file"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.read_config_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.set_diagram_config"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.set_diagram_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.set_global_config"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.set_global_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.ConverterConfig.set_layer_config"><code class="docutils literal notranslate"><span class="pre">ConverterConfig.set_layer_config()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig"><code class="docutils literal notranslate"><span class="pre">LinkConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.capella_attr"><code class="docutils literal notranslate"><span class="pre">LinkConfig.capella_attr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.generate_links_configs"><code class="docutils literal notranslate"><span class="pre">LinkConfig.generate_links_configs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.include"><code class="docutils literal notranslate"><span class="pre">LinkConfig.include</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.link_field"><code class="docutils literal notranslate"><span class="pre">LinkConfig.link_field</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.polarion_role"><code class="docutils literal notranslate"><span class="pre">LinkConfig.polarion_role</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.LinkConfig.reverse_field"><code class="docutils literal notranslate"><span class="pre">LinkConfig.reverse_field</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.add_prefix"><code class="docutils literal notranslate"><span class="pre">add_prefix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.config_matches"><code class="docutils literal notranslate"><span class="pre">config_matches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.converter_config.merge_converters"><code class="docutils literal notranslate"><span class="pre">merge_converters()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.data_session">capella2polarion.elements.data_session module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData"><code class="docutils literal notranslate"><span class="pre">ConverterData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.capella_element"><code class="docutils literal notranslate"><span class="pre">ConverterData.capella_element</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.description_references"><code class="docutils literal notranslate"><span class="pre">ConverterData.description_references</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.errors"><code class="docutils literal notranslate"><span class="pre">ConverterData.errors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.layer"><code class="docutils literal notranslate"><span class="pre">ConverterData.layer</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.type_config"><code class="docutils literal notranslate"><span class="pre">ConverterData.type_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.data_session.ConverterData.work_item"><code class="docutils literal notranslate"><span class="pre">ConverterData.work_item</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.element_converter">capella2polarion.elements.element_converter module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.element_converter.CapellaWorkItemSerializer"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItemSerializer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.element_converter.CapellaWorkItemSerializer.serialize"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItemSerializer.serialize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.element_converter.CapellaWorkItemSerializer.serialize_all"><code class="docutils literal notranslate"><span class="pre">CapellaWorkItemSerializer.serialize_all()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.element_converter.resolve_element_type"><code class="docutils literal notranslate"><span class="pre">resolve_element_type()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.link_converter">capella2polarion.elements.link_converter module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.LinkSerializer"><code class="docutils literal notranslate"><span class="pre">LinkSerializer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.LinkSerializer.create_grouped_back_link_fields"><code class="docutils literal notranslate"><span class="pre">LinkSerializer.create_grouped_back_link_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.LinkSerializer.create_grouped_link_fields"><code class="docutils literal notranslate"><span class="pre">LinkSerializer.create_grouped_link_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.LinkSerializer.create_links_for_work_item"><code class="docutils literal notranslate"><span class="pre">LinkSerializer.create_links_for_work_item()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.find_link_config"><code class="docutils literal notranslate"><span class="pre">find_link_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.link_converter.make_link_logging_message"><code class="docutils literal notranslate"><span class="pre">make_link_logging_message()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.elements.html#module-capella2polarion.elements.model_converter">capella2polarion.elements.model_converter module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.model_converter.ModelConverter"><code class="docutils literal notranslate"><span class="pre">ModelConverter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.model_converter.ModelConverter.generate_work_item_links"><code class="docutils literal notranslate"><span class="pre">ModelConverter.generate_work_item_links()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.model_converter.ModelConverter.generate_work_items"><code class="docutils literal notranslate"><span class="pre">ModelConverter.generate_work_items()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.model_converter.ModelConverter.read_model"><code class="docutils literal notranslate"><span class="pre">ModelConverter.read_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.elements.html#capella2polarion.elements.model_converter.get_layer_name"><code class="docutils literal notranslate"><span class="pre">get_layer_name()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="capella2polarion.plugins.html">capella2polarion.plugins package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.load_plugins"><code class="docutils literal notranslate"><span class="pre">load_plugins()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.plugins.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.plugins.html#module-capella2polarion.plugins.plugin_config">capella2polarion.plugins.plugin_config module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.PluginConfig"><code class="docutils literal notranslate"><span class="pre">PluginConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.PluginConfig.args"><code class="docutils literal notranslate"><span class="pre">PluginConfig.args</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.PluginConfig.init_args"><code class="docutils literal notranslate"><span class="pre">PluginConfig.init_args</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.PluginConfig.model_config"><code class="docutils literal notranslate"><span class="pre">PluginConfig.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.PluginConfig.plugin_name"><code class="docutils literal notranslate"><span class="pre">PluginConfig.plugin_name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_config.read_config_file"><code class="docutils literal notranslate"><span class="pre">read_config_file()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="capella2polarion.plugins.html#module-capella2polarion.plugins.plugin_interfaces">capella2polarion.plugins.plugin_interfaces module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.document_rendering_config"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.document_rendering_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.force_update"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.force_update</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.generate_figure_captions"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.generate_figure_captions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.grouped_links_custom_fields"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.grouped_links_custom_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.overwrite_layouts"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.overwrite_layouts</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.overwrite_numbering"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.overwrite_numbering</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.role_prefix"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.role_prefix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.synchronize_config"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.synchronize_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.AdditionalAttributes.type_prefix"><code class="docutils literal notranslate"><span class="pre">AdditionalAttributes.type_prefix</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.PluginInterface"><code class="docutils literal notranslate"><span class="pre">PluginInterface</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.PluginInterface.document_config"><code class="docutils literal notranslate"><span class="pre">PluginInterface.document_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.PluginInterface.element_config"><code class="docutils literal notranslate"><span class="pre">PluginInterface.element_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="capella2polarion.plugins.html#capella2polarion.plugins.plugin_interfaces.PluginInterface.run"><code class="docutils literal notranslate"><span class="pre">PluginInterface.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+</section>
+<section id="module-capella2polarion.cli">
+<span id="capella2polarion-cli-module"></span><h2>capella2polarion.cli module<a class="headerlink" href="#module-capella2polarion.cli" title="Link to this heading">¶</a></h2>
+<p>Tool for CLI work.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="capella2polarion.cli.Capella2PolarionCli">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">capella2polarion.cli.</span></span><span class="sig-name descname"><span class="pre">Capella2PolarionCli</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">polarion_project_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">polarion_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">polarion_pat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">polarion_delete_work_items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capella_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">MelodyModel</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#capella2polarion.cli.Capella2PolarionCli" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Call Level Interface.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="capella2polarion.cli.Capella2PolarionCli.load_synchronize_config">
+<span class="sig-name descname"><span class="pre">load_synchronize_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">synchronize_config_io</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.13)"><span class="pre">TextIO</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.cli.Capella2PolarionCli.load_synchronize_config" title="Link to this definition">¶</a></dt>
+<dd><p>Read the sync config into SynchronizeConfigContent.</p>
+<ul class="simple">
+<li><p>example in /tests/data/model_elements/config.yaml</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="capella2polarion.cli.Capella2PolarionCli.print_state">
+<span class="sig-name descname"><span class="pre">print_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.cli.Capella2PolarionCli.print_state" title="Link to this definition">¶</a></dt>
+<dd><p>Print the State of the cli tool.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="capella2polarion.cli.Capella2PolarionCli.setup_logger">
+<span class="sig-name descname"><span class="pre">setup_logger</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.cli.Capella2PolarionCli.setup_logger" title="Link to this definition">¶</a></dt>
+<dd><p>Set the logger in the right mood.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-capella2polarion.polarion_html_helper">
+<span id="capella2polarion-polarion-html-helper-module"></span><h2>capella2polarion.polarion_html_helper module<a class="headerlink" href="#module-capella2polarion.polarion_html_helper" title="Link to this heading">¶</a></h2>
+<p>Functions for polarion specific HTMl elements.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.JinjaRendererMixin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">JinjaRendererMixin</span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A MixIn for converters which should render jinja frequently.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.JinjaRendererMixin.check_model_element">
+<span class="sig-name descname"><span class="pre">check_model_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ModelElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">AbstractDiagram</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.check_model_element" title="Link to this definition">¶</a></dt>
+<dd><p>Check if a model element was passed.</p>
+<p>Return None if no element and raise a TypeError if a wrong typed
+element was passed. Returns the element if it matches
+expectations.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.JinjaRendererMixin.jinja_envs">
+<span class="sig-name descname"><span class="pre">jinja_envs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Environment</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.jinja_envs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.JinjaRendererMixin.setup_env">
+<span class="sig-name descname"><span class="pre">setup_env</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Environment</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.setup_env" title="Link to this definition">¶</a></dt>
+<dd><p>Implement this method to adjust a newly created environment.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.add_attachment_to_workitem">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">add_attachment_to_workitem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">work_item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">WorkItem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attachment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="capella2polarion.data_model.html#capella2polarion.data_model.work_item_attachments.Capella2PolarionAttachment" title="capella2polarion.data_model.work_item_attachments.Capella2PolarionAttachment"><span class="pre">Capella2PolarionAttachment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.add_attachment_to_workitem" title="Link to this definition">¶</a></dt>
+<dd><p>Add the attachment to the workitem and add a PNG version if needed.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.camel_case_to_words">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">camel_case_to_words</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camel_case_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.camel_case_to_words" title="Link to this definition">¶</a></dt>
+<dd><p>Split camel or dromedary case and return it as a space separated str.</p>
+<p>Handle prefixed underscores as well.</p>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">camel_case_to_words</span><span class="p">(</span><span class="s2">&quot;camelCase&quot;</span><span class="p">)</span>
+<span class="go">&#39;Camel Case&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">camel_case_to_words</span><span class="p">(</span><span class="s2">&quot;_Prefix_camelCaseWithPrefix&quot;</span><span class="p">)</span>
+<span class="go">&#39;Camel Case With Prefix (Prefix)&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.ensure_fragments">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">ensure_fragments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.ensure_fragments" title="Link to this definition">¶</a></dt>
+<dd><p>Convert string to html elements.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.extract_headings">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">extract_headings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.extract_headings" title="Link to this definition">¶</a></dt>
+<dd><p>Return a list of work item IDs for all headings in the given content.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.extract_work_items">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">extract_work_items</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag_regex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/re.html#re.Pattern" title="(in Python v3.13)"><span class="pre">Pattern</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.extract_work_items" title="Link to this definition">¶</a></dt>
+<dd><p>Return a list of work item IDs for work items in the given content.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.generate_image_html">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">generate_image_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attachment_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">caption</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.generate_image_html" title="Link to this definition">¶</a></dt>
+<dd><p>Generate an image as HTMl with the given source.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.get_layout_index">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">get_layout_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default_layouter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rendering_layouts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">RenderingLayout</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">work_item_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.get_layout_index" title="Link to this definition">¶</a></dt>
+<dd><p>Return the index of the layout of the requested workitem.</p>
+<p>If there is no rendering config yet, it will be created.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.remove_table_ids">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">remove_table_ids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">html_content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">HtmlElement</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.remove_table_ids" title="Link to this definition">¶</a></dt>
+<dd><p>Remove the ID field from all tables.</p>
+<p>This is necessary due to a bug in Polarion where Polarion does not
+ensure that the tables added in the UI have unique IDs. At the same
+time the REST-API does not allow posting or patching a document with
+multiple tables having the same ID.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="capella2polarion.polarion_html_helper.strike_through">
+<span class="sig-prename descclassname"><span class="pre">capella2polarion.polarion_html_helper.</span></span><span class="sig-name descname"><span class="pre">strike_through</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">string</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#capella2polarion.polarion_html_helper.strike_through" title="Link to this definition">¶</a></dt>
+<dd><p>Return a striked-through html span from given <code class="docutils literal notranslate"><span class="pre">string</span></code>.</p>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="capella2polarion.connectors.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">capella2polarion.connectors package</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="modules.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">capella-polarion</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; DB InfraGO AG and the capella2polarion contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/dbinfrago/capella2polarion" aria-label="GitHub"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0cm9rZT0iY3VycmVudENvbG9yIiBmaWxsPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMCIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik04IDBDMy41OCAwIDAgMy41OCAwIDhjMCAzLjU0IDIuMjkgNi41MyA1LjQ3IDcuNTkuNC4wNy41NS0uMTcuNTUtLjM4IDAtLjE5LS4wMS0uODItLjAxLTEuNDktMi4wMS4zNy0yLjUzLS40OS0yLjY5LS45NC0uMDktLjIzLS40OC0uOTQtLjgyLTEuMTMtLjI4LS4xNS0uNjgtLjUyLS4wMS0uNTMuNjMtLjAxIDEuMDguNTggMS4yMy44Mi43MiAxLjIxIDEuODcuODcgMi4zMy42Ni4wNy0uNTIuMjgtLjg3LjUxLTEuMDctMS43OC0uMi0zLjY0LS44OS0zLjY0LTMuOTUgMC0uODcuMzEtMS41OS44Mi0yLjE1LS4wOC0uMi0uMzYtMS4wMi4wOC0yLjEyIDAgMCAuNjctLjIxIDIuMi44Mi42NC0uMTggMS4zMi0uMjcgMi0uMjcuNjggMCAxLjM2LjA5IDIgLjI3IDEuNTMtMS4wNCAyLjItLjgyIDIuMi0uODIuNDQgMS4xLjE2IDEuOTIuMDggMi4xMi41MS41Ni44MiAxLjI3LjgyIDIuMTUgMCAzLjA3LTEuODcgMy43NS0zLjY1IDMuOTUuMjkuMjUuNTQuNzMuNTQgMS40OCAwIDEuMDctLjAxIDEuOTMtLjAxIDIuMiAwIC4yMS4xNS40Ni41NS4zOEE4LjAxMyA4LjAxMyAwIDAgMCAxNiA4YzAtNC40Mi0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="/></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">capella2polarion package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-capella2polarion.cli">capella2polarion.cli module</a><ul>
+<li><a class="reference internal" href="#capella2polarion.cli.Capella2PolarionCli"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionCli</span></code></a><ul>
+<li><a class="reference internal" href="#capella2polarion.cli.Capella2PolarionCli.load_synchronize_config"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionCli.load_synchronize_config()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.cli.Capella2PolarionCli.print_state"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionCli.print_state()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.cli.Capella2PolarionCli.setup_logger"><code class="docutils literal notranslate"><span class="pre">Capella2PolarionCli.setup_logger()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-capella2polarion.polarion_html_helper">capella2polarion.polarion_html_helper module</a><ul>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin"><code class="docutils literal notranslate"><span class="pre">JinjaRendererMixin</span></code></a><ul>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.check_model_element"><code class="docutils literal notranslate"><span class="pre">JinjaRendererMixin.check_model_element()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.jinja_envs"><code class="docutils literal notranslate"><span class="pre">JinjaRendererMixin.jinja_envs</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.JinjaRendererMixin.setup_env"><code class="docutils literal notranslate"><span class="pre">JinjaRendererMixin.setup_env()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.add_attachment_to_workitem"><code class="docutils literal notranslate"><span class="pre">add_attachment_to_workitem()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.camel_case_to_words"><code class="docutils literal notranslate"><span class="pre">camel_case_to_words()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.ensure_fragments"><code class="docutils literal notranslate"><span class="pre">ensure_fragments()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.extract_headings"><code class="docutils literal notranslate"><span class="pre">extract_headings()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.extract_work_items"><code class="docutils literal notranslate"><span class="pre">extract_work_items()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.generate_image_html"><code class="docutils literal notranslate"><span class="pre">generate_image_html()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.get_layout_index"><code class="docutils literal notranslate"><span class="pre">get_layout_index()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.remove_table_ids"><code class="docutils literal notranslate"><span class="pre">remove_table_ids()</span></code></a></li>
+<li><a class="reference internal" href="#capella2polarion.polarion_html_helper.strike_through"><code class="docutils literal notranslate"><span class="pre">strike_through()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=04ba4d4d"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    </body>
+</html>

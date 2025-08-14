@@ -1,0 +1,42 @@
+capella2polarion.documents package
+==================================
+
+.. automodule:: capella2polarion.documents
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+capella2polarion.documents.document\_config module
+--------------------------------------------------
+
+.. automodule:: capella2polarion.documents.document_config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.documents.document\_renderer module
+----------------------------------------------------
+
+.. automodule:: capella2polarion.documents.document_renderer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.documents.mass\_document\_renderer module
+----------------------------------------------------------
+
+.. automodule:: capella2polarion.documents.mass_document_renderer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+capella2polarion.documents.text\_work\_item\_provider module
+------------------------------------------------------------
+
+.. automodule:: capella2polarion.documents.text_work_item_provider
+   :members:
+   :undoc-members:
+   :show-inheritance:
