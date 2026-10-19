@@ -224,7 +224,9 @@ class CapellaContextDiagramAttachment(CapellaDiagramAttachment):
         """
         try:
             melodyobj = self.diagram._model.by_uuid(uuid)
-        except KeyError:
+        except (KeyError, ValueError):
+            # capellambse raises ValueError ("Malformed link") for
+            # synthetic IDs such as "__Derived-ComponentExchange:<uuid>"
             if not uuid.startswith("__"):
                 return None
             return uuid[2:].split(":", 1)[0]

@@ -126,7 +126,9 @@ class CapellaPolarionWorker:
             fields={"workitems": "id,uuid_capella,checksum,status,type"},
             work_item_cls=data_model.CapellaWorkItem,
         )
-        self.polarion_data_repo.update_work_items(work_items)
+        self.polarion_data_repo.update_work_items(
+            t.cast(list[data_model.CapellaWorkItem], work_items)
+        )
 
     def delete_orphaned_work_items(
         self, converter_session: data_session.ConverterSession
@@ -151,7 +153,9 @@ class CapellaPolarionWorker:
                 work_items.append(wi)
 
         try:
-            self.project_client.work_items.delete(work_items)
+            self.project_client.work_items.delete(
+                t.cast(list[polarion_api.WorkItem], work_items)
+            )
         except polarion_api.PolarionApiException as error:
             logger.error("Deleting work items failed. %s", error.args[0])
             raise error
