@@ -200,3 +200,7 @@ include = ["capella2polarion", "capella2polarion.*"]
 [tool.setuptools_scm]
 # This section must exist for setuptools_scm to work
 local_scheme = "no-local-version"
+
+[tool.uv.sources]
+capellambse = { git = "https://github.com/dbinfrago/py-capellambse", branch = "fix/multiline-text-extent" }
+polarion-rest-api-client = { git = "https://github.com/dbinfrago/polarion-rest-api-client", branch = "fix/html-comment-fragments" }
