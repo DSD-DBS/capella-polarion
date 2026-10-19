@@ -831,6 +831,29 @@ def test_context_diagram_checksum_handles_elk_input_and_render_failure(
     assert checksum == errors.RENDER_ERROR_CHECKSUM
 
 
+@pytest.mark.parametrize(
+    ("uuid", "expected"),
+    [
+        pytest.param(
+            "__Derived-ComponentExchange:095b74c4-a31c-41d2-b720-9f0666c650c0",
+            "Derived-ComponentExchange",
+            id="derived-edge",
+        ),
+        pytest.param("__Derived-CP_INOUT:-1", "Derived-CP_INOUT", id="port"),
+        pytest.param("not-a-uuid", None, id="unknown"),
+    ],
+)
+def test_context_diagram_styleclass_of_synthetic_ids(
+    model: capellambse.MelodyModel, uuid: str, expected: str | None
+):
+    obj = model.by_uuid("d4a22478-5717-4ca7-bfc9-9a193e6218a8")
+    attachment = data_model.CapellaContextDiagramAttachment(
+        obj.context_diagram, "__C2P__context_diagram.svg", {}, "Diagram"
+    )
+
+    assert attachment._get_styleclass(uuid) == expected
+
+
 def test_prepare_attachment_uploads_static_error_on_creation_failure(
     model: capellambse.MelodyModel,
     worker: polarion_worker.CapellaPolarionWorker,
